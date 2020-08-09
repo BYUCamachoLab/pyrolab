@@ -1,0 +1,27 @@
+PyroLab is licensed under the GNU GPLv3 or later.
+However, it contains some resources, libraries, and some source files 
+under other terms, as listed in this file.
+
+Included Software and Resources
+===============================
+
+PyroLab includes some resources from other projects, which are licensed
+under the terms of the source. These files are listed below, and their 
+copyright notices reproduced.
+
+
+
+-------------------------------------------------------------------------------
+
+
+
+TSL550
+------
+
+The code found in the following files were included in PyroLab with some 
+modifications to make them Pyro5 compatible:
+
+simphony/drivers/lasers/tsl550.py
+
+The original repository, located at https://github.com/wecassidy/TSL550, is
+unlicensed.
