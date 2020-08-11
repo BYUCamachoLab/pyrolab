@@ -15,7 +15,7 @@ import sys
 
 import setuptools
 
-from pyrolab import __version__, __website_url__  # analysis:ignore
+from pyrolab import __version__, __author__, __maintainer__, __maintainer_email__, __website_url__  # analysis:ignore
 
 # ==============================================================================
 # Constants
@@ -41,13 +41,14 @@ with io.open("README.md", encoding="utf-8") as f:
 setup_args = dict(
     name=NAME,
     version=__version__,
+    author="Sequoia Ploeg",
+    maintainer=__maintainer__,
+    maintainer_email=__maintainer_email__,
+    url=__website_url__,
     description="A framework for using remote lab instruments as local resources built on Pyro5",
     long_description=LONG_DESCRIPTION,
     long_description_content_type="text/markdown",
     # download_url=__website_url__ + "",
-    author="Sequoia Ploeg",
-    author_email="sequoia.ploeg@ieee.org",
-    url=__website_url__,
     license="GPLv3+",
     keywords="laboratory instrumentation hardware science remote network integration",
     platforms=["Windows", "Linux", "Mac OS-X"],
@@ -75,17 +76,16 @@ setup_args = dict(
 
 install_requires = [
     "Pyro5",
+    "appdirs",
 ]
 
 extras_require = {
-    "kinesis": ["",],
+    # "kinesis": ["",],
 }
 
 if "setuptools" in sys.modules:
     setup_args["install_requires"] = install_requires
     setup_args["extras_require"] = extras_require
-
-    # setup_args.pop('scripts', None)
 
 
 # ==============================================================================

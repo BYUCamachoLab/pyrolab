@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pyrolab
 
-datadir = Path(Path(pyrolab.__file__).parent, 'data')
+datadir = Path(pyrolab.__file__).parent / 'data'
 
 config = configparser.ConfigParser()
 
@@ -27,10 +27,12 @@ config['DEFAULT'] = {
     'CLIENT_SSL_CERT_PATH': '',
 }
 
-config['AVAILABLE_INSTRUMENTS'] = {
+config['AVAILABLE INSTRUMENTS'] = {
 
 }
 
 
 if __name__ == "__main__":
-    print(datadir)
+    cfile = datadir / 'default.ini'
+    with open(cfile, 'w') as configfile:
+        config.write(configfile)

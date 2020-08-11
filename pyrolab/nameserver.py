@@ -11,5 +11,5 @@ Nameserver
 Default configuration settings for PyroLab.
 """
 
-import pkgutil
-
+if __name__ == "__main__":
+    print("Running nameserver...")

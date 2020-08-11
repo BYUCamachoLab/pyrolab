@@ -26,6 +26,9 @@ A framework for using remote lab instruments as local resources built on Pyro5
 
 import platform
 import sys
+from pathlib import Path
+
+from appdirs import AppDirs
 
 if sys.version_info < (3, 6, 0):
     raise Exception(
@@ -34,9 +37,49 @@ if sys.version_info < (3, 6, 0):
         + " detected)."
     )
 
+__author__ = "Sequoia Ploeg"
+__copyright__ = "Copyright 2020, The PyroLab Project"
 __version__ = "0.0.1dev0"
 __license__ = "GPLv3+"
+__maintainer__ = "Sequoia Ploeg"
+__maintainer_email__ = "sequoia.ploeg@ieee.org"
+__status__ = "Development" # "Production"
 __project_url__ = "https://github.com/sequoiap/pyrolab"
 __forum_url__ = "https://github.com/sequoiap/pyrolab/issues"
 # __trouble_url__ = __project_url__ + "/wiki/Troubleshooting-Guide"
 __website_url__ = "https://camacholab.byu.edu/"
+
+
+dirs = AppDirs("PyroLab", "CamachoLab")
+
+
+from pyrolab.configure import global_config as config
+
+
+# def _configure_logging():
+#     """Do some basic config of the logging module at package import time.
+#     The configuring is done only if the PYRO_LOGLEVEL env var is set.
+#     If you want to use your own logging config, make sure you do
+#     that before any Pyro imports. Then Pyro will skip the autoconfig.
+#     Set the env var PYRO_LOGFILE to change the name of the autoconfigured
+#     log file (default is pyro5.log in the current dir). Use '{stderr}' to
+#     make the log go to the standard error output."""
+#     import logging
+
+#     if config.LOGLEVEL == "NOTSET":
+#         # Disable PyroLab logging.
+#         log = logging.getLogger("PyroLab")
+#         log.setLevel(9999)
+#     else:
+#         levelvalue = getattr(logging, config.LOGLEVEL)
+#         if len(logging.root.handlers) == 0:
+#             logging.basicConfig(
+#                 level=levelvalue,
+#                 filename=None if logfilename == "{stderr}" else logfilename,
+#                 datefmt="%Y-%m-%d %H:%M:%S",
+#                 format="[%(asctime)s.%(msecs)03d,%(name)s,%(levelname)s] %(message)s"
+#             )
+#             log = logging.getLogger("PyroLab")
+#             log.info("PyroLab log configured using built-in defaults, level=%s", level)
+
+# _configure_logging()
