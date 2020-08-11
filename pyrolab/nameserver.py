@@ -5,17 +5,11 @@
 # (see pyrolab/__init__.py for details)
 
 """
-Drivers
--------
+Nameserver
+----------
 
-Submodule containing drivers for each supported instrument type.
+Default configuration settings for PyroLab.
 """
 
-class Instrument:
-    pass
+import pkgutil
 
-class CustomProxy:
-    pass
-
-class CustomDaemon:
-    pass

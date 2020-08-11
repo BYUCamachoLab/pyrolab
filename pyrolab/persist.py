@@ -4,4 +4,11 @@
 # Licensed under the terms of the GNU GPLv3+ License
 # (see pyrolab/__init__.py for details)
 
-INSTALLED_FEATURES = []
+
+
+
+class InstalledFeatureRegistry:
+    pass
+
+class UserPreferences:
+    pass
