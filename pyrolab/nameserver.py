@@ -11,5 +11,11 @@ Nameserver
 Default configuration settings for PyroLab.
 """
 
+import logging
+
+
+log = logging.getLogger("pyrolab.nameserver")
+
+
 if __name__ == "__main__":
     print("Running nameserver...")

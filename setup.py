@@ -77,6 +77,7 @@ setup_args = dict(
 install_requires = [
     "Pyro5",
     "appdirs",
+    "PyYAML",
 ]
 
 extras_require = {
