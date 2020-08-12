@@ -11,6 +11,12 @@ Drivers
 Submodule containing drivers for each supported instrument type.
 """
 
+import logging
+
+
+log = logging.getLogger('pyrolab.drivers')
+
+
 class Instrument:
     pass
 
