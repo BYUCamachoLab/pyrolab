@@ -1,0 +1,23 @@
+# This is the format of a PyroLab configuration file.
+
+# You can use this file as a template and make modifications for
+# specific PyroLab settings. By default, PyroLab uses a file in
+# the program's .config directory. Replacing that file will load
+# your custom settings automatically on startup (regardless of
+# whether or not you're using a virtual environment!).
+# However, settings can easily be reset to defaults in the code
+# by using the command `pyrolab.config.reset(use_file=False)`.
+
+HOST: localhost
+NS_HOST: localhost
+SSL: true
+SSL_SERVERCERT: /home/sequoiap/GitHub/pyrolab/certs/server_cert.pem
+SSL_SERVERKEY: /home/sequoiap/GitHub/pyrolab/certs/server_key.pem
+SSL_SERVERKEYPASSWD: ''
+SSL_REQUIRECLIENTCERT: true
+SSL_CLIENTCERT: .
+SSL_CLIENTKEY: .
+SSL_CLIENTKEYPASSWD: ''
+SSL_CACERTS: /home/sequoiap/GitHub/pyrolab/certs/client_cert.pem
+LOGFILE: /home/sequoiap/.cache/PyroLab/log/pyrolab.log
+LOGLEVEL: ERROR
