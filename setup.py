@@ -82,6 +82,8 @@ install_requires = [
 
 extras_require = {
     # "kinesis": ["",],
+    "ssl": ["cryptography",],
+    "test": ["pytest",],
 }
 
 if "setuptools" in sys.modules:
