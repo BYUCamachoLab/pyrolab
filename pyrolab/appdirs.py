@@ -9,44 +9,37 @@ appdirs
 -------
 
 Default application directory settings for persisting data in PyroLab.
+
+Provides pathlib.Path references to common datafile locations for PyroLab.
+
+Notes
+-----
+For more information on the implementation and opinions of the paths,
+see the ``appdirs`` repository (https://github.com/ActiveState/appdirs).
+
+Usage
+-----
+```
+python3 -m pyrolab.appdirs -h
+```
 """
 
 from pathlib import Path
 from appdirs import AppDirs
 
-class Directories:
-    """
-    Provides pathlib.Path references to common datafile locations for PyroLab.
 
-    Attributes
-    ----------
-    user_data_dir : pathlib.Path
-        Return full path to the user-specific data dir for PyroLab.
-    user_config_dir : pathlib.Path
-        Return full path to the user-specific config dir for PyroLab.
-    user_cache_dir : pathlib.Path
-        Return full path to the user-specific cache dir for PyroLab.
-    site_data_dir : pathlib.Path
-        Return full path to the user-shared data dir forPyroLab.
-    site_config_dir : pathlib.Path
-        Return full path to the user-shared data dir for PyroLab.
-        WARNING: Do not use this on Windows, instead use site_data_dir.
-    user_log_dir : pathlib.Path
-        Return full path to the user-specific log dir for PyroLab.
+_paths = AppDirs("PyroLab", "CamachoLab")
 
-    Notes
-    -----
-    For more information on the implementation and opinions of the paths,
-    see the ``appdirs`` repository (https://github.com/ActiveState/appdirs).
-    """
-    def __init__(self):
-        self.paths = AppDirs("PyroLab", "CamachoLab")
-
-    def __getattr__(self, name):
-        try:
-            path = getattr(self.paths, name)
-            return Path(path)
-        except AttributeError:
-            raise AttributeError('No such program directory type.')
-
-global_dirs = Directories()
+# Return full path to the user-specific data dir for PyroLab.
+user_data_dir = Path(_paths.user_data_dir)
+# Return full path to the user-specific config dir for PyroLab.
+user_config_dir = Path(_paths.user_config_dir)
+# Return full path to the user-specific cache dir for PyroLab.
+user_cache_dir = Path(_paths.user_cache_dir)
+# Return full path to the user-shared data dir forPyroLab.
+site_data_dir = Path(_paths.site_data_dir)
+# Return full path to the user-shared data dir for PyroLab.
+# WARNING: Do not use this on Windows, instead use site_data_dir.
+site_config_dir = Path(_paths.site_config_dir)
+# Return full path to the user-specific log dir for PyroLab.
+user_log_dir = Path(_paths.user_log_dir)
