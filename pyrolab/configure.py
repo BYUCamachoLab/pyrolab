@@ -12,16 +12,51 @@ Default configuration settings for PyroLab.
 """
 
 import logging
-from pathlib import Path
+import pathlib
 
 import Pyro5
 import yaml
 
-from pyrolab import dirs
+from pyrolab import appdirs
 
 
 CONFIG_FILENAME = 'config.yaml'
 LOGFILE_FILENAME = 'pyrolab.log'
+
+
+_DEFAULT_CONFIG = {
+    # Pyro5 Configuration Settings
+    "HOST": "localhost", 
+    "NS_HOST": "localhost",
+    "NS_PORT": 9090,
+    "SSL": False,
+    "SSL_SERVERCERT": pathlib.Path(""),
+    "SSL_SERVERKEY": pathlib.Path(""),
+    "SSL_SERVERKEYPASSWD": "",
+    "SSL_REQUIRECLIENTCERT": False,
+    "SSL_CLIENTCERT": pathlib.Path(""),
+    "SSL_CLIENTKEY": pathlib.Path(""),
+    "SSL_CLIENTKEYPASSWD": "",
+    "SSL_CACERTS": pathlib.Path(""),
+    # PyroLab Configuration Settings
+    "LOGFILE": appdirs.user_log_dir / LOGFILE_FILENAME,
+    "LOGLEVEL": "ERROR",
+}
+
+def _textualize(key, value):
+    if type(value) is pathlib.Path:
+        return str(value.resolve())
+    elif type(value) not in [str, bool, int, float]:
+        return str(value)
+    else:
+        return value
+
+def _objectify(key, value):
+    try:
+        T = type(_DEFAULT_CONFIG[key])
+        return T(value)
+    except KeyError:
+        return value
 
 
 class Configuration:
@@ -33,23 +68,7 @@ class Configuration:
     Do not edit the values directly in this module! They are the global 
     defaults. Instead, provide a valid configuration file to PyroLab.
     """
-    __slots__ = [
-        # Pyro5 Configuration Settings
-        "HOST", 
-        "NS_HOST", 
-        "SSL", 
-        "SSL_SERVERCERT",
-        "SSL_SERVERKEY",
-        "SSL_SERVERKEYPASSWD",
-        "SSL_REQUIRECLIENTCERT",
-        "SSL_CLIENTCERT",
-        "SSL_CLIENTKEY",
-        "SSL_CLIENTKEYPASSWD",
-        "SSL_CACERTS",
-        # PyroLab Configuration Settings
-        "LOGFILE", 
-        "LOGLEVEL", 
-    ]
+    __slots__ = list(_DEFAULT_CONFIG.keys())
 
     def __init__(self):
         self.reset()
@@ -58,46 +77,64 @@ class Configuration:
         """
         Reset configuration items to their default values.
         """
-        # Pyro5 Configuration Settings
-        self.HOST = "localhost"
-        self.NS_HOST = "localhost"
-        self.SSL = False
-        self.SSL_SERVERCERT = ""
-        self.SSL_SERVERKEY = ""
-        self.SSL_SERVERKEYPASSWD = ""
-        self.SSL_REQUIRECLIENTCERT = False
-        self.SSL_CLIENTCERT = ""
-        self.SSL_CLIENTKEY = ""
-        self.SSL_CLIENTKEYPASSWD = ""
-        self.SSL_CACERTS = ""
-        # PyroLab Configuration Settings
-        self.LOGFILE = str(dirs.user_log_dir / LOGFILE_FILENAME)
-        self.LOGLEVEL = "ERROR"
+        Pyro5.config.reset(use_environment=False)
+
+        for key, value in _DEFAULT_CONFIG.items():
+            setattr(self, key, value)
 
         if use_file:
-            # Look for configuration file
-            cfile = dirs.user_config_dir / CONFIG_FILENAME
+            cfile = appdirs.user_config_dir / CONFIG_FILENAME
             if cfile.is_file():
                 self.use_file(cfile)
-
-        # Set configuration values relevant to Pyro5
-        self._configure_pyro5()
 
     def __getitem__(self, key):
         return getattr(self, key)
 
     def __setitem__(self, key, value):
-        if hasattr(self, key):
-            if type(getattr(self, key)) == type(value):
+        setattr(self, key, value)
+
+    def __getattribute__(self, name):
+        if name in _DEFAULT_CONFIG.keys():
+            return _objectify(name, super().__getattribute__(name))
+        return super().__getattribute__(name)
+
+    def __setattr__(self, key, value):
+        value = _textualize(key, value)
+        super().__setattr__(key, value)
+        if key in Pyro5.config.__slots__:
+            setattr(Pyro5.config, key, value)
+
+    def _to_dict(self):
+        """
+        Returns this configuration as a regular Python dictionary.
+        
+        Returns
+        -------
+        dict
+            The configuration as a Python dictionary.
+        """
+        return {item: _textualize(item, getattr(self, item)) for item in self.__slots__}
+
+    def _from_dict(self, dictionary):
+        for key, value in dictionary.items():
+            if key in self.__slots__:
                 setattr(self, key, value)
             else:
-                raise TypeError("expected type '{}', got '{}' instead.".format(type(self.__dict__[key]), type(value)))
+                raise AttributeError("Configuration has not attribute '{}'".format(key))
 
-    def _configure_pyro5(self):
-        Pyro5.config.reset(use_environment=False)
-        for item in self.__slots__:
-            if item in Pyro5.config.__slots__:
-                setattr(Pyro5.config, item, getattr(self, item))
+    def _to_yaml(self):
+        """
+        Converts the configuration object to a YAML format using the 
+        dictionary representation of the object.
+        """
+        return yaml.dump(self._to_dict(), default_flow_style=False, sort_keys=False)
+
+    def _from_yaml(self, cfg):
+        """
+        Sets the configuration object from a YAML formatted string by 
+        converting to a dictionary and updating the object's keys.
+        """
+        self._from_dict(yaml.load(cfg, Loader=yaml.FullLoader))
 
     def copy(self):
         """
@@ -113,41 +150,6 @@ class Configuration:
         for item in self.__slots__:
             setattr(other, item, getattr(self, item))
         return other
-
-    def to_dict(self):
-        """
-        Returns this configuration as a regular Python dictionary.
-        
-        Returns
-        -------
-        dict
-            The configuration as a Python dictionary.
-        """
-        return {item: getattr(self, item) for item in self.__slots__}
-
-    def from_dict(self, dictionary):
-        for key, value in dictionary.items():
-            if key in self.__slots__:
-                if type(value) == type(getattr(self, key)):
-                    setattr(self, key, value)
-                else:
-                    raise TypeError('Invalid configuration item type')
-            else:
-                raise ValueError('Invalid configuration item')
-
-    def _to_yaml(self):
-        """
-        Converts the configuration object to a YAML format using the 
-        dictionary representation of the object.
-        """
-        return yaml.dump(self.to_dict(), default_flow_style=False, sort_keys=False)
-
-    def _from_yaml(self, cfg):
-        """
-        Sets the configuration object from a YAML formatted string by 
-        converting to a dictionary and updating the object's keys.
-        """
-        self.from_dict(yaml.load(cfg, Loader=yaml.FullLoader))
 
     def use_file(self, filename):
         """
@@ -166,7 +168,7 @@ class Configuration:
         Save the program configuration to the default file (location is 
         platform dependent).
         """
-        loc = dirs.user_config_dir / CONFIG_FILENAME
+        loc = appdirs.user_config_dir / CONFIG_FILENAME
         if not loc.is_file():
             loc.parent.mkdir(parents=True, exist_ok=True)
             loc.touch()
