@@ -2,7 +2,7 @@
 #
 # Copyright © Sequoia Ploeg
 # Licensed under the terms of the MIT License
-# (see tsl550/__init__.py for details)
+# (see pyrolab/__init__.py for details)
 """
 Driver for the Santec TSL-550 Tunable Laser.
 Copyright 2018-2019 Sequoia Ploeg and Alec Hammond
@@ -23,9 +23,9 @@ import time
 import struct
 import serial
 
-import Pyro5.api
+import pyrolab.api
 
-@Pyro5.api.expose
+@pyrolab.api.expose
 class TSL550:
     """ A Santec TSL-550 laser.
 
