@@ -8,32 +8,29 @@
 2-Way SSL Server
 ----------------
 
-...
+A server that hosts a Pyro object that requires a client with a valid 
+certificate before connection is allowed.
 """
 
 from pathlib import Path
 
-import Pyro5.api
+import pyrolab.api
+from pyrolab.drivers.sample import SampleService
+pyrolab.api.config.reset(use_file=False)
 
-import pyrolab
-from pyrolab.server import get_daemon
 
-class Safe:
-    @Pyro5.api.expose
-    def echo(self, message):
-        print("got message:", message)
-        return "hi!"
-
-pyrolab.config.SSL = True
-pyrolab.config.SSL_REQUIRECLIENTCERT = True
-pyrolab.config.SSL_SERVERCERT = str(Path("../../certs/server_cert.pem").resolve())
-pyrolab.config.SSL_SERVERKEY = str(Path("../../certs/server_key.pem").resolve())
-pyrolab.config.SSL_CACERTS = str(Path("../../certs/client_cert.pem").resolve())    # to make ssl accept the self-signed client cert
+pyrolab.api.config.SSL = True
+# Only allow connections from authorized clients.
+pyrolab.api.config.SSL_REQUIRECLIENTCERT = True
+# The server certificates to provide to the client:
+pyrolab.api.config.SSL_SERVERCERT = "../../certs/server_cert.pem"
+pyrolab.api.config.SSL_SERVERKEY = "../../certs/server_key.pem"
+# To make ssl accept the self-signed client cert:
+pyrolab.api.config.SSL_CACERTS = "../../certs/client_cert.pem"
 print("SSL enabled (2-way).")
 
-# pyrolab.config.save()
 
-d = get_daemon()
-uri = d.register(Safe)
+d = pyrolab.api.CertValidatingDaemon()
+uri = d.register(SampleService)
 print("server uri:", uri)
 d.requestLoop()

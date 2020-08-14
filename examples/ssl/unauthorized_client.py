@@ -8,24 +8,17 @@
 2-Way SSL Client
 ----------------
 
-...
+A client that doesn't have a certificate or SSL enabled. Its request to 
+connect to the remote daemon will be denied.
 """
 
-import Pyro5.api
-import Pyro5.errors
-
-import pyrolab
-from pyrolab.client import get_proxy
+import pyrolab.api
+pyrolab.api.config.reset(use_file=False)
 
 pyrolab.config.SSL = False
-# pyrolab.config.SSL_CACERTS = "../../certs/server_cert.pem"    # to make ssl accept the self-signed client cert
-# pyrolab.config.SSL_CLIENTCERT = "../../certs/server_cert.pem"
-# pyrolab.config.SSL_CLIENTKEY = "../../certs/server_key.pem"
-# print("SSL enabled (2-way).")
 
 uri = input("Server uri: ").strip()
 
-with get_proxy(uri) as p:
-    print(p)
+with pyrolab.api.Proxy(uri) as p:
     response = p.echo("client speaking")
     print("response:", response)
