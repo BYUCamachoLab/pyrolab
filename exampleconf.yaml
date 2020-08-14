@@ -11,13 +11,17 @@
 HOST: localhost
 NS_HOST: localhost
 SSL: true
-SSL_SERVERCERT: /home/sequoiap/GitHub/pyrolab/certs/server_cert.pem
-SSL_SERVERKEY: /home/sequoiap/GitHub/pyrolab/certs/server_key.pem
+SSL_SERVERCERT: certs/server_cert.pem
+SSL_SERVERKEY: certs/server_key.pem
 SSL_SERVERKEYPASSWD: ''
 SSL_REQUIRECLIENTCERT: true
 SSL_CLIENTCERT: .
 SSL_CLIENTKEY: .
 SSL_CLIENTKEYPASSWD: ''
-SSL_CACERTS: /home/sequoiap/GitHub/pyrolab/certs/client_cert.pem
-LOGFILE: /home/sequoiap/.cache/PyroLab/log/pyrolab.log
+SSL_CACERTS: certs/client_cert.pem
+
+# Enter a path to a filename for the logs. If none is specified,
+# a file location will automatically be chosen as specified by the
+# `appdirs` module. To send output to the console, set "{stderr}"
+LOGFILE: /home/USER/.cache/PyroLab/log/pyrolab.log
 LOGLEVEL: ERROR
