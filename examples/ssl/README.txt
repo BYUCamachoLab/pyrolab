@@ -11,3 +11,7 @@ certificate as a valid cert.
 
 
 If the connection is successfully established, all communication is then encrypted and secure.
+
+
+---
+This example was adapted from Pyro5/examples/ssl (see https://github.com/irmen/Pyro5).
