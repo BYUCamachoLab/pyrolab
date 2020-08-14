@@ -58,6 +58,3 @@ class CertValidatingDaemon(Daemon):
             raise pyrolab.errors.CommunicationError("certitifcate organization does not match")
 
         return super().validateHandshake(conn, data)
-
-
-expose = Pyro5.api.expose
