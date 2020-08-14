@@ -31,6 +31,7 @@ _DEFAULT_CONFIG = {
     "HOST": "localhost", 
     "NS_HOST": "localhost",
     "NS_PORT": 9090,
+    "SERVERTYPE": "thread",
     "SSL": False,
     "SSL_SERVERCERT": Path(""),
     "SSL_SERVERKEY": Path(""),

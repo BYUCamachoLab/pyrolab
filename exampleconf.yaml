@@ -10,6 +10,7 @@
 
 HOST: localhost
 NS_HOST: localhost
+SERVERTYPE: thread
 SSL: true
 SSL_SERVERCERT: certs/server_cert.pem
 SSL_SERVERKEY: certs/server_key.pem
