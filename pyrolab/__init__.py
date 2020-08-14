@@ -53,12 +53,13 @@ from pyrolab.configure import global_config as config
 
 def _configure_logging():
     """Do some basic config of the logging module at package import time.
-    The configuring is done only if the PYRO_LOGLEVEL env var is set.
+    The configuring is done only if the LOGLEVEL is set in the configuration
+    file (the default configuration is NOTSET).
     If you want to use your own logging config, make sure you do
-    that before any Pyro imports. Then Pyro will skip the autoconfig.
-    Set the env var PYRO_LOGFILE to change the name of the autoconfigured
-    log file (default is pyro5.log in the current dir). Use '{stderr}' to
-    make the log go to the standard error output."""
+    that before any PyroLab imports. Then PyroLab will skip the autoconfig.
+    Set LOGFILE in the configuration file to change the name of the 
+    autoconfigured log file (default is pyro5.log in the current dir). Use 
+    '{stderr}' to make the log go to the standard error output."""
     import logging
 
     if config.LOGLEVEL == "NOTSET":
@@ -75,7 +76,7 @@ def _configure_logging():
                     loc.touch()
             logging.basicConfig(
                 level=levelvalue,
-                filename=None if config.LOGFILE == "" else config.LOGFILE,
+                filename=None if config.LOGFILE == "{stderr}" else config.LOGFILE,
                 datefmt="%Y-%m-%d %H:%M:%S",
                 format="[%(asctime)s.%(msecs)03d,%(name)s,%(levelname)s] %(message)s"
             )

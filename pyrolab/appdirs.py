@@ -16,12 +16,6 @@ Notes
 -----
 For more information on the implementation and opinions of the paths,
 see the ``appdirs`` repository (https://github.com/ActiveState/appdirs).
-
-Usage
------
-```
-python3 -m pyrolab.appdirs -h
-```
 """
 
 from pathlib import Path
