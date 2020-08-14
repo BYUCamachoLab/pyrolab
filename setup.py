@@ -78,11 +78,12 @@ install_requires = [
     "Pyro5",
     "appdirs",
     "PyYAML",
+    "cryptography",
 ]
 
 extras_require = {
     # "kinesis": ["",],
-    "ssl": ["cryptography",],
+    "tsl550": ["pyserial",],
     "test": ["pytest",],
 }
 

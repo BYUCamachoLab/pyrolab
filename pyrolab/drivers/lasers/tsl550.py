@@ -5,12 +5,19 @@
 # (see pyrolab/__init__.py for details)
 """
 Driver for the Santec TSL-550 Tunable Laser.
-Copyright 2018-2019 Sequoia Ploeg and Alec Hammond
 
+Original Source
+---------------
+Author: Wesley Cassidy (https://github.com/wecassidy).
+Repo: https://github.com/wecassidy/TSL550
+
+Modifications and function documentation by Sequoia Ploeg.
+
+Note
+----
 The Santec TSL-550 drivers, which among
 other things make the usb connection appear as a serial port, must be
 installed.
-
 
 Warning
 -------
@@ -18,12 +25,15 @@ An unidentifiable bug results in the return value of some functions being the se
 BEFORE the update (instead of the commanded setting). To verify some value has been set to 
 the commanded value, simply call its respective function a second time without any arguments.
 """
+
 import sys
 import time
 import struct
+
 import serial
 
 import pyrolab.api
+
 
 @pyrolab.api.expose
 class TSL550:
