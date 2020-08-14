@@ -1071,30 +1071,3 @@ class TSL550:
         self.is_on = True if int(status) < 0 else False
 
         return status
-
-
-def main(name=None):
-    """
-    Start a server for the TSL550 laser and register it with the nameserver.
-
-    Parameters
-    ----------
-    name : str
-        The name to use when registering the laser with the nameserver.
-    """
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.connect(("8.8.8.8", 80))
-    ip = s.getsockname()[0]
-    s.close()
-
-    daemon = tsl550.remote.Daemon(host=ip)
-    ns = tsl550.remote.locate_ns()
-    uri = daemon.register(TSL550)
-    ns.register(name if name else "Laser.TSL550", uri)
-    daemon.requestLoop()
-
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        main(sys.argv[1])
-    else:
-        main()
