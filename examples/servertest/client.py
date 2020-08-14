@@ -11,16 +11,13 @@
 ...
 """
 
-import pyrolab
-pyrolab.config.reset(use_file=False)
-
 import pyrolab.api
-from pyrolab.client import get_proxy
+pyrolab.api.config.reset(use_file=False)
 
 ns = pyrolab.api.locate_ns(host="localhost")
 uri = ns.lookup("test.SampleService")
 
-service = get_proxy(uri)
+service = pyrolab.api.Proxy(uri)
 
 resp = service.echo("Hello, server!")
 print(type(resp), resp)

@@ -11,16 +11,17 @@
 ...
 """
 
-import pyrolab
-pyrolab.config.reset(use_file=False)
-
-from pyrolab.server import get_daemon
+import pyrolab.api
 from pyrolab.drivers.sample import SampleService
+pyrolab.api.config.reset(use_file=False)
 
-daemon = get_daemon()
+daemon = pyrolab.api.Daemon()
 ns = pyrolab.api.locate_ns(host="localhost")
 uri = daemon.register(SampleService)
 ns.register("test.SampleService", uri)
 
 print("READY")
-daemon.requestLoop()
+try:
+    daemon.requestLoop()
+finally:
+    ns.remove("test.SampleService")

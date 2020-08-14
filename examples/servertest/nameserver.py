@@ -11,13 +11,7 @@
 ...
 """
 
-from Pyro5.nameserver import start_ns_loop
+import pyrolab.api
+pyrolab.api.config.reset(use_file=False)
 
-import pyrolab
-pyrolab.config.reset(use_file=False)
-
-start_ns_loop(
-    host=pyrolab.config.NS_HOST,
-    port=pyrolab.config.NS_PORT,
-    enableBroadcast=True,
-)
+pyrolab.api.start_ns_loop()
