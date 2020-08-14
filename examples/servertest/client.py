@@ -22,5 +22,8 @@ service = pyrolab.api.Proxy(uri)
 resp = service.echo("Hello, server!")
 print(type(resp), resp)
 
+resp = service.delayed_echo("This response will be delayed by 2 seconds.", 2)
+print(type(resp), resp)
+
 resp = service.multiply(4, 5, 100)
 print(type(resp), resp)
