@@ -8,14 +8,28 @@
 Nameserver
 ----------
 
-Default configuration settings for PyroLab.
+Wrapped nameserver functions that references PyroLab configuration settings.
 """
 
 import logging
+
+import Pyro5.api
+
+from pyrolab import config
 
 
 log = logging.getLogger("pyrolab.nameserver")
 
 
-if __name__ == "__main__":
-    print("Running nameserver...")
+def start_ns_loop(host=None, port=None, enableBroadcast=True, bchost=None, bcport=None,
+                  unixsocket=None, nathost=None, natport=None, storage=None):
+    """
+    Utility function that starts a new Name Server and enters its requestloop.
+    """
+    if host is None:
+        host = config.NS_HOST
+    if port is None:
+        port = config.NS_PORT
+    Pyro5.api.start_ns_loop(host=host, port=port, enableBroadcast=enableBroadcast,
+        bchost=bchost, bcport=bcport, unixsocket=unixsocket, nathost=nathost,
+        natport=natport, storage=storage)
