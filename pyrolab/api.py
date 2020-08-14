@@ -8,15 +8,24 @@
 API
 ---
 
-...
+A single module that centralizes the most frequently used objects from PyroLab.
 """
 
-
+from pyrolab.configure import global_config as config
 from Pyro5.core import locate_ns
-from Pyro5.server import expose
+from pyrolab.client import Proxy, CertCheckingProxy
+from pyrolab.server import Daemon, CertValidatingDaemon, expose
+from pyrolab.nameserver import start_ns_loop
 
 
 
 __all__ = [
-    "locate_ns", "expose",
+    "config",
+    "locate_ns", 
+    "Proxy",
+    "CertCheckingProxy",
+    "Daemon",
+    "CertValidatingDaemon", 
+    "expose",
+    "start_ns_loop",
 ]
