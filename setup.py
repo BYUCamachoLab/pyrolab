@@ -15,8 +15,6 @@ import sys
 
 import setuptools
 
-from pyrolab import __version__, __author__, __maintainer__, __maintainer_email__, __website_url__  # analysis:ignore
-
 # ==============================================================================
 # Constants
 # ==============================================================================
@@ -40,11 +38,11 @@ with io.open("README.md", encoding="utf-8") as f:
 # ==============================================================================
 setup_args = dict(
     name=NAME,
-    version=__version__,
+    version="0.0.1dev0",
     author="Sequoia Ploeg",
-    maintainer=__maintainer__,
-    maintainer_email=__maintainer_email__,
-    url=__website_url__,
+    maintainer="Sequoia Ploeg",
+    maintainer_email="sequoia.ploeg@ieee.org",
+    url="https://camacholab.byu.edu/",
     description="A framework for using remote lab instruments as local resources built on Pyro5",
     long_description=LONG_DESCRIPTION,
     long_description_content_type="text/markdown",
