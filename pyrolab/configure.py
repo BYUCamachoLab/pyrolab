@@ -31,7 +31,11 @@ _DEFAULT_CONFIG = {
     "HOST": "localhost", 
     "NS_HOST": "localhost",
     "NS_PORT": 9090,
+    "NS_BCPORT": 9091,
+    "NS_BCHOST": None,
     "SERVERTYPE": "thread",
+    "LOGFILE": appdirs.user_log_dir / LOGFILE_FILENAME,
+    "LOGLEVEL": "ERROR",
     "SSL": False,
     "SSL_SERVERCERT": Path(""),
     "SSL_SERVERKEY": Path(""),
@@ -42,14 +46,13 @@ _DEFAULT_CONFIG = {
     "SSL_CLIENTKEYPASSWD": "",
     "SSL_CACERTS": Path(""),
     # PyroLab Configuration Settings
-    "LOGFILE": appdirs.user_log_dir / LOGFILE_FILENAME,
-    "LOGLEVEL": "ERROR",
+    "BROADCAST": False,
 }
 
 def _textualize(key, value):
     if type(value) is Path:
         return str(value.resolve())
-    elif type(value) not in [str, bool, int, float]:
+    elif type(value) not in [str, bool, int, float, type(None)]:
         return str(value)
     else:
         return value
@@ -57,7 +60,12 @@ def _textualize(key, value):
 def _objectify(key, value):
     try:
         T = type(_DEFAULT_CONFIG[key])
-        return T(value)
+        if T == type(None) and value is not None:
+            return value
+        elif T == type(None) and value is None:
+            return None
+        else:
+            return T(value)
     except KeyError:
         return value
 
