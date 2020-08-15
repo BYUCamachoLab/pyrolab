@@ -112,7 +112,7 @@ class Configuration:
         elif use_file is False:
             return
         elif type(use_file) is str:
-            self.use_file(Path(cfile))
+            self.use_file(Path(use_file))
             
 
     def __getitem__(self, key):
