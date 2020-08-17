@@ -1,4 +1,8 @@
-# PyroLab
+<p align="center">
+<img src="https://raw.githubusercontent.com/sequoiap/pyrolab/master/docs/source/_static/images/pyrolab_icon.svg" width="40%" alt="PyroLab">
+</p>
+
+---
 
 <p align="center">
 <img alt="Development version" src="https://img.shields.io/badge/master-v0.0.1dev0-informational">
@@ -9,10 +13,6 @@
 <!-- <a href="https://simphonyphotonics.readthedocs.io/"><img alt="Documentation Status" src="https://readthedocs.org/projects/simphonyphotonics/badge/?version=latest"></a> -->
 <!-- <a href="https://pypi.python.org/pypi/pyrolab/"><img alt="License" src="https://img.shields.io/pypi/l/pyrolab.svg"></a> -->
 <a href="https://github.com/sequoiap/pyrolab/commits/master"><img alt="Latest Commit" src="https://img.shields.io/github/last-commit/sequoiap/pyrolab.svg"></a>
-</p>
-
-<p align="center">
-<img src="https://raw.githubusercontent.com/sequoiap/pyrolab/master/docs/source/_static/images/pyrolab_icon.svg" width="40%">
 </p>
 
 A framework for using remote lab instruments as local resources, built on Pyro5.
