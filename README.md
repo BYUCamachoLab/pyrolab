@@ -11,6 +11,10 @@
 <a href="https://github.com/sequoiap/pyrolab/commits/master"><img alt="Latest Commit" src="https://img.shields.io/github/last-commit/sequoiap/pyrolab.svg"></a>
 </p>
 
+<p align="center">
+<img src="https://raw.githubusercontent.com/sequoiap/pyrolab/master/docs/source/_static/images/pyrolab_icon.svg" width="60%">
+</p>
+
 A framework for using remote lab instruments as local resources, built on Pyro5.
 
 Developed by Sequoia Ploeg (for [CamachoLab](https://camacholab.byu.edu/), 
