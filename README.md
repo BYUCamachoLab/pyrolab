@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-<img src="https://raw.githubusercontent.com/sequoiap/pyrolab/master/docs/source/_static/images/pyrolab_icon.svg" width="60%">
+<img src="https://raw.githubusercontent.com/sequoiap/pyrolab/master/docs/source/_static/images/pyrolab_icon.svg" width="40%">
 </p>
 
 A framework for using remote lab instruments as local resources, built on Pyro5.
