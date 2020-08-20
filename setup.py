@@ -82,6 +82,7 @@ install_requires = [
 extras_require = {
     # "kinesis": ["",],
     "tsl550": ["pyserial",],
+    "oscope": ["pyvisa",],
     "test": ["pytest",],
 }
 
