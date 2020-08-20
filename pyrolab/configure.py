@@ -19,7 +19,7 @@ from typing import Union, Optional, Dict, Any
 import Pyro5
 import yaml
 
-from pyrolab import appdirs
+from pyrolab import dirs as appdirs
 
 
 CONFIG_FILENAME = 'config.yaml'

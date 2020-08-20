@@ -11,7 +11,7 @@ appdirs
 Command line interface for PyroLab.
 """
 
-import pyrolab.appdirs
+import pyrolab.dirs as appdirs
 
 
 def main(args=None):
@@ -26,17 +26,17 @@ def main(args=None):
 
     args = parser.parse_args()
     if args.user_data:
-        print("user data:", pyrolab.appdirs.user_data_dir)
+        print("user data:", appdirs.user_data_dir)
     if args.user_config:
-        print("user config:", pyrolab.appdirs.user_config_dir)
+        print("user config:", appdirs.user_config_dir)
     if args.user_cache:
-        print("user cache:", pyrolab.appdirs.user_cache_dir)
+        print("user cache:", appdirs.user_cache_dir)
     if args.site_data:
-        print("site data:", pyrolab.appdirs.site_data_dir)
+        print("site data:", appdirs.site_data_dir)
     if args.site_config:
-        print("site config:", pyrolab.appdirs.site_config_dir)
+        print("site config:", appdirs.site_config_dir)
     if args.user_log:
-        print("user log:", pyrolab.appdirs.user_log_dir)
+        print("user log:", appdirs.user_log_dir)
 
 
 if __name__ == "__main__":
