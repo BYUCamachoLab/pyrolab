@@ -21,7 +21,7 @@ TSL550
 The code found in the following files were included in PyroLab with some 
 modifications to make them Pyro5 compatible:
 
-simphony/drivers/lasers/tsl550.py
+pyrolab/drivers/lasers/tsl550.py
 
 The original repository, located at https://github.com/wecassidy/TSL550, is
 unlicensed.

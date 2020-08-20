@@ -4,10 +4,10 @@
 # Licensed under the terms of the MIT License
 # (see spyder/__init__.py for details)
 
-"""Simphony Photonic Simulator.
+"""
+PyroLab
 
-This module implements a free and open source photonic integrated
-circuit (PIC) simulation engine. It is speedy and easily extensible.
+A framework for using remote lab instruments as local resources, built on Pyro5.
 """
 
 import io
@@ -83,6 +83,7 @@ extras_require = {
     # "kinesis": ["",],
     "tsl550": ["pyserial",],
     "oscope": ["pyvisa",],
+    "kinesis": ["thorlabs_kinesis",],
     "test": ["pytest",],
 }
 
