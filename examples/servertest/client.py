@@ -11,19 +11,18 @@
 ...
 """
 
-import pyrolab.api
-pyrolab.api.config.reset(use_file=False)
+from pyrolab.api import config, locate_ns, Proxy
+config.reset(use_file=False)
 
-ns = pyrolab.api.locate_ns(host="localhost")
+ns = locate_ns(host="localhost")
 uri = ns.lookup("test.SampleService")
 
-service = pyrolab.api.Proxy(uri)
+with Proxy(uri) as service:
+    resp = service.echo("Hello, server!")
+    print(type(resp), resp)
 
-resp = service.echo("Hello, server!")
-print(type(resp), resp)
+    resp = service.delayed_echo("This response will be delayed by 2 seconds.", 2)
+    print(type(resp), resp)
 
-resp = service.delayed_echo("This response will be delayed by 2 seconds.", 2)
-print(type(resp), resp)
-
-resp = service.multiply(4, 5, 100)
-print(type(resp), resp)
+    resp = service.multiply(4, 5, 100)
+    print(type(resp), resp)

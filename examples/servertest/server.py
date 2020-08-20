@@ -11,12 +11,12 @@
 ...
 """
 
-import pyrolab.api
+from pyrolab.api import config, Daemon, locate_ns
 from pyrolab.drivers.sample import SampleService
-pyrolab.api.config.reset(use_file=False)
+config.reset(use_file=False)
 
-daemon = pyrolab.api.Daemon()
-ns = pyrolab.api.locate_ns(host="localhost")
+daemon = Daemon()
+ns = locate_ns(host="localhost")
 uri = daemon.register(SampleService)
 ns.register("test.SampleService", uri)
 
