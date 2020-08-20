@@ -87,7 +87,7 @@ class TSL550:
     MINIMUM_WAVELENGTH = 1500
     MAXIMUM_WAVELENGTH = 1630
 
-    def __init__(self, address="COM4", baudrate=9600, terminator="\r", timeout=100):
+    def __init__(self, address, baudrate=9600, terminator="\r", timeout=100):
         self.device = serial.Serial(address, baudrate=baudrate, timeout=timeout)
         self.device.flushInput()
         self.device.flushOutput()
