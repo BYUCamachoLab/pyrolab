@@ -6,7 +6,7 @@
 PyroLab
 =======
 
-.. image: ./_static/images/pyrolab_icon.svg
+.. image: ./_static/images/pyrolab_logo.svg
    :width: 80%
 
 A framework for using remote lab instruments as local resources, built on Pyro5.
@@ -66,9 +66,9 @@ Learn the syntax and how to connect to remote instruments using simple tutorials
    :hidden:
    :caption: Using PyroLab
 
-   usage/index
-   Drivers <usage/drivers>
-   Analysis <usage/analysis>
+   usage/drivers/index
+   usage/analysis/index
+   usage/tutorials/index
 
 
 Development
