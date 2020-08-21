@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright © Sequoia Ploeg
-# Licensed under the terms of the MIT License
+# Copyright © PyroLab Project Contributors
+# Licensed under the terms of the GNU GPLv3+ License
 # (see pyrolab/__init__.py for details)
 
 """
@@ -10,6 +10,10 @@ Analysis
 
 Module for analyzing data from instruments included in PyroLab.
 """
+
+import numpy as np
+from scipy.signal import find_peaks
+
 
 class WavelengthAnalyzer:
     """
@@ -48,3 +52,4 @@ class WavelengthAnalyzer:
             "dataHash": hash(tuple(deviceData))
         }
         return channelData
+        

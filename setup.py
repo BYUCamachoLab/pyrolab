@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright © PyroLab Project Contributors
-# Licensed under the terms of the MIT License
-# (see spyder/__init__.py for details)
+# Licensed under the terms of the GNU GPLv3+ License
+# (see pyrolab/__init__.py for details)
 
 """
 PyroLab
@@ -78,6 +78,8 @@ install_requires = [
     "deprecation",
     "PyYAML",
     "cryptography",
+    "numpy",
+    "scipy",
 ]
 
 extras_require = {

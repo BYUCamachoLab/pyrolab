@@ -5,6 +5,8 @@ PyYAML==5.3.1
 cryptography==3.0
 pyserial==3.4
 pyvisa==1.10.1
+numpy==1.19.1
+scipy==1.5.2
 pytest==6.0.1
 bump2version==1.0.0 
 Sphinx==3.2.1
