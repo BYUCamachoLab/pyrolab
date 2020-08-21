@@ -1,10 +1,16 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# PyVISA Visa.Resource class extension methods and 2 new exception types
 #
-# Version 1.0.0
-# - Initial version
-# - Ported to Python 3 using 2to3.py
+# Copyright © PyroLab Project Contributors
+# Licensed under the terms of the GNU GPLv3+ License
+# (see pyrolab/__init__.py for details)
+
+"""
+PyVISA Visa.Resource class extension methods and 2 new exception types
+
+Version 1.0.0
+- Initial version
+- Ported to Python 3 using 2to3.py
+"""
 
 import os
 import time

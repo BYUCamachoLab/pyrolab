@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright © Sequoia Ploeg
-# Licensed under the terms of the MIT License
+# Copyright © PyroLab Project Contributors
+# Licensed under the terms of the GNU GPLv3+ License
 # (see pyrolab/__init__.py for details)
 
 """
