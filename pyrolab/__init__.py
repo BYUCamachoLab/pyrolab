@@ -48,6 +48,9 @@ __forum_url__ = "https://github.com/sequoiap/pyrolab/issues"
 __website_url__ = "https://camacholab.byu.edu/"
 
 
+import warnings
+warnings.filterwarnings("default", category=DeprecationWarning)
+
 from pyrolab.configure import global_config as config
 
 

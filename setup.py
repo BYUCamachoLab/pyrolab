@@ -75,6 +75,7 @@ setup_args = dict(
 install_requires = [
     "Pyro5",
     "appdirs",
+    "deprecation",
     "PyYAML",
     "cryptography",
 ]
