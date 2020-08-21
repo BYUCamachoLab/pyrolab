@@ -6,7 +6,7 @@
 
 """
 Rohde & Schwarz Digital Oscilloscopes
-------
+-------------------------------------
 
 Submodule containing drivers for each supported laser type.
 
@@ -14,27 +14,29 @@ As stated in the manual (see docs/RTO_UserManaul_en_11.pdf), the following
 scopes should be supported:
 
 This manual describes the following R&S®RTO models with firmware version 3.70:
-- R&S®RTO2002 (1329.7002K02)
-- R&S®RTO2004 (1329.7002K04)
-- R&S®RTO2012 (1329.7002K12)
-- R&S®RTO2014 (1329.7002K14)
-- R&S®RTO1024 (1316.1000K24)
-- R&S®RTO2022 (1329.7002K22)
-- R&S®RTO2024 (1329.7002K24)
-- R&S®RTO2032 (1329.7002K32)
-- R&S®RTO2034 (1329.7002K34)
-- R&S®RTO2044 (1329.7002K44)
-- R&S®RTO2064 (1329.7002K64)
-- R&S®RTO1002 (1316.1000K02)
-- R&S®RTO1004 (1316.1000K04)
-- R&S®RTO1012 (1316.1000K12)
-- R&S®RTO1014 (1316.1000K14)
-- R&S®RTO1022 (1316.1000K22)
-- R&S®RTO1044 (1316.1000K44)
+   - R&S®RTO2002 (1329.7002K02)
+   - R&S®RTO2004 (1329.7002K04)
+   - R&S®RTO2012 (1329.7002K12)
+   - R&S®RTO2014 (1329.7002K14)
+   - R&S®RTO1024 (1316.1000K24)
+   - R&S®RTO2022 (1329.7002K22)
+   - R&S®RTO2024 (1329.7002K24)
+   - R&S®RTO2032 (1329.7002K32)
+   - R&S®RTO2034 (1329.7002K34)
+   - R&S®RTO2044 (1329.7002K44)
+   - R&S®RTO2064 (1329.7002K64)
+   - R&S®RTO1002 (1316.1000K02)
+   - R&S®RTO1004 (1316.1000K04)
+   - R&S®RTO1012 (1316.1000K12)
+   - R&S®RTO1014 (1316.1000K14)
+   - R&S®RTO1022 (1316.1000K22)
+   - R&S®RTO1044 (1316.1000K44)
 """
 
 import pyvisa as visa
+from deprecation import deprecated
 
+from pyrolab import __version__
 from pyrolab.drivers.scopes import Scope, VISAResourceExtentions
 
 class RTO(Scope):
@@ -65,7 +67,7 @@ class RTO(Scope):
 
     def query(self, message, delay=None):
         """
-        A combination of ``write(message)`` and ``read()``.
+        A combination of :py:func:`write(message)` and :py:func:`read()`.
 
         Parameters
         ----------
@@ -108,6 +110,32 @@ class RTO(Scope):
         This function is blocking.
         """
         self.write(message)
+        self.wait_for_device()
+        self.device.ext_error_checking()
+
+    @deprecated(deprecated_in="0.1.0", removed_in="0.2.0",
+                current_version=__version__,
+                details="Use 'write_block()' instead.")
+    def __send_command(self, command):
+        """
+        Writes a message to the scope, waits for it to complete, and checks for errors.
+
+        Warning
+        -------
+        .. deprecated:: 0.1.0
+           :py:func:`__send_command` will be removed in 0.2.0, it is replaced by
+           :py:func:`write_block` beginning in 0.1.0.
+
+        Parameters
+        ----------
+        command : str
+            The message to send.
+
+        Notes
+        -----
+        This function is blocking.
+        """
+        self.device.write(command)
         self.wait_for_device()
         self.device.ext_error_checking()
 
@@ -180,6 +208,23 @@ class RTO(Scope):
             channel, state, coupling, range, position, offset, invert
         )
         self.write_block(cmd)
+
+    @deprecated(deprecated_in="0.1.0", removed_in="0.2.0",
+                current_version=__version__,
+                details="Use 'set_channel()' instead.")
+    def add_channel(self, channel_num, range, position = 0, offset = 0, coupling = "DCL"):
+        """Add a channel.
+        
+        Warning
+        -------
+        .. deprecated:: 0.1.0
+           :py:func:`add_channel` will be removed in 0.2.0, it is replaced by
+           :py:func:`set_channel` beginning in 0.1.0.
+        """
+        short_command = 'CHAN{}:RANG {};POS {};OFFS {};COUP {};STAT ON'.format(
+            channel_num, range, position, offset, coupling
+        )
+        self.__send_command(short_command)
 
     def __add_trigger(self,
         type,
@@ -256,7 +301,7 @@ class RTO(Scope):
         form : str, optional
             The data format used for the transmission of waveform data. 
             Allowable values are ``ascii``, ``real``, ``int8``, and ``int16``.
-            Default is "ascii".
+            Default is ``ascii``.
 
         See Also
         --------
@@ -283,6 +328,40 @@ class RTO(Scope):
         else:
             return self.query(cmd)
 
+    @deprecated(deprecated_in="0.1.0", removed_in="0.2.0",
+                current_version=__version__,
+                details="Use 'get_data()' instead.")
+    def get_data_ascii(self, channel):
+        """
+        Get the data in ascii encoding.
+
+        Warning
+        -------
+        .. deprecated:: 0.1.0
+           :py:func:`get_data_ascii` will be removed in 0.2.0, it is replaced by
+           :py:func:`get_data` beginning in 0.1.0.
+        """
+        dataQuery = 'FORM ASC;:CHAN{}:DATA?'.format(channel)
+        waveform = self.device.query_ascii_values(dataQuery)
+        return waveform
+
+    @deprecated(deprecated_in="0.1.0", removed_in="0.2.0",
+                current_version=__version__,
+                details="Use 'get_data()' instead.")
+    def get_data_binary(self, channel):
+        """
+        Get the data in binary encoding.
+
+        Warning
+        -------
+        .. deprecated:: 0.1.0
+           :py:func:`get_data_binary` will be removed in 0.2.0, it is replaced by
+           :py:func:`get_data` beginning in 0.1.0.
+        """
+        dataQuery = 'FORM REAL;:CHAN{}:DATA?'.format(channel)
+        waveform = self.device.query_binary_values(dataQuery)
+        return waveform
+
     def screenshot(self, path):
         """
         Takes a screenshot of the scope and saves it to the specified path.
@@ -299,6 +378,39 @@ class RTO(Scope):
         self.write('HCOP:DEV:LANG PNG')
         self.write('MMEM:NAME {}'.format(instrument_save_path))
         self.write('HCOP:IMM')
+        self.wait_for_device()
+        self.device.ext_error_checking()
+        self.device.ext_query_bin_data_to_file(
+            'MMEM:DATA? {}'.format(instrument_save_path),
+            str(path)
+        )
+        self.device.ext_error_checking()
+
+    @deprecated(deprecated_in="0.1.0", removed_in="0.2.0",
+                current_version=__version__,
+                details="Use 'screenshot()' instead.")
+    def take_screenshot(self, path):
+        """
+        Takes a screenshot of the scope and saves it to the specified path.
+
+        Image format is PNG.
+
+        Warning
+        -------
+        .. deprecated:: 0.1.0
+           :py:func:`take_screenshot` will be removed in 0.2.0, it is replaced by
+           :py:func:`screenshot` beginning in 0.1.0.
+
+        Parameters
+        ----------
+        path : str
+            The local path, including filename and extension, of where
+            to save the file.
+        """
+        instrument_save_path = '\'C:\\temp\\Last_Screenshot.png\''
+        self.device.write('HCOP:DEV:LANG PNG')
+        self.device.write('MMEM:NAME {}'.format(instrument_save_path))
+        self.device.write('HCOP:IMM')
         self.wait_for_device()
         self.device.ext_error_checking()
         self.device.ext_query_bin_data_to_file(
