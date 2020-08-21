@@ -32,6 +32,7 @@ This manual describes the following R&S®RTO models with firmware version 3.70:
 - R&S®RTO1022 (1316.1000K22)
 - R&S®RTO1044 (1316.1000K44)
 """
+
 import pyvisa as visa
 
 from pyrolab.drivers.scopes import Scope, VISAResourceExtentions
@@ -40,18 +41,26 @@ class RTO(Scope):
     """
     Simple network controller class for R&S RTO oscilloscopes.
 
-
-    
+    Parameters
+    ----------
+    address : str
+        The IP address of the instrument.
+    interface : str, optional
+        The interface to use to connect to the instrument. May be one
+        of "TCPIP", "GPIB", "ASRL", etc. Default is "TCPIP".
+    protocol : str, optional
+        The protocol to use for the LAN connection. Can be "INSTR"
+        or "hislip". Default is "hislip".
     """
-    def __init__(self, address):
+    def __init__(self, address, interface="TCPIP", protocol="hislip"):
         rm = visa.ResourceManager()
-        self.device = rm.open_resource("TCPIP::{}::INSTR".format(address))
-        self.device.write_termination = ''
+        self.device = rm.open_resource("{}::{}::{}".format(interface, address, protocol))
+        self.write_termination = ''
         self.device.ext_clear_status()
         
         print("Connected: {}".format(self.device.query('*IDN?')))
-        self.device.write('*RST;*CLS')
-        self.device.write('SYST:DISP:UPD ON')
+        self.write('*RST;*CLS')
+        self.write('SYST:DISP:UPD ON')
         self.device.ext_error_checking()
 
     def query(self, message, delay=None):
@@ -98,7 +107,7 @@ class RTO(Scope):
         -----
         This function is blocking.
         """
-        self.device.write(message)
+        self.write(message)
         self.wait_for_device()
         self.device.ext_error_checking()
 
@@ -133,24 +142,44 @@ class RTO(Scope):
             self.write_block('ACQ:MODE RTIM')
         self.write_block(short_command)
 
-    def add_channel(self, channel, range, position=0, offset=0, coupling="DCL"):
+    def set_channel(self, channel, state="ON", coupling="DCLimit", range=0.5, position=0, offset=0, invert="OFF"):
         """
-        Adds a channel.
+        Configures a channel.
 
         Parameters
         ----------
         channel : int
             The channel number to be added.
-        range : float
+        state : str, optional
+            Switches the channel signal on or off. Acceptable values are "ON"
+            and "OFF". Default is "ON" (see ``CHANnel<m>:STATe``).
+        coupling : str, optional
+            Selects the connection of the indicated channel signal. Valid values are
+            "DC" (direct connection with 50 ohm termination), "DCLimit" (direct connection 
+            with 1M ohm termination), or "AC" (connection through DC capacitor).
+            Default is DCLimit (see ``CHANnel<m>:COUPling``).
+        range : float, optional
+            Sets the voltage range across the 10 vertical divisions of the diagram
+            in V/div. Default is 0.5 (see ``CHANnel<m>:RANGe``).
         position : float, optional
+            Sets the vertical position of the indicated channel as a graphical value.
+            Valid range is [-5, 5] in increments of 0.01 (units is "divisions").
+            Default is 0 (see ``CHANnel<m>:POSition``).
         offset : float, optional
-        coupling : str
-
+            The offset voltage is subtracted to correct an offset-affected signal. 
+            The offset of a signal is determined and set by the autoset procedure.
+            Default value is 0 (see ``CHANnel<m>:OFFSet``).
+        invert : str, optional
+            Turns the inversion of the signal amplitude on or off. To invert means 
+            to reflect the voltage values of all signal components against the ground 
+            level. If the inverted channel is the trigger source, the instrument 
+            triggers on the inverted signal. Acceptable values are "ON" or "OFF".
+            Default is "OFF" (see ``CHANnel<m>:INVert``).
         """
-        short_command = 'CHAN{}:RANG {};POS {};OFFS {};COUP {};STAT ON'.format(
-            channel, range, position, offset, coupling
+        cmd = 'CHAN{}: STAT {}; COUP {};RANG {};POS {};OFFS {}; INV {}'.format(
+            channel, state, coupling, range, position, offset, invert
         )
-        self.write_block(short_command)
+        self.write_block(cmd)
 
     def __add_trigger(self,
         type,
@@ -187,19 +216,72 @@ class RTO(Scope):
             settings = "EDGE:SLOP POS"
         )
 
-    def start_acquisition(self, timeout, type='SING'):
-        self.device.timeout = timeout*1000 #Translate seconds to ms.
-        self.device.write(type)
+    def start_acquisition(self, timeout, run='single'):
+        """
+        Asynchronous command that starts acquisition.
 
-    def get_data_ascii(self, channel):
-        dataQuery = 'FORM ASC;:CHAN{}:DATA?'.format(channel)
-        waveform = self.device.query_ascii_values(dataQuery)
-        return waveform
+        Parameters
+        ----------
+        timeout : int
+            The timeout in milliseconds for all I/O operations.
+        run : str
+            Specifies the type of run. Allowable values are ``continuous`` 
+            (starts the continuous acquisition), ``single`` (starts a defined
+            number of acquisition cycles as set by ``acquisition_settings()``),
+            or ``stop`` (stops a running acquisition). Default is ``single``.
+        """
+        # Translate seconds to ms.
+        self.device.timeout = timeout * 1000
+        
+        if run == "single":
+            cmd = "SING"
+        elif run == "continuous":
+            cmd = "RUN"
+        elif run == "stop":
+            cmd = "STOP"
+        else:
+            raise ValueError("%s is not a valid argument" % run)
+        
+        self.write(cmd)
 
-    def get_data_binary(self, channel):
-        dataQuery = 'FORM REAL;:CHAN{}:DATA?'.format(channel)
-        waveform = self.device.query_binary_values(dataQuery)
-        return waveform
+    def get_data(self, channel, form="ascii"):
+        """
+        Retrieves waveform data from the specified channel in the specified 
+        data type.
+
+        Parameters
+        ----------
+        channel : int
+            The channel to retrieve data for.
+        form : str, optional
+            The data format used for the transmission of waveform data. 
+            Allowable values are ``ascii``, ``real``, ``int8``, and ``int16``.
+            Default is "ascii".
+
+        See Also
+        --------
+        RTO User Manual, commands for ``FORMat[:DATA]`` and 
+        ``CHANnel<m>[:WAVeform<n>]:DATA[:VALues]?``
+        """
+        if form == "ascii":
+            fmt = "ASC"
+        elif form == "real":
+            fmt = "REAL,32"
+        elif form == "int8":
+            fmt = "INT,8"
+        elif form == "int16":
+            fmt = "INT,16"
+        else:
+            raise ValueError("unexpected value '%s' for argument 'form'." % form)
+
+        cmd = 'FORM {};:CHAN{}:DATA?'.format(fmt, channel)
+        
+        if form == "ascii":
+            return self.device.query_ascii_values(cmd)
+        elif form == "real":
+            return self.device.query_binary_values(cmd)
+        else:
+            return self.query(cmd)
 
     def screenshot(self, path):
         """
@@ -214,9 +296,9 @@ class RTO(Scope):
             to save the file.
         """
         instrument_save_path = "'C:\\temp\\Last_Screenshot.png\'"
-        self.device.write('HCOP:DEV:LANG PNG')
-        self.device.write('MMEM:NAME {}'.format(instrument_save_path))
-        self.device.write('HCOP:IMM')
+        self.write('HCOP:DEV:LANG PNG')
+        self.write('MMEM:NAME {}'.format(instrument_save_path))
+        self.write('HCOP:IMM')
         self.wait_for_device()
         self.device.ext_error_checking()
         self.device.ext_query_bin_data_to_file(
@@ -224,3 +306,8 @@ class RTO(Scope):
             str(path)
         )
         self.device.ext_error_checking()
+
+class RemoteDisplay:
+    def __init__(self, scope: RTO):
+        self.scope = scope
+        
