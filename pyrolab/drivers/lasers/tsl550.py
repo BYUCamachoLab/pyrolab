@@ -16,7 +16,7 @@ Modifications and function documentation by Sequoia Ploeg.
 Note
 ----
 The Santec TSL-550 drivers, which among
-other things make the usb connection appear as a serial port, must be
+other things make the USB connection appear as a serial port, must be
 installed.
 
 Warning
@@ -48,7 +48,7 @@ class TSL550:
     baudrate : int, optional
         Baudrate can be set on the device (default 9600).
     terminator : str, optional
-        The string that marks the end of a command (default "\r").
+        The string that marks the end of a command (default "\\\\r").
     timeout : int, optional
         The number of seconds to timeout after no response (default 100).
 
@@ -87,10 +87,11 @@ class TSL550:
     MINIMUM_WAVELENGTH = 1500
     MAXIMUM_WAVELENGTH = 1630
 
-    def __init__(self, address, baudrate=9600, terminator="\r", timeout=100):
+    def __init__(self, address, baudrate=9600, terminator="\r", timeout=100, query_delay=0.05):
         self.device = serial.Serial(address, baudrate=baudrate, timeout=timeout)
         self.device.flushInput()
         self.device.flushOutput()
+        self.query_delay = query_delay
 
         # Python 3: convert to bytes
         self.terminator = terminator.encode("ASCII")
@@ -148,9 +149,18 @@ class TSL550:
 
         return response
 
-    def query(self, command, query_delay=0.05):
+    def query(self, command, query_delay=None):
         """
         Write a command to the TSL550. Returns the response (if any).
+
+        Parameters
+        ----------
+        command : str
+            The VISA command to send to the device.
+        query_delay : float, optional
+            The query delay to use between write and read operations. If None, 
+            defaults to ``self.query_delay`` (can be set in ``__init__``). 
+            Default is None.
         """
         self.write(command)
         time.sleep(query_delay)
@@ -183,6 +193,8 @@ class TSL550:
             # field = serial number of the device
             * field = firmware version
 
+        Examples
+        --------
         >>> laser.ident()
         'SANTEC,TSL-550,06020001,0001.0000'
         """
@@ -221,6 +233,8 @@ class TSL550:
         float
             The currently set wavelength, in nanometers.
 
+        Examples
+        --------
         You can get the current wavelength by calling without arguments.
 
         >>> laser.wavelength()
@@ -250,6 +264,8 @@ class TSL550:
         float
             The currently set frequency, in terahertz.
 
+        Examples
+        --------
         >>> laser.frequency()
         183.92175
         >>> laser.frequency(192.0000)
@@ -275,6 +291,8 @@ class TSL550:
         float
             The currently set power, in milliwatts.
 
+        Examples
+        --------
         >>> laser.power_mW()
         2e-05
         >>> laser.power_mW(10)
@@ -300,6 +318,8 @@ class TSL550:
         float
             The currently set power in decibel-milliwatts.
 
+        Examples
+        --------
         You can get the current power by calling without arguments.
         The below code indicates the currently output power is -40 dBm.
 
@@ -554,6 +574,8 @@ class TSL550:
                 the end of one sweep and the start of the next in 
                 one-way sweep mode.
 
+        Examples
+        --------
         >>> laser.sweep_status()
         0
         >>> laser.sweep_status() == laser.SWEEP_OFF
@@ -607,6 +629,8 @@ class TSL550:
             A dictionary containing boolean values for the keys `continuous`,
             `twoway`, `trigger`, and `const_freq_step`.
 
+        Examples
+        --------
         >>> laser.sweep_get_mode()
         {'continuous': True, 'twoway': True, 'trigger': False, 'const_freq_step': False}
         """
@@ -638,6 +662,8 @@ class TSL550:
         float
             The sweep speed of the laser in nm/s.
 
+        Examples
+        --------
         >>> laser.sweep_speed()
         26.0
         >>> laser.sweep_speed(25)
@@ -663,6 +689,8 @@ class TSL550:
         float
             The set step size in a stepwise sweep in nm.
 
+        Examples
+        --------
         >>> laser.sweep_step_wavelength()
         1.0
         >>> laser.sweep_step_wavelength(2.2)
@@ -689,6 +717,8 @@ class TSL550:
         float
             The set step size in THz.
 
+        Examples
+        --------
         >>> laser.sweep_step_frequency()
         0.1
         >>> laser.sweep_step_frequency(0.24)
@@ -714,6 +744,8 @@ class TSL550:
         float
             The set duration of each step in seconds.
 
+        Examples
+        --------
         >>> laser.sweep_step_time()
         0.5
         >>> laser.sweep_step_time(0.8)
@@ -739,6 +771,8 @@ class TSL550:
         float
             The set delay between sweeps in seconds.
 
+        Examples
+        --------
         >>> laser.sweep_delay()
         0.0
         >>> laser.sweep_delay(1.5)
@@ -765,6 +799,8 @@ class TSL550:
         float
             The current sweep start wavelength in nm.
 
+        Examples
+        --------
         >>> laser.sweep_start_wavelength()
         1500.0
         >>> laser.sweep_start_wavelength(1545)
@@ -791,6 +827,8 @@ class TSL550:
         float
             The current sweep start frequency in THz.
 
+        Examples
+        --------
         >>> laser.sweep_start_frequency()
         199.86164
         >>> laser.sweep_start_frequency(196)
@@ -817,6 +855,8 @@ class TSL550:
         float
             The current sweep end wavelength in nm.
 
+        Examples
+        --------
         >>> laser.sweep_end_wavelength()
         1630.0
         >>> laser.sweep_end_wavelength(1618)
@@ -843,6 +883,8 @@ class TSL550:
         float
             The current sweep end frequency in THz.
 
+        Examples
+        --------
         >>> laser.sweep_end_frequency()
         183.92175
         >>> laser.sweep_end_frequency(185.5447)
@@ -953,6 +995,8 @@ class TSL550:
         val : float
             The currently set value (returned both on set and on read).
 
+        Examples
+        --------
         >>> laser.trigger_set_step()
         0.012
         """
@@ -969,6 +1013,8 @@ class TSL550:
         int
             A value between 0 and 65535, the number of recorded data points.
 
+        Examples
+        --------
         >>> laser.wavelength_logging_number()
         5001
         """
@@ -986,6 +1032,8 @@ class TSL550:
             A Python list of length `laser.wavelength_logging_number()`. Each
             item in the list is represented in nanometers.
 
+        Examples
+        --------
         >>> laser.wavelength_logging_number()
         417
         >>> wl = laser.wavelength_logging()
@@ -1072,6 +1120,8 @@ class TSL550:
 
         The following example shows the laser as on and all operations as complete.
 
+        Examples
+        --------
         >>> laser.print_status()
         '-011000'
         """
