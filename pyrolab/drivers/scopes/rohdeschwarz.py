@@ -328,7 +328,7 @@ class RTO(Scope):
         # Translate seconds to ms.
         self.device.timeout = timeout * 1000
         if type not in ["SING", "RUN", "STOP"]:
-            raise ValueError("%s is not a valid argument" % run)            
+            raise ValueError("%s is not a valid argument" % type)            
         
         self.write(type)
 
