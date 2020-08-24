@@ -31,10 +31,16 @@ This manual describes the following R&S®RTO models with firmware version 3.70:
    - R&S®RTO1014 (1316.1000K14)
    - R&S®RTO1022 (1316.1000K22)
    - R&S®RTO1044 (1316.1000K44)
+
+If you don't have the NI VISA implementation installed on your computer, be 
+sure to install the separate dependency ``pyvisa-py``, which is not included
+with PyroLab.
 """
 
+import time
+
+import deprecation
 import pyvisa as visa
-from deprecation import deprecated
 
 from pyrolab import __version__
 from pyrolab.drivers.scopes import Scope, VISAResourceExtentions
@@ -53,17 +59,28 @@ class RTO(Scope):
     protocol : str, optional
         The protocol to use for the LAN connection. Can be "INSTR"
         or "hislip". Default is "hislip".
+    timeout : int, optional
+        The device response timeout in milliseconds (default infinite).
     """
-    def __init__(self, address, interface="TCPIP", protocol="hislip"):
+    def __init__(self, address, interface="TCPIP", protocol="hislip", timeout=None):
         rm = visa.ResourceManager()
         self.device = rm.open_resource("{}::{}::{}".format(interface, address, protocol))
+        self.device.timeout = timeout
         self.write_termination = ''
         self.device.ext_clear_status()
         
-        print("Connected: {}".format(self.device.query('*IDN?')))
+        # print("Connected: {}".format(self.device.query('*IDN?')))
         self.write('*RST;*CLS')
         self.write('SYST:DISP:UPD ON')
         self.device.ext_error_checking()
+
+    @property
+    def timeout(self):
+        return self.device.timeout
+
+    @timeout.setter
+    def timeout(self, ms):
+        self.device.timeout = ms
 
     def query(self, message, delay=None):
         """
@@ -113,7 +130,7 @@ class RTO(Scope):
         self.wait_for_device()
         self.device.ext_error_checking()
 
-    @deprecated(deprecated_in="0.1.0", removed_in="0.2.0",
+    @deprecation.deprecated(deprecated_in="0.1.0", removed_in="0.2.0",
                 current_version=__version__,
                 details="Use 'write_block()' instead.")
     def __send_command(self, command):
@@ -179,8 +196,8 @@ class RTO(Scope):
         channel : int
             The channel number to be added.
         state : str, optional
-            Switches the channel signal on or off. Acceptable values are "ON"
-            and "OFF". Default is "ON" (see ``CHANnel<m>:STATe``).
+            Switches the channel signal on or off. Acceptable values are ``ON``
+            and ``OFF``. Default is ``ON`` (see ``CHANnel<m>:STATe``).
         coupling : str, optional
             Selects the connection of the indicated channel signal. Valid values are
             "DC" (direct connection with 50 ohm termination), "DCLimit" (direct connection 
@@ -204,12 +221,12 @@ class RTO(Scope):
             triggers on the inverted signal. Acceptable values are "ON" or "OFF".
             Default is "OFF" (see ``CHANnel<m>:INVert``).
         """
-        cmd = 'CHAN{}: STAT {}; COUP {};RANG {};POS {};OFFS {}; INV {}'.format(
+        cmd = 'CHAN{}:STAT {}; COUP {};RANG {};POS {};OFFS {}; INV {}'.format(
             channel, state, coupling, range, position, offset, invert
         )
         self.write_block(cmd)
 
-    @deprecated(deprecated_in="0.1.0", removed_in="0.2.0",
+    @deprecation.deprecated(deprecated_in="0.1.0", removed_in="0.2.0",
                 current_version=__version__,
                 details="Use 'set_channel()' instead.")
     def add_channel(self, channel_num, range, position = 0, offset = 0, coupling = "DCL"):
@@ -261,23 +278,19 @@ class RTO(Scope):
             settings = "EDGE:SLOP POS"
         )
 
-    def start_acquisition(self, timeout, run='single'):
+    def acquire(self, run='single'):
         """
         Asynchronous command that starts acquisition.
 
         Parameters
         ----------
-        timeout : int
-            The timeout in milliseconds for all I/O operations.
         run : str
             Specifies the type of run. Allowable values are ``continuous`` 
             (starts the continuous acquisition), ``single`` (starts a defined
-            number of acquisition cycles as set by ``acquisition_settings()``),
-            or ``stop`` (stops a running acquisition). Default is ``single``.
-        """
-        # Translate seconds to ms.
-        self.device.timeout = timeout * 1000
-        
+            number of acquisition cycles as set by 
+            :py:func:``acquisition_settings()``), or ``stop`` (stops a 
+            running acquisition). Default is ``single``.
+        """        
         if run == "single":
             cmd = "SING"
         elif run == "continuous":
@@ -288,6 +301,36 @@ class RTO(Scope):
             raise ValueError("%s is not a valid argument" % run)
         
         self.write(cmd)
+
+    @deprecation.deprecated(deprecated_in="0.1.0", removed_in="0.2.0",
+                current_version=__version__,
+                details="Use 'acquire()' instead.")
+    def start_acquisition(self, timeout, type='SING'):
+        """
+        Asynchronous command that starts acquisition.
+
+        Warning
+        -------
+        .. deprecated:: 0.1.0
+           :py:func:`start_acquisition` will be removed in 0.2.0, it is replaced by
+           :py:func:`acquire` beginning in 0.1.0.
+
+        Parameters
+        ----------
+        timeout : int
+            The timeout in seconds for all I/O operations.
+        run : str
+            Specifies the type of run. Allowable values are ``continuous`` 
+            (starts the continuous acquisition), ``single`` (starts a defined
+            number of acquisition cycles as set by ``acquisition_settings()``),
+            or ``stop`` (stops a running acquisition). Default is ``single``.
+        """        
+        # Translate seconds to ms.
+        self.device.timeout = timeout * 1000
+        if type not in ["SING", "RUN", "STOP"]:
+            raise ValueError("%s is not a valid argument" % run)            
+        
+        self.write(type)
 
     def get_data(self, channel, form="ascii"):
         """
@@ -328,7 +371,7 @@ class RTO(Scope):
         else:
             return self.query(cmd)
 
-    @deprecated(deprecated_in="0.1.0", removed_in="0.2.0",
+    @deprecation.deprecated(deprecated_in="0.1.0", removed_in="0.2.0",
                 current_version=__version__,
                 details="Use 'get_data()' instead.")
     def get_data_ascii(self, channel):
@@ -345,7 +388,7 @@ class RTO(Scope):
         waveform = self.device.query_ascii_values(dataQuery)
         return waveform
 
-    @deprecated(deprecated_in="0.1.0", removed_in="0.2.0",
+    @deprecation.deprecated(deprecated_in="0.1.0", removed_in="0.2.0",
                 current_version=__version__,
                 details="Use 'get_data()' instead.")
     def get_data_binary(self, channel):
@@ -386,7 +429,7 @@ class RTO(Scope):
         )
         self.device.ext_error_checking()
 
-    @deprecated(deprecated_in="0.1.0", removed_in="0.2.0",
+    @deprecation.deprecated(deprecated_in="0.1.0", removed_in="0.2.0",
                 current_version=__version__,
                 details="Use 'screenshot()' instead.")
     def take_screenshot(self, path):
