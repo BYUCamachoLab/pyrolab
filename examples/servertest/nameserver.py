@@ -12,6 +12,6 @@
 """
 
 import pyrolab.api
-pyrolab.api.config.reset(use_file=False)
+pyrolab.api.config.reset()
 
 pyrolab.api.start_ns_loop()

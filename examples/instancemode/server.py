@@ -22,7 +22,7 @@ different modes:
 
 from pyrolab.api import config, behavior, serve, locate_ns
 from pyrolab.drivers.sample import SampleService
-config.reset(use_file=False)
+config.reset()
 
 
 @behavior(instance_mode="single")

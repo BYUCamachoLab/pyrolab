@@ -12,7 +12,7 @@
 """
 
 from pyrolab.api import config, locate_ns, Proxy
-config.reset(use_file=False)
+config.reset()
 
 ns = locate_ns(host="localhost")
 uri = ns.lookup("test.SampleService")

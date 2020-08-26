@@ -22,7 +22,7 @@ import time
 
 from pyrolab.api import config, serve, locate_ns, expose, behavior, oneway
 from pyrolab.drivers.sample import SampleService
-config.reset(use_file=False)
+config.reset()
 
 
 @expose

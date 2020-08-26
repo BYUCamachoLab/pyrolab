@@ -12,7 +12,7 @@ Instance Mode Client
 """
 
 from pyrolab.api import config, locate_ns, Proxy
-config.reset(use_file=False)
+config.reset()
 
 
 print("\n-----PERCALL (different number possible every time)-----")
