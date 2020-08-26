@@ -12,62 +12,28 @@ Default configuration settings for PyroLab and methods for persisting
 configurations between settings or using YAML files.
 """
 
+import configparser
 import logging
 from pathlib import Path
 from typing import Union, Optional, Dict, Any
 
 import Pyro5
-import yaml
-
-from pyrolab import dirs as appdirs
 
 
-CONFIG_FILENAME = 'config.yaml'
-LOGFILE_FILENAME = 'pyrolab.log'
-
-
-_DEFAULT_CONFIG = {
-    # Pyro5 Configuration Settings
+_PYRO_CONFIG = {
     "HOST": "localhost", 
     "NS_HOST": "localhost",
     "NS_PORT": 9090,
     "NS_BCPORT": 9091,
     "NS_BCHOST": None,
     "SERVERTYPE": "thread",
-    "LOGFILE": appdirs.user_log_dir / LOGFILE_FILENAME,
-    "LOGLEVEL": "ERROR",
-    "SSL": False,
-    "SSL_SERVERCERT": Path(""),
-    "SSL_SERVERKEY": Path(""),
-    "SSL_SERVERKEYPASSWD": "",
-    "SSL_REQUIRECLIENTCERT": False,
-    "SSL_CLIENTCERT": Path(""),
-    "SSL_CLIENTKEY": Path(""),
-    "SSL_CLIENTKEYPASSWD": "",
-    "SSL_CACERTS": Path(""),
-    # PyroLab Configuration Settings
+}
+
+_PYROLAB_CONFIG = {
     "BROADCAST": False,
 }
 
-def _textualize(key, value):
-    if type(value) is Path:
-        return str(value.resolve())
-    elif type(value) not in [str, bool, int, float, type(None)]:
-        return str(value)
-    else:
-        return value
-
-def _objectify(key, value):
-    try:
-        T = type(_DEFAULT_CONFIG[key])
-        if T == type(None) and value is not None:
-            return value
-        elif T == type(None) and value is None:
-            return None
-        else:
-            return T(value)
-    except KeyError:
-        return value
+_DEFAULT_CONFIG = {**_PYRO_CONFIG, **_PYROLAB_CONFIG}
 
 
 class Configuration:
@@ -84,7 +50,7 @@ class Configuration:
     def __init__(self):
         self.reset()
 
-    def reset(self, use_file: Optional[Union[str, bool]] = True):
+    def reset(self, cfile: Optional[str] = None):
         """
         Reset configuration items to their default values.
 
@@ -95,24 +61,17 @@ class Configuration:
 
         Parameters
         ----------
-        use_file : bool or str, optional
-            The path to a configuration file. Or, ``False`` to use the clean
-            program defaults. If ``True`` or not specified, PyroLab searches
-            for the default configuration file.
+        cfile : str, optional
+            The path to a configuration file. Or, ``None`` to use the clean
+            program defaults.
         """
         Pyro5.config.reset(use_environment=False)
 
         for key, value in _DEFAULT_CONFIG.items():
             setattr(self, key, value)
 
-        if use_file is True:
-            cfile = appdirs.user_config_dir / CONFIG_FILENAME
-            if cfile.is_file():
-                self.use_file(cfile)
-        elif use_file is False:
-            return
-        elif type(use_file) is str:
-            self.use_file(Path(use_file))
+        if type(cfile) is str:
+            self.load(Path(cfile))
             
 
     def __getitem__(self, key):
@@ -127,21 +86,11 @@ class Configuration:
         """
         setattr(self, key, value)
 
-    def __getattribute__(self, name):
-        """
-        Attributes are stored in their string-safe, text-based form but
-        cast as the appropriate type each time they're "gotten".
-        """
-        if name in _DEFAULT_CONFIG.keys():
-            return _objectify(name, super().__getattribute__(name))
-        return super().__getattribute__(name)
-
     def __setattr__(self, key, value):
         """
         Attributes are converted to a string-safe, text-based form each 
         time they're set.
         """
-        value = _textualize(key, value)
         super().__setattr__(key, value)
         if key in Pyro5.config.__slots__:
             setattr(Pyro5.config, key, value)
@@ -155,28 +104,14 @@ class Configuration:
         dict
             The configuration as a Python dictionary.
         """
-        return {item: _textualize(item, getattr(self, item)) for item in self.__slots__}
+        return {item: getattr(self, item) for item in self.__slots__}
 
     def _from_dict(self, dictionary: Dict[str, Any]):
         for key, value in dictionary.items():
             if key in self.__slots__:
                 setattr(self, key, value)
             else:
-                raise AttributeError("Configuration has not attribute '{}'".format(key))
-
-    def _to_yaml(self) -> str:
-        """
-        Converts the configuration object to a YAML format using the 
-        dictionary representation of the object.
-        """
-        return yaml.dump(self._to_dict(), default_flow_style=False, sort_keys=False)
-
-    def _from_yaml(self, cfg: str):
-        """
-        Sets the configuration object from a YAML formatted string by 
-        converting to a dictionary and updating the object's keys.
-        """
-        self._from_dict(yaml.load(cfg, Loader=yaml.FullLoader))
+                raise AttributeError("Configuration has no attribute '{}'".format(key))
 
     def copy(self):
         """
@@ -193,7 +128,7 @@ class Configuration:
             setattr(other, item, getattr(self, item))
         return other
 
-    def use_file(self, filename: Union[str, Path]):
+    def load(self, filename: Union[str, Path]):
         """
         Load the configuration from a specified file.
 
@@ -203,21 +138,22 @@ class Configuration:
             Path to a YAML-formatted file containing program configuration.
         """
         with open(filename, 'r') as f:
-            self._from_yaml(f.read())
+            cfg = configparser.ConfigParser()
+            cfg.read_file(f)
 
-    def save(self):
-        """
-        Save the program configuration to the default file location (which is 
-        platform dependent).
-        """
-        loc = appdirs.user_config_dir / CONFIG_FILENAME
-        if not loc.is_file():
-            loc.parent.mkdir(parents=True, exist_ok=True)
-            loc.touch()
-        with open(loc, 'w') as f:
-            f.write(self._to_yaml())
+            pyro = cfg['pyro5']
+            self.HOST = pyro.get('HOST')
+            self.NS_HOST = pyro.get('NS_HOST')
+            self.NS_PORT = pyro.getint('NS_PORT')
+            self.NS_BCPORT = pyro.getint('NS_BCPORT')
+            val = pyro.get('NS_BCHOST')
+            self.NS_BCHOST = val if val != 'None' else None
+            self.SERVERTYPE = pyro.get('SERVERTYPE')
 
-    def save_as(self, filename: Union[str, Path]):
+            pyrolab = cfg['pyrolab']
+            self.BROADCAST = pyrolab.getboolean('BROADCAST')
+
+    def save(self, filename: Union[str, Path]):
         """
         Saves the current program configuration to the a specified file (but 
         does not reference that file for configuration).
@@ -228,18 +164,22 @@ class Configuration:
             The location to save the configuration file to.
         """
         with open(filename, 'w') as f:
-            f.write(self._to_yaml())
+            cfg = configparser.ConfigParser()
+            cfg.read_dict({'pyro5': {key: str(getattr(self, key)) for key in _PYRO_CONFIG.keys()},
+                           'pyrolab': {key: str(getattr(self, key)) for key in _PYROLAB_CONFIG.keys()}
+            })
+            cfg.write(f)
 
     def dump(self) -> str:
         """
-        Dumps the program configuration to a YAML-formatted string.
+        Dumps the program configuration to a dictionary-formatted string.
 
         Returns
         -------
         str
             The dumped configuration settings.
         """
-        return self._to_yaml()
+        return self._to_dict()
 
 
 global_config = Configuration()
