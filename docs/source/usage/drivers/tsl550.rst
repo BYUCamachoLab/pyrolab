@@ -1,6 +1,3 @@
-Santec Tunable Semiconductor Laser 550 (TSL550)
-===============================================
-
 .. toctree::
 
 .. automodule:: pyrolab.drivers.lasers.tsl550

@@ -5,10 +5,11 @@
 # (see pyrolab/__init__.py for details)
 
 """
+Santec Tunable Semiconductor Laser 550 (TSL550)
+-----------------------------------------------
+
 Driver for the Santec TSL-550 Tunable Laser.
 
-Original Source
----------------
 Author: Wesley Cassidy (https://github.com/wecassidy).
 Repo: https://github.com/wecassidy/TSL550
 

@@ -1,6 +1,3 @@
-Rohde & Schwarz RTO Oscilloscopes
-=================================
-
 .. toctree::
 
 .. automodule:: pyrolab.drivers.scopes.rohdeschwarz
