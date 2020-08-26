@@ -6,12 +6,12 @@
 
 <p align="center">
 <img alt="Development version" src="https://img.shields.io/badge/master-v0.1.0-informational">
-<!-- <a href="https://pypi.python.org/pypi/pyrolab"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/pyrolab.svg"></a> -->
-<!-- <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/pyrolab"> -->
+<a href="https://pypi.python.org/pypi/pyrolab"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/pyrolab.svg"></a>
+<img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/pyrolab">
 <!-- <a href="https://github.com/BYUCamachoLab/simphony/actions?query=workflow%3A%22build+%28pip%29%22"><img alt="Build Status" src="https://github.com/BYUCamachoLab/simphony/workflows/build%20(pip)/badge.svg"></a> -->
 <!-- <a href="https://github.com/pre-commit/pre-commit"><img src="https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white" alt="pre-commit" style="max-width:100%;"></a> -->
 <!-- <a href="https://simphonyphotonics.readthedocs.io/"><img alt="Documentation Status" src="https://readthedocs.org/projects/simphonyphotonics/badge/?version=latest"></a> -->
-<!-- <a href="https://pypi.python.org/pypi/pyrolab/"><img alt="License" src="https://img.shields.io/pypi/l/pyrolab.svg"></a> -->
+<a href="https://pypi.python.org/pypi/pyrolab/"><img alt="License" src="https://img.shields.io/pypi/l/pyrolab.svg"></a>
 <a href="https://github.com/sequoiap/pyrolab/commits/master"><img alt="Latest Commit" src="https://img.shields.io/github/last-commit/sequoiap/pyrolab.svg"></a>
 </p>
 
@@ -29,6 +29,10 @@ contain other instruments that are already internet-capable and don't rely
 on Pyro5. That's alright; we're just trying to create a minimal-dependency,
 one-stop-shop for laboratory instruments!
 
+**Note:** while the software says "OS Independent", some of the servers *are*
+OS-specific. For example, ThorLabs DLL's only work on Windows. However, you could
+use PyroLab to connect to those devices from any operating system.
+
 ## Example
 
 First, make sure all your configuration files on the nameserver computer, service
@@ -37,21 +41,21 @@ providing computer, and client are correct (with the proper keys and everything)
 Run a nameserver:
 
 ```python
-import pyrolab.api
-pyrolab.api.config.reset(use_file="/path/to/config.yaml")
+from pyrolab.api import config, start_ns_loop
+config.reset(cfile="/path/to/config.ini")
 
-pyrolab.api.start_ns_loop()
+start_ns_loop()
 ```
 
 Provide a service:
 
 ```python
-import pyrolab.api
+from pyrolab.api import config, Daemon, locate_ns
 from pyrolab.drivers.sample import SampleService
-pyrolab.api.config.reset(use_file="/path/to/config.yaml")
+config.reset(cfile="/path/to/config.ini")
 
-daemon = pyrolab.api.Daemon()
-ns = pyrolab.api.locate_ns()
+daemon = Daemon()
+ns = locate_ns()
 uri = daemon.register(SampleService)
 ns.register("test.SampleService", uri)
 
@@ -65,9 +69,9 @@ Connect using a remote client:
 
 ```python
 from pyrolab.api import config, locate_ns, Proxy
-config.reset(use_file="/path/to/config.yaml")
+config.reset(cfile="/path/to/config.ini")
 
-ns = pyrolab.api.locate_ns()
+ns = locate_ns()
 uri = ns.lookup("test.SampleService")
 
 with Proxy(uri) as p:
@@ -76,14 +80,18 @@ with Proxy(uri) as p:
 
 ## FAQ's
 1. **Another instrument library? What about all the others?**  
-    In our experience, etc.
+    In our experience, many of the other libraries are buggy or have difficulty
+    with network connections. So, our approach was to rely on a well developed
+    and time-tested framework (Pyro) instead of worrying about developing and
+    supporting our own custom set of servers.
 
 2. **Is this a standalone software that automatically supports all the advertised 
 instruments?**  
     No; many of these instruments depend on other software already being
     installed. In particular, ThorLabs equipment depends on ThorLabs software
     already being installed on the computer connected to the physical hardware
-    (but not on the remote computer!).
+    (but not on the remote computer!). As much as possible, though, we try to
+    make the drivers standalone capable.
 
 ## For Developers
 Since the passing of data is, by definition, between hosts and over IP, PyroLab
