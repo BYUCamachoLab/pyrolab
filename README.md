@@ -100,3 +100,6 @@ bump2version major
 bump2version minor
 bump2version patch
 ```
+
+Releases are automatically created when git tags matching the "v*" pattern
+are created.
