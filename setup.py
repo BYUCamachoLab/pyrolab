@@ -38,7 +38,7 @@ with io.open("README.md", encoding="utf-8") as f:
 # ==============================================================================
 setup_args = dict(
     name=NAME,
-    version="0.1.0",
+    version="0.1.1",
     author="Sequoia Ploeg",
     maintainer="Sequoia Ploeg",
     maintainer_email="sequoia.ploeg@ieee.org",
