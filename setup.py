@@ -74,16 +74,12 @@ setup_args = dict(
 
 install_requires = [
     "Pyro5",
-    "appdirs",
     "deprecation",
-    "PyYAML",
-    "cryptography",
     "numpy",
     "scipy",
 ]
 
 extras_require = {
-    # "kinesis": ["",],
     "tsl550": ["pyserial",],
     "oscope": ["pyvisa",],
     "kinesis": ["thorlabs_kinesis",],
