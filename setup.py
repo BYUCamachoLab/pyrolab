@@ -82,7 +82,7 @@ install_requires = [
 extras_require = {
     "tsl550": ["pyserial",],
     "oscope": ["pyvisa",],
-    "kinesis": ["thorlabs_kinesis",],
+    # "kinesis": ["thorlabs-kinesis",],
     "test": ["pytest",],
 }
 
