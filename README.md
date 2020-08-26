@@ -104,9 +104,9 @@ arrays, matplotlib plot objects, custom objects, etc.).
 To bump version prior to a release, run one of the following commands:
 
 ```bash
-bump2version major
-bump2version minor
-bump2version patch
+bumpversion major
+bumpversion minor
+bumpversion patch
 ```
 
 Releases are automatically created when git tags matching the "v*" pattern
