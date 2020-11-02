@@ -58,7 +58,7 @@ def map_point(pos,channel):     #map a position value to 0-32767 which is the ra
     if(vol < 0):
         vol = 0
     #print(c_short(vol))
-    return c_short(vol)
+    return vol
 
 def map_vol(loc,channel):   #map a serial-recieved value or voltage to 0-maxValue range of a given channel
     point = 0
@@ -98,18 +98,18 @@ def home():     #homes all three axis
     bp.PBC_SetPosition(serialno,bp.Channel1,xHome)    # set the position to the stored home values
     bp.PBC_SetPosition(serialno,bp.Channel2,yHome)
     bp.PBC_SetPosition(serialno,bp.Channel3,zHome)
-    xCurr = map_vol(xHome,bp.Channel1)    # set the current position by maping the home values to position
-    yCurr = map_vol(yHome,bp.Channel2)
-    zCurr = map_vol(zHome,bp.Channel3)
+    xCurr = map_vol(xHome.value,bp.Channel1)    # set the current position by maping the home values to position
+    yCurr = map_vol(yHome.value,bp.Channel2)
+    zCurr = map_vol(zHome.value,bp.Channel3)
     time.sleep(3)   #give it time to settle
 
 def set_home(x,y,z):    #set a new home position for the axises
     global xHome
     global yHome
     global zHome
-    xHome =  map_point(x,bp.Channel1)   # set the new home values by maping the position to voltage
-    yHome =  map_point(y,bp.Channel2)
-    zHome =  map_point(z,bp.Channel3)
+    xHome =  c_short(map_point(x,bp.Channel1))   # set the new home values by maping the position to voltage
+    yHome =  c_short(map_point(y,bp.Channel2))
+    zHome =  c_short(map_point(z,bp.Channel3))
 
 def enable_channels():  #enables all three channels for communication
     global serialno
@@ -196,32 +196,32 @@ def set_pos(pos,channel):   #set the postion of a certain axis to the given posi
     global serialno
     bp.PBC_SetPosition(serialno,channel,map_point(pos,channel)) #map the point to voltage and set the position
     if channel == bp.Channel1:
-        xCurr = map_vol(map_point(pos,channel))
+        xCurr = map_vol(map_point(pos,channel),channel)
     if channel == bp.Channel2:
-        yCurr = map_vol(map_point(pos,channel))
+        yCurr = map_vol(map_point(pos,channel),channel)
     if channel == bp.Channel3:
-        yCurr = map_vol(map_point(pos,channel))
+        yCurr = map_vol(map_point(pos,channel),channel)
     time.sleep(1)
 
 def set_X(pos):     #set the position of the x axis to the inputed position (nm), if not in the allowed range, set it to min or max value
     global serialno
     global xCurr
     bp.PBC_SetPosition(serialno,bp.Channel1,map_point(pos,bp.Channel1)) #map the point to voltage set the position
-    xCurr = map_vol(map_point(pos,bp.Channel1))
+    xCurr = map_vol(map_point(pos,bp.Channel1),bp.Channel1)
     time.sleep(1)
 
 def set_Y(pos):     #set the position of the y axis to the inputed position (nm), if not in the allowed range, set it to min or max value
     global serialno
     global yCurr
     bp.PBC_SetPosition(serialno,bp.Channel2,map_point(pos,bp.Channel2)) #map the point and set the position
-    yCurr = map_vol(map_point(pos,bp.Channel2))
+    yCurr = map_vol(map_point(pos,bp.Channel2),bp.Channel2)
     time.sleep(1)
 
 def set_Z(pos):     #set the poistion of the z axis to the inputed position (nm), if not in the allowed range, set it to min or max value
     global serialno
     global zCurr
     bp.PBC_SetPosition(serialno,bp.Channel3,map_point(pos,bp.Channel3)) #map the point and set the position
-    zCurr = map_vol(map_point(pos,bp.Channel3))
+    zCurr = map_vol(map_point(pos,bp.Channel3),bp.Channel3)
     time.sleep(1)
 
 def move_to(xPos,yPos,zPos):    #set all three values (nm)
