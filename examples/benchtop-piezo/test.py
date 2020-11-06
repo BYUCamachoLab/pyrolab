@@ -6,7 +6,7 @@ bp1 = bp.BPC303(serial=71874833)
 
 good = bp1.start()
 if good == 1:
-    bp1.zero_all()
+    #bp1.zero_all()
     p = bp1.get_pos(1)
     print(p)
     bp1.home()
@@ -19,6 +19,9 @@ if good == 1:
         bp1.jog_all(i*10,i*10,i*10)
         x,y,z = bp1.get_all()
         print("Point: (", x, ",", y, ",", z, ")")
+        bp1.fine_tune()
+        x,y,z = bp1.get_all()
+        print("F-Point: (", x, ",", y, ",", z, ")")
     bp1.move_to(5000,5000,5000)
     x,y,z = bp1.get_all()
     p = bp1.get_pos(1)

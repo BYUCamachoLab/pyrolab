@@ -8,7 +8,7 @@
 Thorlabs 3-Channel 150V Benchtop Piezo Controller with USB (BPC303)
 -----------------------------------------------
 Driver for the Thorlabs BPC-303 Benchtop Piezo.
-Author: David Hill (https://github.com/hillda3141).
+Author: David Hill (https://github.com/hillda3141)
 Repo: https://github.com/BYUCamachoLab/pyrolab/blob/bpc303/pyrolab/drivers/motion
 
 Warning
@@ -44,6 +44,8 @@ class BPC303:
     ----------
     serialno : c_char_p
         serial number (stored as a c-type character array) for communicating with a BPC303
+    pullPeriod : int
+        the time between each consecutive data pull from the BPC303 (ms)
     xMax : int
         maximum travel for the first channel (nm)
     yMax : int
@@ -65,6 +67,7 @@ class BPC303:
     """
 
     serialno = c_char_p(bytes("","utf-8"))  #serial number of the BPC303
+    pullPeriod = 200    #time between data pull from the device
 
     xMax = 20000    #values for each axis maximum
     yMax = 20000
@@ -78,8 +81,9 @@ class BPC303:
     yCurr = 0
     zCurr = 0
 
-    def __init__(self,serial):
+    def __init__(self,serial,period=200):
         self.serialno = c_char_p(bytes(str(serial),"utf-8"))
+        self.pullPeriod = period
 
     def map_point(self,pos,channel):
         """
@@ -144,7 +148,7 @@ class BPC303:
         self.xCurr = self.map_vol(self.xHome,bp.Channel1)    # set the current position by maping the home values to position
         self.yCurr = self.map_vol(self.yHome,bp.Channel2)
         self.zCurr = self.map_vol(self.zHome,bp.Channel3)
-        time.sleep(3)   #give it time to settle
+        time.sleep(1)   #give it time to settle
 
     def set_home(self,x,y,z):
         """
@@ -184,7 +188,7 @@ class BPC303:
         """
         bp.PBC_SetZero(self.serialno, channel)
         if pause==1:
-            time.sleep(30)
+            time.sleep(25)
 
     def zero_all(self):
         """
@@ -193,15 +197,15 @@ class BPC303:
         self.zero(bp.Channel1,0)
         self.zero(bp.Channel2,0)
         self.zero(bp.Channel3,0)
-        time.sleep(30)  #pause to give it time
+        time.sleep(25)  #pause to give it time
 
     def start_polling(self):
         """
         function starts polling data from device
         """
-        bp.PBC_StartPolling(self.serialno,bp.Channel1,c_int(200))    # start polling each channel every 200 ms
-        bp.PBC_StartPolling(self.serialno,bp.Channel2,c_int(200))
-        bp.PBC_StartPolling(self.serialno,bp.Channel3,c_int(200))
+        bp.PBC_StartPolling(self.serialno,bp.Channel1,c_int(self.pullPeriod))    # start polling each channel every 200 ms
+        bp.PBC_StartPolling(self.serialno,bp.Channel2,c_int(self.pullPeriod))
+        bp.PBC_StartPolling(self.serialno,bp.Channel3,c_int(self.pullPeriod))
         bp.PBC_ClearMessageQueue(self.serialno)  # clear prior messages
         time.sleep(1)   # pause 1 sec
         bp.PBC_SetPositionControlMode(self.serialno,bp.Channel1,c_int(2))    #set the mode to closed operation
@@ -234,14 +238,14 @@ class BPC303:
         """
         set the postion of a certain axis to the given position (nm), if not in the allowed range, set it to min or max value
         """
-        bp.PBC_SetPosition(self.serialno,channel,map_point(pos,channel)) #map the point to voltage and set the position
+        bp.PBC_SetPosition(self.serialno,channel,self.map_point(pos,channel)) #map the point to voltage and set the position
         if channel == bp.Channel1:
-            self.xCurr = self.map_vol(map_point(pos,channel),channel)
+            self.xCurr = self.map_vol(self.map_point(pos,channel),channel)
         if channel == bp.Channel2:
-            self.yCurr = self.map_vol(map_point(pos,channel),channel)
+            self.yCurr = self.map_vol(self.map_point(pos,channel),channel)
         if channel == bp.Channel3:
-            self.zCurr = self.map_vol(map_point(pos,channel),channel)
-        time.sleep(1)
+            self.zCurr = self.map_vol(self.map_point(pos,channel),channel)
+        time.sleep(0.5)
 
     def move_to(self,xPos,yPos,zPos):
         """
@@ -271,6 +275,38 @@ class BPC303:
         self.jog(xStep,bp.Channel1)
         self.jog(yStep,bp.Channel2)
         self.jog(zStep,bp.Channel3)
+        #print("R-Point: (", self.xCurr, ",", self.yCurr, ",", self.zCurr, ")")
+
+    def fine_tune(self):
+        """
+        moves the exact actual position of the channels to the "current positions"
+        it can take a few seconds to fine tune the channels, as each channel is naturally off by 2-15 nm
+        Warning: this is not based of the "zero" function
+        """
+        xTemp = self.xCurr
+        yTemp = self.yCurr
+        zTemp = self.zCurr
+        while True:
+            diff = self.xCurr-self.map_vol(bp.PBC_GetPosition(self.serialno,bp.Channel1),bp.Channel1)
+            if diff==0:
+                break
+            xTemp += diff
+            bp.PBC_SetPosition(self.serialno,bp.Channel1,self.map_point(xTemp,bp.Channel1))
+            time.sleep(0.35)
+        while True:
+            diff = self.yCurr-self.map_vol(bp.PBC_GetPosition(self.serialno,bp.Channel2),bp.Channel2)
+            if diff==0:
+                break
+            yTemp += diff
+            bp.PBC_SetPosition(self.serialno,bp.Channel2,self.map_point(yTemp,bp.Channel2))
+            time.sleep(0.35)
+        while True:
+            diff = self.zCurr-self.map_vol(bp.PBC_GetPosition(self.serialno,bp.Channel3),bp.Channel3)
+            if diff==0:
+                break
+            zTemp += diff
+            bp.PBC_SetPosition(self.serialno,bp.Channel3,self.map_point(zTemp,bp.Channel3))
+            time.sleep(0.35)
 
     def get_pos(self,channel):
         """
@@ -301,7 +337,7 @@ class BPC303:
         self.open_serial()   #open communication
         self.enable_channels()
         self.max_travel()
-        self.set_home(xMax/2,yMax/2,zMax/2)
+        self.set_home(self.xMax/2,self.yMax/2,self.zMax/2)
         self.start_polling() #start polling data
         return 1
 
