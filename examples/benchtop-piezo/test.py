@@ -1,8 +1,10 @@
 import os
 os.environ['PATH'] = "C:\\Program Files\\ThorLabs\\Kinesis" + ";" + os.environ['PATH']  #this path must be change to the location of the .dll files from Thorlabs
+
 from pyrolab.drivers.motion import bpc303 as bp
 
 bp1 = bp.BPC303(serial=71874833)
+bp1.help()
 
 good = bp1.start()
 if good == 1:

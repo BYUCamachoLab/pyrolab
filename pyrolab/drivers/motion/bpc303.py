@@ -17,6 +17,31 @@ Not all controllers support getting the maximum position. The default maximum po
 and when 0 is returned by a device the maximum travel for that channel will be defaulted.
 """
 
+from win32event import CreateMutex
+from win32api import GetLastError
+from winerror import ERROR_ALREADY_EXISTS
+from sys import exit
+
+handle = CreateMutex(None, 1, 'David Service')
+
+if GetLastError() == ERROR_ALREADY_EXISTS:
+    # Take appropriate action, as this is the second instance of this script.
+    print('An instance of this application is already running.')
+    exit(1)
+
+from Pyro5.api import expose, locate_ns, Daemon, config, behavior
+
+def get_ip():
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("8.8.8.8", 80))
+    ip = s.getsockname()[0]
+    s.close()
+    return ip
+
+import os
+os.environ['PATH'] = "C:\\Program Files\\ThorLabs\\Kinesis" + ";" + os.environ['PATH']  #this path must be change to the location of the .dll files from Thorlabs
+
 import time
 from thorlabs_kinesis import benchtop_piezo as bp
 
@@ -36,7 +61,7 @@ from ctypes.wintypes import (
 import pyrolab.api
 
 
-@pyrolab.api.expose
+@expose
 class BPC303:
     """ A Thorlabs BPC-303 Benchtop Piezo.
     Lasers can only be accessed by their serial port address.
@@ -81,9 +106,17 @@ class BPC303:
     yCurr = 0
     zCurr = 0
 
-    def __init__(self,serial,period=200):
+    def __init__(self):
+        pass
+
+    def set_serial(self,serial):
         self.serialno = c_char_p(bytes(str(serial),"utf-8"))
+
+    def set_pull_period(self,period):
         self.pullPeriod = period
+
+    def help(self):
+        return "obj.BPC303(serial=serialNumber) - constructor, example: bp.BPC303(serial=71874833)\nstart() - initiate communication\nend() - end communication\nhome() - homes all three channels\nset_home(x,y,z) - set the home position for each channel\nzero(channel) - zero a specific channel\nzero_all() - zero all three channels\nset_pos(position,channel) - set the position of a specific channel (nm)\nmove_to(x,y,z) - set the position of all three channels (nm)\njog(stepSize,channel) - jog the position of a certain channel (nm)\njog_all(XstepSize,YstepSize,ZstepSize) - jog the position of all three channels (nm)\nget_pos(channel) - returns the position of a specific channel (nm)\nget_all() - returns the position of all three channels (nm), example x,y,z = bp.get_all()"
 
     def map_point(self,pos,channel):
         """
@@ -349,3 +382,17 @@ class BPC303:
         dis = self.disconnect()  #attempt to disconnect, if unsuccessful return 0
         bp.PBC_Close(self.serialno)
         return dis
+
+
+if __name__ == "__main__":
+    config.HOST = get_ip()
+    config.SERVERTYPE = "multiplex"
+    daemon = Daemon()
+    ns = locate_ns(host="camacholab.ee.byu.edu")
+
+    uri = daemon.register(BPC303)
+    ns.register("BPC303", uri)
+    try:
+        daemon.requestLoop()
+    finally:
+        ns.remove("BPC303")
