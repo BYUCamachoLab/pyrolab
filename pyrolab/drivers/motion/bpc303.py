@@ -60,12 +60,13 @@ from ctypes.wintypes import (
 
 import pyrolab.api
 
+SHORT_MAX = 32767
 
 @expose
 class BPC303:
     """ A Thorlabs BPC-303 Benchtop Piezo.
     Lasers can only be accessed by their serial port address.
-    Parameters
+    Attributes:
     ----------
     serialno : c_char_p
         serial number (stored as a c-type character array) for communicating with a BPC303
@@ -120,18 +121,18 @@ class BPC303:
 
     def map_point(self,pos,channel):
         """
-        map a position value to 0-32767 which is the range of positions for serial communication
+        map a position value to 0-SHORT_MAX which is the range of positions for serial communication
         """
         vol = 0
         if channel - bp.Channel1:
-            vol = round(pos*32767/self.xMax) #if dealing with the x axis, map using xMax
+            vol = round(pos*SHORT_MAX/self.xMax) #if dealing with the x axis, map using xMax
         if channel - bp.Channel2:
-            vol = round(pos*32767/self.yMax) #if dealing with the y axis, map using yMax
+            vol = round(pos*SHORT_MAX/self.yMax) #if dealing with the y axis, map using yMax
         if channel - bp.Channel2:
-            vol = round(pos*32767/self.zMax) #if dealing with the z axis, map using zMax
+            vol = round(pos*SHORT_MAX/self.zMax) #if dealing with the z axis, map using zMax
         #print(vol)
-        if(vol > 32767):    #if the value is out of range, set to either max or min value
-            vol = 32767
+        if(vol > SHORT_MAX):    #if the value is out of range, set to either max or min value
+            vol = SHORT_MAX
         if(vol < 0):
             vol = 0
         #print(c_short(vol))
@@ -144,11 +145,11 @@ class BPC303:
         point = 0
         vol = int(loc)
         if channel - bp.Channel1:
-            point = round(vol*self.xMax/32767)   #depending on the channel, map the voltage to the position
+            point = round(vol*self.xMax/SHORT_MAX)   #depending on the channel, map the voltage to the position
         if channel - bp.Channel2:
-            point = round(vol*self.yMax/32767)
+            point = round(vol*self.yMax/SHORT_MAX)
         if channel - bp.Channel2:
-            point = round(vol*self.zMax/32767)
+            point = round(vol*self.zMax/SHORT_MAX)
         return point
 
     def check_serial(self):

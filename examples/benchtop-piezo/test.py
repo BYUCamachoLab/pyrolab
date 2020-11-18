@@ -3,7 +3,8 @@ os.environ['PATH'] = "C:\\Program Files\\ThorLabs\\Kinesis" + ";" + os.environ['
 
 from pyrolab.drivers.motion import bpc303 as bp
 
-bp1 = bp.BPC303(serial=71874833)
+bp1 = bp.BPC303()
+bp1.set_serial(71874833)
 bp1.help()
 
 good = bp1.start()
