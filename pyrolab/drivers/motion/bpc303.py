@@ -116,7 +116,7 @@ class BPC303:
         self.pullPeriod = period
 
     def help(self):
-        return "obj.BPC303(serial=serialNumber) - constructor, example: bp.BPC303(serial=71874833)\nstart() - initiate communication\nend() - end communication\nhome() - homes all three channels\nset_home(x,y,z) - set the home position for each channel\nzero(channel) - zero a specific channel\nzero_all() - zero all three channels\nset_pos(position,channel) - set the position of a specific channel (nm)\nmove_to(x,y,z) - set the position of all three channels (nm)\njog(stepSize,channel) - jog the position of a certain channel (nm)\njog_all(XstepSize,YstepSize,ZstepSize) - jog the position of all three channels (nm)\nget_pos(channel) - returns the position of a specific channel (nm)\nget_all() - returns the position of all three channels (nm), example x,y,z = bp.get_all()"
+        return "set_serial(serialNumber) - set the serial number that you will communicate with (do this first)\nstart() - initiate communication\nend() - end communication\nhome() - homes all three channels\nset_home(x,y,z) - set the home position for each channel\nzero(channel) - zero a specific channel\nzero_all() - zero all three channels\nset_pos(position,channel) - set the position of a specific channel (nm)\nmove_to(x,y,z) - set the position of all three channels (nm)\njog(stepSize,channel) - jog the position of a certain channel (nm)\njog_all(XstepSize,YstepSize,ZstepSize) - jog the position of all three channels (nm)\nget_pos(channel) - returns the position of a specific channel (nm)\nget_all() - returns the position of all three channels (nm), example x,y,z = bp.get_all()"
 
     def map_point(self,pos,channel):
         """
