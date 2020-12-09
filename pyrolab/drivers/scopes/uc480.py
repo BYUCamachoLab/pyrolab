@@ -1,11 +1,10 @@
-import numpy as np
-
 import os
-os.environ['PATH'] = "C:\\Program Files\\ThorLabs\\Kinesis" + ";" + os.environ['PATH']  #this path must be change to the location of the .dll files from Thorlabs
+os.environ['PATH'] = "C:\\Program Files\\ThorLabs\\Scientific Imaging\\ThorCam" + ";" + os.environ['PATH']  #this path must be change to the location of the .dll files from Thorlabs
 
 import time
 from thorlabs_kinesis import thor_camera as tc
-import time
+
+import numpy as np
 
 from ctypes import *
 
@@ -34,7 +33,7 @@ class UC480(object):
         self.handle = c_int(0)
         i = tc.InitCamera(byref(self.handle))     
         #print("Display Mode:")
-        tc.SetDisplayMode(self.handle, c_int(32768)))  
+        tc.SetDisplayMode(self.handle, c_int(32768)) 
         #print(i)
         if i == 0:
             print("ThorCam opened successfully.")
