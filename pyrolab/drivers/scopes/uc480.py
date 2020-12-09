@@ -22,7 +22,7 @@ class UC480(object):
         self.framerate = None
         self.img_size = None
 
-    def open(self, bit_depth=8, img_size=(1023, 1278), exposure = 80, frametime = 10.0, camera="ThorCam FS"):
+    def open(self, bit_depth=8, img_size=(1023, 1278), camera="ThorCam FS"):
         print(tc.GetCameraList)
         num = c_int(0)
         tc.GetNumberOfCameras(byref(num))
