@@ -34,7 +34,7 @@ class UC480(object):
         self.handle = c_int(0)
         i = tc.InitCamera(byref(self.handle))     
         #print("Display Mode:")
-        tc.SetDisplayMode(self.handle, c_int(32768)))  
+        tc.SetDisplayMode(self.handle, c_int(32768))
         #print(i)
         if i == 0:
             print("ThorCam opened successfully.")
