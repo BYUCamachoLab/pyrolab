@@ -1,7 +1,4 @@
-<<<<<<< HEAD:examples/camera-live/pyro5camera.py
 from pyrolab.api import locate_ns, Proxy
-=======
->>>>>>> 5ef3a154226189edc07e07e6be614bacb7185e44:examples/camera-live/cameratest.py
 from pyrolab.drivers.cameras import uc480 as cam
 import numpy as np
 import cv2
