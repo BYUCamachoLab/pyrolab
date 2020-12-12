@@ -38,8 +38,11 @@ cam.initialize_memory(pixelbytes=8)
 cam.start_capture(1)
 
 while(True):
-    bayer = cam.get_image()
+    #bayer = cam.get_image()
+    bayer = np.array(cam.get_image(), dtype=np.uint8).reshape(1024, 1280)
+    #print(bayer)
     dStack = bayer_convert(bayer)
+    print(dStack)
 
     cv2.imshow('scope',dStack)
     keyCode = cv2.waitKey(10)

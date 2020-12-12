@@ -37,6 +37,15 @@ import pyrolab.api
 
 @expose
 class UC480:
+    
+    handle = None
+    camera = None
+    bit_depth = None
+    meminfo = None
+    roi_shape = None
+    roi_pos = None
+    framerate = None
+
     def __init__(self):
         pass
 
@@ -71,7 +80,9 @@ class UC480:
 
     def get_image(self):
         im = np.frombuffer(self.meminfo[0], c_ubyte).reshape(self.roi_shape[1], self.roi_shape[0])
-        return im
+        image = (np.array(im)).tolist()
+        #print(image)
+        return image
 
     def set_pixel_clock(self, clockspeed):
         pixelclock = c_uint(clockspeed)
