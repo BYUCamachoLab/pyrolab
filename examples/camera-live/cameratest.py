@@ -1,4 +1,4 @@
-from pyrolab.drivers.scopes import uc480 as cam
+from pyrolab.drivers.cameras import uc480 as cam
 import numpy as np
 import cv2
 import sys

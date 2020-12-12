@@ -1,3 +1,25 @@
+from win32event import CreateMutex
+from win32api import GetLastError
+from winerror import ERROR_ALREADY_EXISTS
+from sys import exit
+
+handle = CreateMutex(None, 1, 'Camera Service')
+
+if GetLastError() == ERROR_ALREADY_EXISTS:
+    # Take appropriate action, as this is the second instance of this script.
+    print('An instance of this application is already running.')
+    exit(1)
+
+from Pyro5.api import expose, locate_ns, Daemon, config, behavior
+
+def get_ip():
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("8.8.8.8", 80))
+    ip = s.getsockname()[0]
+    s.close()
+    return ip
+
 import os
 os.environ['PATH'] = "C:\\Program Files\\ThorLabs\\Scientific Imaging\\ThorCam" + ";" + os.environ['PATH']  #this path must be change to the location of the .dll files from Thorlabs
 
@@ -11,16 +33,12 @@ from ctypes import *
 c_word = c_ushort
 c_dword = c_ulong
 
-class UC480(object):
-    def __init__(self):      
-        self.bit_depth = None
-        self.camera = None
-        self.handle = None
-        self.meminfo = None
-        self.exposure = None
-        self.framerate = None
-        self.roi_shape = None
-        self.roi_pos = None
+import pyrolab.api
+
+@expose
+class UC480:
+    def __init__(self):
+        pass
 
     def open(self, bit_depth=8, camera="ThorCam FS"):
         print(tc.GetCameraList)
@@ -133,3 +151,16 @@ class UC480(object):
             print("ThorCam ROI position set successfully.")
         else:
             print("Set ThorCam ROI pos failed with error code "+str(i))
+
+if __name__ == "__main__":
+    config.HOST = get_ip()
+    config.SERVERTYPE = "multiplex"
+    daemon = Daemon()
+    ns = locate_ns(host="camacholab.ee.byu.edu")
+
+    uri = daemon.register(UC480)
+    ns.register("UC480", uri)
+    try:
+        daemon.requestLoop()
+    finally:
+        ns.remove("UC480")
