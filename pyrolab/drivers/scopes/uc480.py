@@ -19,16 +19,16 @@ class UC480(object):
         self.meminfo = None
         self.exposure = None
         self.framerate = None
-        self.img_size = None
+        self.roi_shape = None
+        self.roi_pos = None
 
-    def open(self, bit_depth=8, img_size=(1023, 1278), camera="ThorCam FS"):
+    def open(self, bit_depth=8, camera="ThorCam FS"):
         print(tc.GetCameraList)
         num = c_int(0)
         tc.GetNumberOfCameras(byref(num))
         print(num.value)
         self.bit_depth = bit_depth
         self.camera = camera
-        self.img_size = img_size
         
         self.handle = c_int(0)
         i = tc.InitCamera(byref(self.handle))     
@@ -40,9 +40,9 @@ class UC480(object):
         else:
             print("Opening the ThorCam failed with error code "+str(i))
 
-    def close(self):
+    def close(self, waitMode):
         if self.handle != None:
-            self.stop_live_capture()
+            self.stop_capture(waitMode)
             i = tc.ExitCamera(self.handle) 
             if i == 0:
                 print("ThorCam closed successfully.")
@@ -52,28 +52,30 @@ class UC480(object):
             return
 
     def get_image(self):
-        im = np.frombuffer(self.meminfo[0], c_ubyte).reshape(self.img_size[1], self.img_size[0])
+        im = np.frombuffer(self.meminfo[0], c_ubyte).reshape(self.roi_shape[1], self.roi_shape[0])
         return im
 
     def set_pixel_clock(self, clockspeed):
         pixelclock = c_uint(clockspeed)
-        tc.PixelClock(self.handle, 6, byref(pixelclock), sizeof(pixelclock))
+        i = tc.PixelClock(self.handle, 6, byref(pixelclock), sizeof(pixelclock))
+        print("Pixel:")
+        print(i)
 
     def start_capture(self, waitMode):
         tc.StartCapture(self.handle, waitMode)
 
     def stop_capture(self, waitMode):
-        self.uc480.is_FreeImageMem(self.handle, self.meminfo[0], self.meminfo[1])
+        tc.FreeMemory(self.handle, self.meminfo[0], self.meminfo[1])
         #self.epix.pxd_goUnLive(0x1)
-        self.uc480.is_StopLiveVideo(self.handle, waitMode)
+        tc.StopCapture(self.handle, waitMode)
         print("unlive now")
         
     def initialize_memory(self, pixelbytes=8):
         if self.meminfo != None:
-            self.uc480.is_FreeImageMem(self.handle, self.meminfo[0], self.meminfo[1])
+            tc.FreeMemory(self.handle, self.meminfo[0], self.meminfo[1])
         
-        xdim = self.img_size[0]
-        ydim = self.img_size[1]
+        xdim = self.roi_shape[0]
+        ydim = self.roi_shape[1]
         #print(xdim)
         #print(ydim)
         imagesize = xdim*ydim
@@ -83,7 +85,7 @@ class UC480(object):
         c_buf = (c_ubyte * imagesize)(0)
         #print(c_buf)
 
-        tc.AllocateMemory(self.handle, xdim, ydim, pixelbytes, c_buf, byref(memid))
+        tc.AllocateMemory(self.handle, xdim, ydim, c_int(pixelbytes), c_buf, byref(memid))
         #print(c_buf)
         #print(memid)
         tc.SetImageMemory(self.handle, c_buf, memid)
@@ -103,4 +105,31 @@ class UC480(object):
         self.framerate = set_framerate.value
 
     def set_color_mode(self, mode=11):
-        tc.SetColorMode(self.handle, mode) #11 means raw 8-bit, 6 means gray 8-bit
+        i = tc.SetColorMode(self.handle, mode) #11 means raw 8-bit, 6 means gray 8-bit
+        print("Color Mode:")
+        print(i)
+
+    def set_roi_shape(self, roi_shape):
+        AOI_size = tc.IS_2D(roi_shape[0], roi_shape[1]) #Width and Height
+            
+        i = tc.AOI(self.handle, 5, byref(AOI_size), 8)#5 for setting size, 3 for setting position
+        tc.AOI(self.handle, 6, byref(AOI_size), 8)#6 for getting size, 4 for getting position
+        self.roi_shape = [AOI_size.s32X, AOI_size.s32Y]
+        print(self.roi_shape)
+        if i == 0:
+            print("ThorCam ROI size set successfully.")
+        else:
+            print("Set ThorCam ROI size failed with error code "+str(i))
+
+    def set_roi_pos(self, roi_pos):
+        AOI_pos = tc.IS_2D(roi_pos[0], roi_pos[1]) #Width and Height
+            
+        i = tc.AOI(self.handle, 3, byref(AOI_pos), 8 )#5 for setting size, 3 for setting position
+        tc.AOI(self.handle, 4, byref(AOI_pos), 8 )#6 for getting size, 4 for getting position
+        self.roi_pos = [AOI_pos.s32X, AOI_pos.s32Y]
+        print(self.roi_pos)
+        
+        if i == 0:
+            print("ThorCam ROI position set successfully.")
+        else:
+            print("Set ThorCam ROI pos failed with error code "+str(i))
