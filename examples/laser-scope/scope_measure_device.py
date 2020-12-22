@@ -44,8 +44,8 @@ from datetime import datetime
 
 from pyrolab.drivers.lasers.tsl550 import TSL550
 from pyrolab.drivers.scopes.rohdeschwarz import RTO
-
-from data_processing import WavelengthAnalyzer, VisualizeData
+from pyrolab.analysis import WavelengthAnalyzer
+# VisualizeData
 
 # ---------------------------------------------------------------------------- #
 # Check Input
