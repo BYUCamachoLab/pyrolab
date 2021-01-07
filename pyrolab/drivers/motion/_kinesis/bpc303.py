@@ -7,10 +7,12 @@
 """
 Thorlabs 3-Channel 150V Benchtop Piezo Controller with USB (BPC303)
 -------------------------------------------------------------------
+
 Driver for the Thorlabs BPC-303 Benchtop Piezo.
 
-Author: David Hill (https://github.com/hillda3141)  
-Repo: https://github.com/BYUCamachoLab/pyrolab
+Contributors
+ * David Hill (https://github.com/hillda3141)  
+ * Sequoia Ploeg (https://github.com/sequoiap)
 
 Warning
 -------
@@ -20,32 +22,22 @@ travel for that channel will be defaulted.
 """
 
 import time
-from typing import Type
+from ctypes import c_short, c_char_p, c_int
+
 from thorlabs_kinesis import benchtop_piezo as bp
 
-from ctypes import (
-    c_short,
-    c_char_p,
-    c_void_p,
-    byref,
-    c_int,
-    create_string_buffer,
-)
-from ctypes.wintypes import (
-    DWORD,
-    WORD,
-)
+from pyrolab.drivers.motion._kinesis import KinesisInstrument
 
 
 MAX_C_SHORT = 32767
 
 
-class ChannelInformation:
-    def __init__(self):
-        pass
+# class ChannelInformation:
+#     def __init__(self):
+#         pass
 
 
-class BPC303:
+class BPC303(KinesisInstrument):
     """ 
     A Thorlabs BPC-303 Benchtop Piezo controller.
 
@@ -59,7 +51,11 @@ class BPC303:
         The polling period (time between data pulls from the device) in ms 
         (default 200).
     closed_loop : bool, optional
+        Puts controller in open or closed loop mode. Closed loop if True 
+        (closed loop allows for positional commands instead of voltage 
+        commands), default False.
     smoothed : bool, optional
+        Puts controller in smoothed start/stop mode, default False.
 
     Attributes
     ----------
@@ -67,46 +63,75 @@ class BPC303:
         The serial number as a Python string.
     poll_period : int
         The polling period in milliseconds.
-    MAX_C_SHORT : [int, *]
+    max_channels : int
+        The number of bays (not necessarily occupied) the device has.
+    num_channels : int
+        The number of availble channels.
+    max_travel : [int]
         Distance in steps of 100nm, range 0 to 65535 (10000 = 1mm) by channel.
+    max_voltage : [int]
+        Maximum output voltage, 750, 1000 or 1500 (75.0, 100.0, 150.0). 
+
+    Raises
+    ------
+    RuntimeError
+        If Kinesis cannot build a device list or no connected devices are found.
+    ValueError
+        If the serial number is not found in the connected devices.
     """
-    def __init__(self, serialno: str, poll_period: int=200, closed_loop: bool=False, smoothed: bool=False):
+    def __init__(self, serialno: str, poll_period: int=200, closed_loop: bool=False, smoothed: bool=False) -> None:
         self.serialno = serialno
-        # Store serialno as c-type char array.
-        self._serialno = c_char_p(bytes(serialno, "utf-8"))
+        self._serialno = c_char_p(bytes(serialno, "utf-8")) # Store as char array.
         self.poll_period = poll_period
 
-        if bp.TLI_BuildDeviceList() != 0:   #if there are errors building devices
-            return 0
-        if bp.TLI_GetDeviceListSize() == 0: #if there are no devices
-            return 0
-        if not self.check_serial():    #get the serial number of the BP303
-            return 0
-        bp.PBC_Open(self._serialno)       # open the device for communication
+        if bp.TLI_BuildDeviceList() != 0:
+            raise RuntimeError("Kinesis error (could not build device list).")
+        if bp.TLI_GetDeviceListSize() == 0:
+            raise RuntimeError("no connected devices found.")
 
-        self.num_channels = 3 # FIXME
-        self.channels = []
-        self._channels = []
+        # Get list of serial numbers of benchtop-piezo devices connected
+        serial_list = c_char_p(bytes("","utf-8"))
+        bp.TLI_GetDeviceListByTypeExt(serial_list, 250, 71)
+        serial_nos = serial_list.value.decode("utf-8").split(',')
+        if self.serialno not in serial_nos:
+            raise ValueError("serial number not found in connected devices.")
+        
+        # Open the device for communication
+        bp.PBC_Open(self._serialno)
 
         # Generate valid channels
-        for channel in range(1, self.num_channels):
+        self.max_channels = bp.PBC_MaxChannelCount(self._serialno)
+        self.num_channels = bp.PBC_GetNumChannels(self._serialno)
+        self.channels = []
+        self._channels = []
+        for channel in range(1, self.num_channels + 1):
             if bp.PBC_IsChannelValid(self._serialno, c_short(channel)):
                 self.channels.append(channel)
                 self._channels.append(c_short(channel))
 
-        self.enable_channel()
-
-        self.MAX_C_SHORT = []
+        # Ask for the max travel of each axis. If it returns zero, this 
+        # function is not supported by the module.
+        self.max_travel = []
         for channel in self._channels:
-            # Ask for the max travel of each axis. If it returns zero, this 
-            # function is not supported by the module
-            self.MAX_C_SHORT.append(int(bp.PBC_GetMaxTravel(self._serialno, channel)))
+            if bp.PBC_RequestMaximumTravel(self._serialno, channel):
+                time.sleep(1.2*self.poll_period / 1000)
+                self.max_travel.append(int(bp.PBC_GetMaximumTravel(self._serialno, channel)))
+            else:
+                raise RuntimeError("maximum travel request to device failed.")
 
-        # Do something with closed_loop and smoothed.
-        self.set_position_control_mode(closed_loop, smoothed)
-        self._start_polling() #start polling data
+        self.max_voltage = []
+        for channel in self._channels:
+            if bp.PBC_RequestMaxOutputVoltage(self._serialno, channel):
+                time.sleep(1.2*self.poll_period / 1000)
+                self.max_voltage.append(bp.PBC_GetMaxOutputVoltage(self._serialno, channel))
+            else:
+                raise RuntimeError("maximum voltage request to device failed.")
 
-    def _start_polling(self):
+        self.enable_channel()
+        self.set_position_control_mode(closed_loop=closed_loop, smoothed=smoothed)
+        self._start_polling()
+
+    def _start_polling(self) -> None:
         """
         Starts polling data from device (device self updates position and 
         status).
@@ -118,48 +143,45 @@ class BPC303:
         bp.PBC_ClearMessageQueue(self._serialno)
         time.sleep(1)
 
-    def close(self):
+    def close(self) -> None:
         """
-        Disconnects and closes the device.
+        Disconnects and closes the device, releasing the resource.
         """
         self._stop_polling()
         bp.PBC_Disconnect(self._serialno)
         bp.PBC_Close(self._serialno)
 
-    def _stop_polling(self):
+    def _stop_polling(self) -> None:
         """
         Stop polling data from the device.
         """
         for channel in self._channels:
             bp.PBC_StopPolling(self._serialno, channel)
 
-    def identify(self, channel: int):
+    def identify(self, channel: int) -> None:
         """
         Asks some channel of a device to identify itself.
 
         Parameters
         ----------
         channel : int
-            The channel to be identified.
+            The channel to be identified (1-n).
         """
-        self._verify_channel(channel)
-        bp.PBC_Identify(c_short(channel))
+        channel = self._verify_channel(channel)
+        bp.PBC_Identify(self._serialno, channel)
 
-    # def check_connection(self):
-    def check_serial(self):
+    def check_connection(self) -> bool:
         """
-        checks to ensure there is a benchtop piezo device connected with that serial number
-        """
-        serialList = c_char_p(bytes("","utf-8"))
-        bp.TLI_GetDeviceListByTypeExt(serialList, 250, 71)  # get list of serial numbers of benchtop-piezo devices connected
-        for i in range(0,40,10):
-            tempNum = (serialList.value[i:i+8]).decode("utf-8")
-            if tempNum=="":
-                return False
-            if int(tempNum)==int((self.serialno.value[0:8]).decode("utf-8")):
-                return True
+        Checks connection of the device. 
 
-    def enable_channel(self, channel: int=None):
+        Returns
+        -------
+        connected : bool
+            True if the USB is listed by the ftdi controller.
+        """
+        return bp.PBC_CheckConnection(self._serialno)
+
+    def enable_channel(self, channel: int=None) -> None:
         """
         Enables communication for a specific channel (or all).
 
@@ -172,10 +194,11 @@ class BPC303:
         if channel is None:
             for chan in self._channels:
                 bp.PBC_EnableChannel(self._serialno, chan)
-        elif type(channel) is int:
-            bp.PBC_EnableChannel(self._serialno, c_short(channel))
+        else:
+            channel = self._verify_channel(channel)
+            bp.PBC_EnableChannel(self._serialno, channel)
 
-    def disable_channel(self, channel: int=None):
+    def disable_channel(self, channel: int=None) -> None:
         """
         Disables communication for a specific channel (or all).
 
@@ -199,7 +222,8 @@ class BPC303:
         Parameters
         ----------
         channel : bool, optional
-            The channel to to set the control mode for. Sets for all if None.
+            The channel to to set the control mode for (1-n). Gets for all if 
+            ``None``.
 
         Returns
         -------
@@ -211,17 +235,17 @@ class BPC303:
             4 - Closed Loop smoothed
         """
         channel = self._verify_channel(channel)
-        mode = bp.PBC_GetPositionControlMode(self._serialno, channel)
-        return mode.value
+        return bp.PBC_GetPositionControlMode(self._serialno, channel)
 
-    def set_position_control_mode(self, channel: int=None, closed_loop: bool=False, smoothed: bool=False):
+    def set_position_control_mode(self, channel: int=None, closed_loop: bool=False, smoothed: bool=False) -> None:
         """
         Sets position control mode of the device.
 
         Parameters
         ----------
         channel : bool, optional
-            The channel to to set the control mode for. Sets for all if None.
+            The channel to to set the control mode for (1-n). Sets for all if 
+            ``None``.
         closed_loop : bool, optional
             Sets the position control mode; closed loop if True (default False 
             means open loop). 
@@ -238,10 +262,10 @@ class BPC303:
             for chan in self._channels:
                 bp.PBC_SetPositionControlMode(self._serialno, chan, c_short(mode))
         else:
-            channel = self._verify_channel
+            channel = self._verify_channel(channel)
             bp.PBC_SetPositionControlMode(self._serialno, channel, c_short(mode))
 
-    def position(self, channel: int, percent: float=None) -> float:
+    def position(self, channel: int, percent: int=None) -> int:
         """
         Sets the position of the requested channel when in closed loop mode. 
         If no position is specified, simply returns the current position.
@@ -249,28 +273,28 @@ class BPC303:
         Parameters
         ----------
         channel : int
-            The channel to get or set the position for.
-        position : float, optional
-            The position to go to as a percentage of max travel (0 to 100%).
-            If not specified, current position is returned.
+            The channel to get or set the position for (1-n).
+        percent : int, optional
+            The position as a percentage of maximum travel, range 0 to 32767, 
+            equivalent to 0 to 100%. If not specified (None), current position 
+            is returned.
 
         Returns
         -------
-        position : float
-            The current position of the selected channel as a percentage of
-            maximum travel, range -100 to 100%.
+        pos : int
+            The position as a percentage of maximum travel, range -32767 to 
+            32767, equivalent to -100 to 100%. The result is undefined if not 
+            in closed loop mode.
         """
         channel = self._verify_channel(channel)
 
         if percent is not None:
-            norm_position = c_short(round(percent/100 * MAX_C_SHORT))
-            bp.PBC_SetPosition(self._serialno, channel, norm_position)
+            percent = self._saturate(percent, 0, MAX_C_SHORT)
+            bp.PBC_SetPosition(self._serialno, channel, c_short(percent))
         else:
-            pos = bp.PBC_GetPosition(self._serialno, channel)
-            percent = pos.value / MAX_C_SHORT
-            return percent
+            return bp.PBC_GetPosition(self._serialno, channel)
 
-    def output_voltage(self, channel, percent) -> float:
+    def voltage(self, channel: int, percent: int=None) -> int:
         """
         Sets the output voltage of the requested channel. If no voltage is
         specified, simply returns the current voltage.
@@ -278,41 +302,47 @@ class BPC303:
         Parameters
         ----------
         channel : int
-            The channel to get or set the position for.
-        percent : float
-            The position to go to as a percentage of max travel (-100 to 100%).
-            If not specified, current position is returned.
+            The channel to get or set the position for (1-n).
+        percent : int, optional
+            The voltage as a percentage of max_voltage, range -32767 to 
+            32767 equivalent to -100% to 100%. If not specified, current 
+            voltage is returned.
 
         Returns
         -------
-        position : float
+        percent : int
             The current voltage of the selected channel as a percentage of
-            maximum output voltage, range -100 to 100%.
+            maximum output voltage, range -32767 to 32767 equivalent to 
+            -100% to 100%.
+
+        Raises
+        ------
+        RuntimeError
+            If the request to the Kinesis DLL fails.
         """
         channel = self._verify_channel(channel)
 
         if percent is not None:
-            norm_voltage = c_short(round(percent/100 * MAX_C_SHORT))
-            bp.PBC_SetOutputVoltage(self._serialno, channel, norm_voltage)
+            percent = self._saturate(percent, -MAX_C_SHORT, MAX_C_SHORT)
+            bp.PBC_SetOutputVoltage(self._serialno, channel, c_short(percent))
         else:
-            if bp.PBC_RequestOutputVoltage(self._serialno, channel):
-                voltage = bp.PBC_GetOutputVoltage(self._serialno, channel)
-                percent = voltage.value / MAX_C_SHORT
-                return percent
-            else:
-                raise RuntimeError("output voltage request failed.")
+            return bp.PBC_GetOutputVoltage(self._serialno, channel)
 
-    def wait_for_message(self):
-        pass
+    # def wait_for_message(self):
+    #     """
+    #     Gets the next item from the device's message queue. Can potentially be 
+    #     used as a blocking function.
+    #     """
+    #     pass
 
-    def zero(self, channel: int=None, block: bool=True):
+    def zero(self, channel: int=None, block: bool=True) -> None:
         """
         Zeroes a channel (or all). Automatically sets closed loop mode.
         
         Parameters
         ----------
         channel : int, optional
-            The channel to zero. If not specified, zeroes all channels.
+            The channel to zero (1-n). If not specified, zeroes all channels.
         block : bool, optional
             If True, this function is blocking.
         """
@@ -326,13 +356,54 @@ class BPC303:
         if block:
             time.sleep(25)
 
-    def _verify_channel(self, channel: int):
+    def _verify_channel(self, channel: int) -> c_short:
         """
         Verifies that a channel is valid for the connected device.
+
+        Parameters
+        ----------
+        channel : int
+            The channel number to verify (1-n).
+
+        Returns
+        -------
+        channel : c_short
+            The channel as a c_short for use in Kinesis DLL function calls.
+
+        Raises
+        ------
+        TypeError
+            If channel is not an integer.
+        ValueError
+            If the requested channel is invalid.
         """
         if type(channel) is not int:
             raise TypeError("'channel' must be an integer.")
         if channel not in [chan.value for chan in self._channels]:
-            raise ValueError("Requested channel '{}' is invalid".format(channel))
+            raise ValueError("requested channel '{}' is invalid".format(channel))
         else:
             return c_short(channel)
+
+    def _saturate(self, value: float, minimum: float, maximum: float) -> float:
+        """
+        Saturates a value at a given minimum and maximum.
+
+        Parameters
+        ----------
+        value : float
+            The value to saturate.
+        minimum : float
+            The minimum allowable value.
+        maximum : float
+            The maximum allowable value.
+
+        Returns
+        -------
+        value : float
+            A value guaranteed to be between ``minimimum`` and ``maximum``.
+        """
+        if value > maximum:
+            value = maximum
+        if value < minimum:
+            value = minimum
+        return value
