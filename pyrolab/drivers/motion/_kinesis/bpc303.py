@@ -27,6 +27,7 @@ from ctypes import c_short, c_char_p, c_int
 from thorlabs_kinesis import benchtop_piezo as bp
 
 from pyrolab.drivers.motion._kinesis import KinesisInstrument
+from pyrolab.api import expose
 
 
 MAX_C_SHORT = 32767
@@ -37,6 +38,7 @@ MAX_C_SHORT = 32767
 #         pass
 
 
+@expose
 class BPC303(KinesisInstrument):
     """ 
     A Thorlabs BPC-303 Benchtop Piezo controller.
