@@ -10,10 +10,11 @@ Santec Tunable Semiconductor Laser 550 (TSL550)
 
 Driver for the Santec TSL-550 Tunable Laser.
 
-Author: Wesley Cassidy (https://github.com/wecassidy).
-Repo: https://github.com/wecassidy/TSL550
+Contributors
+ * Wesley Cassidy (https://github.com/wecassidy)
+ * Sequoia Ploeg (https://github.com/sequoiap)
 
-Modifications and function documentation by Sequoia Ploeg.
+Original repo: https://github.com/wecassidy/TSL550
 
 Note
 ----
