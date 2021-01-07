@@ -10,6 +10,9 @@ KDC101
 
 Submodule that implements the basic functionality of the KCube DC Servo.
 
+Contributors
+ * Sequoia Ploeg (https://github.com/sequoiap)
+
 Kinesis controllers are only available on Windows machines. Proxies from
 other operating systems can however call Pyro services freely.
 
