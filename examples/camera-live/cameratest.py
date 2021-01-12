@@ -1,4 +1,3 @@
-from pyrolab.api import locate_ns, Proxy
 from pyrolab.drivers.cameras import uc480 as cam
 import numpy as np
 import cv2
@@ -26,9 +25,7 @@ def bayer_convert(bayer):
     dStack = np.dstack((B,G,R))
     return dStack
 
-ns = locate_ns(host="camacholab.ee.byu.edu")
-cam = Proxy(ns.lookup("UC480"))
-
+cam = cam.UC480()
 cam.open()
 cam.set_pixel_clock(24)
 cam.set_color_mode(mode=11)
