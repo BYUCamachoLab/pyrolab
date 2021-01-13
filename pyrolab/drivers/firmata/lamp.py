@@ -41,20 +41,20 @@ import pyrolab.api
 @expose
 class ARD_LAMP:
 
-    def __init__(self):
+    def __init__(self, port="COM5"):
         pass
 
     def set_port(self,port='COM5'):
         self.port = port
 
     def start_serial(self):
-        self.board = pyfirmata.Arduino('COM5')
+        self.board = pyfirmata.Arduino(self.port)
 
     def on(self,pin=13):
-        board.digital[pin].write(1)
+        self.board.digital[pin].write(1)
 
     def off(self,pin=13):
-        board.digital[pin].write(0)
+        self.board.digital[pin].write(0)
 
     def end(self):
         for x in range(1,13):
@@ -67,7 +67,7 @@ if __name__ == "__main__":
     daemon = Daemon()
     ns = locate_ns(host="camacholab.ee.byu.edu")
 
-    uri = daemon.register(BPC303)
+    uri = daemon.register(ARD_LAMP)
     ns.register("ARD_LAMP", uri)
     try:
         daemon.requestLoop()
