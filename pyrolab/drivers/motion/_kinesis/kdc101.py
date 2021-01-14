@@ -154,7 +154,7 @@ class KDC101(KinesisInstrument):
     @property
     def backlash(self):
         """
-        The backlash setting (used to control hysteris) in device units.
+        The backlash setting (used to control hysteresis) in device units.
         """
         # kcdc.CC_RequestBacklash(self._serialno)
         # time.sleep(0.1)
