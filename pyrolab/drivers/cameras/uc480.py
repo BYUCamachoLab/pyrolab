@@ -80,7 +80,8 @@ class UC480:
 
     def get_image(self):
         im = np.frombuffer(self.meminfo[0], c_ubyte).reshape(self.roi_shape[1], self.roi_shape[0])
-        return im
+        image = im.tolist()
+        return image
 
     def set_pixel_clock(self, clockspeed):
         pixelclock = c_uint(clockspeed)

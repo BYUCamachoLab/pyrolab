@@ -1,7 +1,3 @@
-<<<<<<< HEAD:examples/camera-live/pyro5camera.py
-from pyrolab.api import locate_ns, Proxy
-=======
->>>>>>> 5ef3a154226189edc07e07e6be614bacb7185e44:examples/camera-live/cameratest.py
 from pyrolab.drivers.cameras import uc480 as cam
 import numpy as np
 import cv2
@@ -29,13 +25,7 @@ def bayer_convert(bayer):
     dStack = np.dstack((B,G,R))
     return dStack
 
-<<<<<<< HEAD:examples/camera-live/pyro5camera.py
-ns = locate_ns(host="camacholab.ee.byu.edu")
-cam = Proxy(ns.lookup("UC480"))
-
-=======
 cam = cam.UC480()
->>>>>>> 5ef3a154226189edc07e07e6be614bacb7185e44:examples/camera-live/cameratest.py
 cam.open()
 cam.set_pixel_clock(24)
 cam.set_color_mode(mode=11)
@@ -46,14 +36,7 @@ cam.set_exposure(90)
 
 cam.initialize_memory(pixelbytes=8)
 cam.start_capture(1)
-<<<<<<< HEAD:examples/camera-live/pyro5camera.py
 
-while(True):
-    bayer = np.array(cam.get_image(), dtype=np.uint8).reshape(1024, 1280)
-    print(bayer)
-    dStack = bayer_convert(bayer)
-
-=======
 
 while(True):
     #bayer = cam.get_image()
@@ -62,7 +45,6 @@ while(True):
     dStack = bayer_convert(bayer)
     print(dStack)
 
->>>>>>> 5ef3a154226189edc07e07e6be614bacb7185e44:examples/camera-live/cameratest.py
     cv2.imshow('scope',dStack)
     keyCode = cv2.waitKey(10)
     if cv2.getWindowProperty('scope',cv2.WND_PROP_VISIBLE) < 1:        
