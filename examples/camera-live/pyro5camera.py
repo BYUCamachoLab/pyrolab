@@ -2,6 +2,11 @@ from pyrolab.api import locate_ns, Proxy
 import numpy as np
 import cv2
 import sys
+import socket
+import pickle
+import time
+
+HEADERSIZE = 10
 
 def bayer_convert(bayer):
     w = bayer.shape[0]
@@ -37,11 +42,39 @@ cam.set_framerate(10)
 cam.set_exposure(90)
 
 cam.initialize_memory(pixelbytes=8)
+print("start capture")
 cam.start_capture(1)
+print("socket time")
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect(('10.32.112.191', 2222))
+new_time = time.time()
 
 while(True):
+    old_time = new_time
+    new_time = time.time()
+    time_diff = new_time - old_time
+    print(f"frame period: {time_diff} (sec)")
+
     #bayer = cam.get_image()
-    bayer = np.array(cam.get_image(), dtype=np.uint8).reshape(1024, 1280)
+    cam.get_image()
+    msg = b''
+    new_msg = True
+    while True:
+        if new_msg:
+            sub_msg = s.recv(10)
+            msg_len = int((sub_msg[:HEADERSIZE]))
+            #print(f"new message length: {msg_len}")
+            new_msg = False
+        else:
+            sub_msg = s.recv(264000)
+            msg += sub_msg
+            #print(f"current message length: {len(msg)}")
+            if len(msg) == msg_len:
+                #print("full message recieved")
+                imList = pickle.loads(msg)
+                break
+                
+    bayer = np.array(imList, dtype=np.uint8).reshape(1024, 1280)
     #print(bayer)
     dStack = bayer_convert(bayer)
     #print(dStack)
