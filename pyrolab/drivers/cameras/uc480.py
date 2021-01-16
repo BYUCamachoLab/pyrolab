@@ -2,6 +2,9 @@ from win32event import CreateMutex
 from win32api import GetLastError
 from winerror import ERROR_ALREADY_EXISTS
 from sys import exit
+import socket
+import pickle
+import time
 
 handle = CreateMutex(None, 1, 'Camera Service')
 
@@ -13,7 +16,6 @@ if GetLastError() == ERROR_ALREADY_EXISTS:
 from Pyro5.api import expose, locate_ns, Daemon, config, behavior
 
 def get_ip():
-    import socket
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.connect(("8.8.8.8", 80))
     ip = s.getsockname()[0]
@@ -32,6 +34,9 @@ from ctypes import *
 
 c_word = c_ushort
 c_dword = c_ulong
+
+HEADERSIZE = 10
+s_socket = False
 
 import pyrolab.api
 
@@ -81,7 +86,9 @@ class UC480:
     def get_image(self):
         im = np.frombuffer(self.meminfo[0], c_ubyte).reshape(self.roi_shape[1], self.roi_shape[0])
         image = im.tolist()
-        return image
+        msg = pickle.dumps(image)
+        msg = bytes(f'{len(msg):<{HEADERSIZE}}', "utf-8") + msg
+        clientsocket.send(msg)
 
     def set_pixel_clock(self, clockspeed):
         pixelclock = c_uint(clockspeed)
@@ -91,11 +98,18 @@ class UC480:
 
     def start_capture(self, waitMode):
         tc.StartCapture(self.handle, waitMode)
+        global s_socket
+        s_socket = True
 
     def stop_capture(self, waitMode):
         tc.FreeMemory(self.handle, self.meminfo[0], self.meminfo[1])
         #self.epix.pxd_goUnLive(0x1)
         tc.StopCapture(self.handle, waitMode)
+        clientsocket.close()
+        global ready
+        ready = True
+        global s_socket
+        s_socket = False
         print("unlive now")
         
     def initialize_memory(self, pixelbytes=8):
@@ -167,10 +181,29 @@ if __name__ == "__main__":
     config.SERVERTYPE = "multiplex"
     daemon = Daemon()
     ns = locate_ns(host="camacholab.ee.byu.edu")
+    #print(s_socket)
+    ready = True
+
+    def socket_start():
+        global ready
+        #print(s_socket)
+        #print(ready)
+        if s_socket==True and ready==True:
+            print("starting socket search...")
+            while True:
+                serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                serversocket.bind((socket.gethostname(), 2222))
+                serversocket.listen(5)
+                global clientsocket
+                clientsocket, address = serversocket.accept()
+                break
+            print("client found")
+            ready = False
+        return True
 
     uri = daemon.register(UC480)
     ns.register("UC480", uri)
     try:
-        daemon.requestLoop()
+        daemon.requestLoop(loopCondition=socket_start)
     finally:
         ns.remove("UC480")
