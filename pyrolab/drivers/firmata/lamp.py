@@ -57,8 +57,8 @@ class ARD_LAMP:
         self.board.digital[pin].write(0)
 
     def end(self):
-        for x in range(1,13):
-            board.digital[x].write(0)
+        for x in range(2,13):
+            self.board.digital[x].write(0)
 
 
 if __name__ == "__main__":
