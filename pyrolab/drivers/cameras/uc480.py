@@ -1,26 +1,8 @@
-from win32event import CreateMutex
-from win32api import GetLastError
-from winerror import ERROR_ALREADY_EXISTS
-from sys import exit
 import socket
 import pickle
 import time
 
-handle = CreateMutex(None, 1, 'Camera Service')
-
-if GetLastError() == ERROR_ALREADY_EXISTS:
-    # Take appropriate action, as this is the second instance of this script.
-    print('An instance of this application is already running.')
-    exit(1)
-
-from Pyro5.api import expose, locate_ns, Daemon, config, behavior
-
-def get_ip():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.connect(("8.8.8.8", 80))
-    ip = s.getsockname()[0]
-    s.close()
-    return ip
+from Pyro5.api import expose
 
 import os
 os.environ['PATH'] = "C:\\Program Files\\ThorLabs\\Scientific Imaging\\ThorCam" + ";" + os.environ['PATH']  #this path must be change to the location of the .dll files from Thorlabs
@@ -30,13 +12,20 @@ from thorlabs_kinesis import thor_camera as tc
 
 import numpy as np
 
+#np.set_printoptions(threshold=sys.maxsize)
+
 from ctypes import *
 
 c_word = c_ushort
 c_dword = c_ulong
 
 HEADERSIZE = 10
-s_socket = False
+global ready
+ready = True
+global start
+start = False
+global clientsocket
+clientsocket  = None
 
 import pyrolab.api
 
@@ -84,8 +73,28 @@ class UC480:
             return
 
     def get_image(self):
-        im = np.frombuffer(self.meminfo[0], c_ubyte).reshape(self.roi_shape[1], self.roi_shape[0])
-        image = im.tolist()
+        bayer = np.frombuffer(self.meminfo[0], c_ubyte).reshape(self.roi_shape[1], self.roi_shape[0])
+
+        w = bayer.shape[0]
+        h = bayer.shape[1]
+        ow = (w//4) * 4
+        oh = (h//4) * 4
+
+        R  = bayer[0::2, 0::2]
+        B  = bayer[1::2, 1::2]
+        G0 = bayer[0::2, 1::2]
+        G1 = bayer[1::2, 0::2]
+        
+        R = R[:oh,:ow]
+        B = B[:oh,:ow]
+        G = G0[:oh,:ow]//2 + G1[:oh,:ow]//2
+
+        GRAY = R[:oh,:ow]//3 + B[:oh,:ow]//3 + G[:oh,:ow]//3
+
+        #print(np.dstack((B,G,R)))
+
+        #print(im)
+        image = GRAY.tolist()
         msg = pickle.dumps(image)
         msg = bytes(f'{len(msg):<{HEADERSIZE}}', "utf-8") + msg
         clientsocket.send(msg)
@@ -98,8 +107,8 @@ class UC480:
 
     def start_capture(self, waitMode):
         tc.StartCapture(self.handle, waitMode)
-        global s_socket
-        s_socket = True
+        global start
+        start = True
 
     def stop_capture(self, waitMode):
         tc.FreeMemory(self.handle, self.meminfo[0], self.meminfo[1])
@@ -108,8 +117,8 @@ class UC480:
         clientsocket.close()
         global ready
         ready = True
-        global s_socket
-        s_socket = False
+        global start
+        start = False
         print("unlive now")
         
     def initialize_memory(self, pixelbytes=8):
@@ -175,35 +184,3 @@ class UC480:
             print("ThorCam ROI position set successfully.")
         else:
             print("Set ThorCam ROI pos failed with error code "+str(i))
-
-if __name__ == "__main__":
-    config.HOST = get_ip()
-    config.SERVERTYPE = "multiplex"
-    daemon = Daemon()
-    ns = locate_ns(host="camacholab.ee.byu.edu")
-    #print(s_socket)
-    ready = True
-
-    def socket_start():
-        global ready
-        #print(s_socket)
-        #print(ready)
-        if s_socket==True and ready==True:
-            print("starting socket search...")
-            while True:
-                serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                serversocket.bind((socket.gethostname(), 2222))
-                serversocket.listen(5)
-                global clientsocket
-                clientsocket, address = serversocket.accept()
-                break
-            print("client found")
-            ready = False
-        return True
-
-    uri = daemon.register(UC480)
-    ns.register("UC480", uri)
-    try:
-        daemon.requestLoop(loopCondition=socket_start)
-    finally:
-        ns.remove("UC480")
