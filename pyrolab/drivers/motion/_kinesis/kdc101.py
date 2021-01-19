@@ -77,10 +77,30 @@ class KDC101(KinesisInstrument):
 
     Attributes
     ----------
+    serialno : str
+        The serial number as a Python string.
+    homed : bool
+        Not sure what this is... but looks like it's a bool describing whether or not the device is homeable
+    backlash : int
+        The backlash setting (used to control hysteresis) in device units.
+    velocity : int
+        The homing velocity in device units. It is always a positive integer.
+    
+
+    
+    
+
+    
+
+    
     
     """
     def __init__(self, serialno, polling=200, home=False):
+        self.serialno = serialno
         self._serialno = c_char_p(bytes(str(serialno), "utf-8"))
+        self.backlash = kcdc.CC_GetBacklash(self._serialno)
+        self.velocity = kcdc.CC_GetHomingVelocity(self._serialno)
+        
 
         # Get and store device info
         self._device_info = kcdc.TLI_DeviceInfo()
@@ -202,46 +222,8 @@ class KDC101(KinesisInstrument):
         else:
             raise RuntimeError("Unexpected value received from Kinesis")
 
-    @jog_mode.setter
-    def jog_mode(self, mode="stepped"):
-        pass
 
-    @property
-    def jog_stop_mode(self):
-        """
-        The stop mode for jog moves, either ``immediate`` (motor stops 
-        immediately) or ``profiled`` (motor stops using current velocity 
-            profile).
-        """
-        pass
 
-    @jog_stop_mode.setter
-    def jog_stop_mode(self, mode="profiled"):
-        pass
-
-    @property
-    def jog_step_size(self):
-        pass
-
-    @jog_step_size.setter
-    def jog_step_size(self, step):
-        pass
-
-    @property
-    def jog_acceleration(self):
-        pass
-
-    @jog_acceleration.setter
-    def jog_acceleration(self):
-        pass
-
-    @property
-    def jog_velocity(self):
-        pass
-
-    @jog_velocity.setter
-    def jog_velocity(self, velocity):
-        pass
 
     @property
     def motor_travel_limits(self):
@@ -293,6 +275,7 @@ class KDC101(KinesisInstrument):
     def position(self):
         # status = kcdc.CC_RequestPosition(self._serialno)
         # time.sleep(0.1)
+        #TODO: add functionality to move_to_position
         position = kcdc.CC_GetPosition(self._serialno)
         return position
 
@@ -371,4 +354,11 @@ class KDC101(KinesisInstrument):
 
     def identify(self):
         kcdc.CC_Identify(self._serialno)
-        
+    
+    def go_home(self):
+        """
+        Takes the device home and sets self.homed to true
+        """
+        status = kcdc.CC_Home(self._serialno)
+        check_error(status)
+        self.homed = True
