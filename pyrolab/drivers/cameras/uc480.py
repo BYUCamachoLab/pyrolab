@@ -1,13 +1,13 @@
 import socket
 import pickle
 import time
+import threading
 
 from Pyro5.api import expose
 
 import os
 os.environ['PATH'] = "C:\\Program Files\\ThorLabs\\Scientific Imaging\\ThorCam" + ";" + os.environ['PATH']  #this path must be change to the location of the .dll files from Thorlabs
 
-import time
 from thorlabs_kinesis import thor_camera as tc
 
 import numpy as np
@@ -39,6 +39,11 @@ class UC480:
     roi_shape = None
     roi_pos = None
     framerate = None
+    video_thread = None
+    stop_video = None
+    serversocket = None
+    clientsocket = None
+    start_socket = None
 
     def __init__(self):
         pass
@@ -72,33 +77,48 @@ class UC480:
         else:
             return
 
-    def get_image(self):
+    def _get_image(self):
         bayer = np.frombuffer(self.meminfo[0], c_ubyte).reshape(self.roi_shape[1], self.roi_shape[0])
 
-        w = bayer.shape[0]
-        h = bayer.shape[1]
-        ow = (w//4) * 4
-        oh = (h//4) * 4
+        ow = (bayer.shape[0]//4) * 4
+        oh = (bayer.shape[1]//4) * 4
 
         R  = bayer[0::2, 0::2]
         B  = bayer[1::2, 1::2]
         G0 = bayer[0::2, 1::2]
         G1 = bayer[1::2, 0::2]
-        
-        R = R[:oh,:ow]
-        B = B[:oh,:ow]
-        G = G0[:oh,:ow]//2 + G1[:oh,:ow]//2
 
-        GRAY = R[:oh,:ow]//3 + B[:oh,:ow]//3 + G[:oh,:ow]//3
+        GRAY = R[:oh,:ow]//3 + B[:oh,:ow]//3 + (G0[:oh,:ow]//2 + G1[:oh,:ow]//2)//3
 
         #print(np.dstack((B,G,R)))
 
         #print(im)
-        image = GRAY.tolist()
-        msg = pickle.dumps(image)
+        #image = GRAY.tolist()
+        msg = pickle.dumps(GRAY)
+        #print(len(msg))
         msg = bytes(f'{len(msg):<{HEADERSIZE}}', "utf-8") + msg
-        clientsocket.send(msg)
+        return msg
 
+    def _video_loop(self):
+        while not self.stop_video.is_set():
+            if self.start_socket==True:
+                while True:
+                    print("setting up server...")
+                    self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    self.serversocket.bind((socket.gethostname(), 2222))
+                    self.serversocket.listen(5)
+                    self.clientsocket, address = self.serversocket.accept()
+                    print("server set up")
+                    self.start_socket = False
+                    break
+            msg = self._get_image()
+            #print("image grabbed")
+            self.clientsocket.send(msg)
+            #print("message sent")
+            while True:
+                check_msg = self.clientsocket.recv(2)
+                break
+        
     def set_pixel_clock(self, clockspeed):
         pixelclock = c_uint(clockspeed)
         i = tc.PixelClock(self.handle, 6, byref(pixelclock), sizeof(pixelclock))
@@ -107,18 +127,17 @@ class UC480:
 
     def start_capture(self, waitMode):
         tc.StartCapture(self.handle, waitMode)
-        global start
-        start = True
+        self.start_socket = True
+        self.stop_video = threading.Event()
+        self.video_thread = threading.Thread(target=self._video_loop, args=())
+        self.video_thread.start()
 
     def stop_capture(self, waitMode):
         tc.FreeMemory(self.handle, self.meminfo[0], self.meminfo[1])
         #self.epix.pxd_goUnLive(0x1)
         tc.StopCapture(self.handle, waitMode)
-        clientsocket.close()
-        global ready
-        ready = True
-        global start
-        start = False
+        self.clientsocket.close()
+        self.stop_video.set()
         print("unlive now")
         
     def initialize_memory(self, pixelbytes=8):
