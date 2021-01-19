@@ -74,6 +74,10 @@ class KDC101(KinesisInstrument):
     home : bool
         Whether to automatically home the device upon connection
         (default ``False``).
+
+    Attributes
+    ----------
+    
     """
     def __init__(self, serialno, polling=200, home=False):
         self._serialno = c_char_p(bytes(str(serialno), "utf-8"))
@@ -107,8 +111,8 @@ class KDC101(KinesisInstrument):
             self.homed = False
 
         # The following are in device units
-        self._max_pos = kcdc.CC_GetStageAxisMaxPosition(self._serialno)
-        self._min_pos = kcdc.CC_GetStageAxisMinPosition(self._serialno)
+        self._max_pos = kcdc.CC_GetStageAxisMaxPos(self._serialno)
+        self._min_pos = kcdc.CC_GetStageAxisMinPos(self._serialno)
 
 
 
@@ -128,7 +132,7 @@ class KDC101(KinesisInstrument):
             velocity, or ``2`` for acceleration.
         """
         real_unit = c_double()
-        status = kcdc.GetRealValueFromDeviceUnit(self._serialno, c_int(du), byref(real_unit), c_int(unit_type))
+        status = kcdc.CC_GetRealValueFromDeviceUnit(self._serialno, c_int(du), byref(real_unit), c_int(unit_type))
         check_error(status)
         return real_unit.value
 
@@ -143,7 +147,7 @@ class KDC101(KinesisInstrument):
             velocity, or ``2`` for acceleration.
         """
         device_unit = c_int()
-        status = kcdc.GetDeviceUnitFromRealValue(self._serialno, c_double(real), byref(device_unit), c_int(unit_type))
+        status = kcdc.CC_GetDeviceUnitFromRealValue(self._serialno, c_double(real), byref(device_unit), c_int(unit_type))
         check_error(status)
         return device_unit.value
 
@@ -190,6 +194,7 @@ class KDC101(KinesisInstrument):
         jog_mode = kcdc.MOT_JogModes()
         stop_mode = kcdc.MOT_StopModes()
         status = kcdc.CC_GetJogMode(self._serialno, byref(jog_mode), byref(stop_mode))
+        check_error(status)
         if jog_mode.value == kcdc.MOT_Continuous.value:
             return "continuous"
         elif jog_mode.value == kcdc.MOT_SingleStep.value:
