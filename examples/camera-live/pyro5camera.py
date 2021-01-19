@@ -7,6 +7,7 @@ import pickle
 import time
 
 HEADERSIZE = 10
+BRIGHTNESS = 5
 
 def bayer_convert(bayer):
     w = bayer.shape[0]
@@ -26,8 +27,10 @@ def bayer_convert(bayer):
     R = R[:oh,:ow]
     B = B[:oh,:ow]
     G = G0[:oh,:ow]//2 + G1[:oh,:ow]//2
-
+    #print(bayer.dtype)
     dStack = np.dstack((B,G,R))
+    #dStack = np.clip((np.dstack((0.005*(bayer^2) + 0.718*bayer + 96.754,1.037*bayer - 3.961,1.296*bayer))),0,255).astype('uint8')
+    #print(dStack)
     return dStack
 
 ns = locate_ns(host="camacholab.ee.byu.edu")
@@ -45,28 +48,45 @@ cam.initialize_memory(pixelbytes=8)
 print("start capture")
 cam.start_capture(1)
 print("socket time")
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect(('10.32.112.191', 2222))
-new_time = time.time()
+clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+clientsocket.connect(('10.32.112.191', 2222))
+
+start_time = None
+frame_rate = None
+count = 0
 
 while(True):
-    old_time = new_time
-    new_time = time.time()
-    time_diff = new_time - old_time
-    print(f"frame period: {time_diff} (sec)")
+    if(count==0):
+        start_time = time.time()
+
+    if(time.time() >= start_time + 10):
+        print(f"fps: {count/10.0}")
+        start_time = time.time()
+        count = 0
+
+    #old_time = new_time
+    #new_time = time.time()
+    #time_diff = new_time - old_time
+    #avg_time = (0.2*count + time_diff)/(count + 1)
+    #count = count + 1
+    #print(f"running avg: {avg_time} seconds")
+
+    #print(f"frame period: {time_diff} (sec)")
 
     #bayer = cam.get_image()
-    cam.get_image()
+    #cam.get_frame()
     msg = b''
     new_msg = True
+    msg_len = None
+    imList = None
     while True:
         if new_msg:
-            sub_msg = s.recv(10)
+            sub_msg = clientsocket.recv(HEADERSIZE)
             msg_len = int((sub_msg[:HEADERSIZE]))
             #print(f"new message length: {msg_len}")
             new_msg = False
         else:
-            sub_msg = s.recv(264000)
+            sub_msg = clientsocket.recv(32800)
             msg += sub_msg
             #print(f"current message length: {len(msg)}")
             if len(msg) == msg_len:
@@ -74,14 +94,17 @@ while(True):
                 imList = pickle.loads(msg)
                 break
                 
-    bayer = np.array(imList, dtype=np.uint8).reshape(1024, 1280)
+    bayer = np.array(imList, dtype=np.uint8).reshape(512, 640)
     #print(bayer)
-    dStack = bayer_convert(bayer)
+    dStack = np.clip((np.dstack(((0.469 + bayer*0.75 - (bayer^2)*0.003)*(BRIGHTNESS/5),(bayer*0.95)*(BRIGHTNESS/5),(0.389 + bayer*1.34 - (bayer^2)*0.004)*(BRIGHTNESS/5)))),0,255).astype('uint8')
+    #dStack = bayer_convert(bayer)
     #print(dStack)
 
     cv2.imshow('scope',dStack)
     keyCode = cv2.waitKey(1)
     if cv2.getWindowProperty('scope',cv2.WND_PROP_VISIBLE) < 1:        
         break
+    count = count + 1
+    clientsocket.send(b'g')
 
 cam.close(1)
