@@ -48,28 +48,45 @@ cam.initialize_memory(pixelbytes=8)
 print("start capture")
 cam.start_capture(1)
 print("socket time")
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect(('10.32.112.191', 2222))
-new_time = time.time()
+clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+clientsocket.connect(('10.32.112.191', 2222))
+
+start_time = None
+frame_rate = None
+count = 0
 
 while(True):
-    old_time = new_time
-    new_time = time.time()
-    time_diff = new_time - old_time
+    if(count==0):
+        start_time = time.time()
+
+    if(time.time() >= start_time + 10):
+        print(f"fps: {count/10.0}")
+        start_time = time.time()
+        count = 0
+
+    #old_time = new_time
+    #new_time = time.time()
+    #time_diff = new_time - old_time
+    #avg_time = (0.2*count + time_diff)/(count + 1)
+    #count = count + 1
+    #print(f"running avg: {avg_time} seconds")
+
     #print(f"frame period: {time_diff} (sec)")
 
     #bayer = cam.get_image()
-    cam.get_image()
+    #cam.get_frame()
     msg = b''
     new_msg = True
+    msg_len = None
+    imList = None
     while True:
         if new_msg:
-            sub_msg = s.recv(10)
+            sub_msg = clientsocket.recv(HEADERSIZE)
             msg_len = int((sub_msg[:HEADERSIZE]))
             #print(f"new message length: {msg_len}")
             new_msg = False
         else:
-            sub_msg = s.recv(132000)
+            sub_msg = clientsocket.recv(32800)
             msg += sub_msg
             #print(f"current message length: {len(msg)}")
             if len(msg) == msg_len:
@@ -87,5 +104,7 @@ while(True):
     keyCode = cv2.waitKey(1)
     if cv2.getWindowProperty('scope',cv2.WND_PROP_VISIBLE) < 1:        
         break
+    count = count + 1
+    clientsocket.send(b'g')
 
 cam.close(1)
