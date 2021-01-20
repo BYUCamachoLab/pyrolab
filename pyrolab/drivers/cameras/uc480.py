@@ -1,3 +1,19 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright © PyroLab Project Contributors
+# Licensed under the terms of the GNU GPLv3+ License
+# (see pyrolab/__init__.py for details)
+
+"""
+Santec Tunable Semiconductor Laser 550 (TSL550)
+-----------------------------------------------
+Driver for the Santec TSL-550 Tunable Laser.
+Contributors
+ * David Hill (https://github.com/hillda3141)
+ * Sequoia Ploeg (https://github.com/sequoiap)
+Repo: https://github.com/BYUCamachoLab/pyrolab
+"""
+
 import socket
 import pickle
 import time
@@ -11,8 +27,6 @@ os.environ['PATH'] = "C:\\Program Files\\ThorLabs\\Scientific Imaging\\ThorCam" 
 from thorlabs_kinesis import thor_camera as tc
 
 import numpy as np
-
-#np.set_printoptions(threshold=sys.maxsize)
 
 from ctypes import *
 
@@ -32,6 +46,39 @@ import pyrolab.api
 @expose
 class UC480:
 
+    """ A Thorlabs UC480 Camera.
+    This assumes there is only one camera connected to the computer.
+    ----------
+    handle : handle
+        c-type handle to reference camera (serial port, etc)
+    camera: str
+        camera name
+    bit_depth : int
+        the number of bits used for each pixel (usually is 8)
+    meminfo : array(int)
+        points to the memory location where captured frames are stored
+    roi_shape : array(int)
+        dimentions of the image that is taken by the camera (usually 1024 x 1280)
+    roi_pos : array(int)
+        position of the top left corner of the roi (region of interest) in relation to the sensor array (usaually 0,0)
+    framerate : int
+        the framerate of the camera in frames per second
+    video_thread : thread
+        seperate thread used to run parrell to the main loop that streams the video fromt he camera
+    stop_video : threading.Event (similar to boolean)
+        this is used to end the video streaming by ending the parrellel "video_thread"
+    serversocket : socket
+        socket that represents the server computer (running on port 2222)
+    clientsocket : socket
+        socket that represents the client computer
+    start_socket : boolean
+        if true, initiates the socket server connection
+    Attributes
+    ----------
+    HEADERSIZE : int
+        the size of the header file used to communicate the size of the message (10 bytes is a safe size)
+    """
+
     handle = None
     camera = None
     bit_depth = None
@@ -49,6 +96,10 @@ class UC480:
         pass
 
     def open(self, bit_depth=8, camera="ThorCam FS"):
+        """
+        Opens the serial communication with the Thorlabs camera and sets
+        some low-level values, including the bit depth and camera name.
+        """
         print(tc.GetCameraList)
         num = c_int(0)
         tc.GetNumberOfCameras(byref(num))
@@ -67,6 +118,10 @@ class UC480:
             print("Opening the ThorCam failed with error code "+str(i))
 
     def close(self, waitMode):
+        """
+        Calls self.stop_capture to free memory and end the socket server
+        and then closes serial communication with the camera.
+        """
         if self.handle != None:
             self.stop_capture(waitMode)
             i = tc.ExitCamera(self.handle) 
@@ -78,6 +133,14 @@ class UC480:
             return
 
     def _get_image(self):
+        """
+        Retrieves the last frame from the memory buffer, processes
+        it into a gray-scale image, and serializes it using the pickle
+        library. The header is then added to inform the client how long
+        the message is. This should not be called from the client. It
+        will be called from the function _video_loop() which is on a
+        parrallel thread with Pyro5.
+        """
         bayer = np.frombuffer(self.meminfo[0], c_ubyte).reshape(self.roi_shape[1], self.roi_shape[0])
 
         ow = (bayer.shape[0]//4) * 4
@@ -100,6 +163,11 @@ class UC480:
         return msg
 
     def _video_loop(self):
+        """
+        This function is called as a seperate thread when streaming is initiated.
+        It will loop, sending frame by frame accross the socket connection,
+        until the threading.Event() stop_video is triggered.
+        """
         while not self.stop_video.is_set():
             if self.start_socket==True:
                 while True:
@@ -120,12 +188,20 @@ class UC480:
                 break
         
     def set_pixel_clock(self, clockspeed):
+        """
+        Sets the clockspeed of the camera, usually in the range of 24.
+        """
         pixelclock = c_uint(clockspeed)
         i = tc.PixelClock(self.handle, 6, byref(pixelclock), sizeof(pixelclock))
         print("Pixel:")
         print(i)
 
     def start_capture(self, waitMode):
+        """
+        This starts the capture from the camera to the allocated
+        memory location as well as starts a new parallel thread
+        for the socket server to stream from memory to the client.
+        """
         tc.StartCapture(self.handle, waitMode)
         self.start_socket = True
         self.stop_video = threading.Event()
@@ -133,6 +209,10 @@ class UC480:
         self.video_thread.start()
 
     def stop_capture(self, waitMode):
+        """
+        This frees the memory used for storing the frames then triggers
+        the stop_video event which will end the parrallel socket thread.
+        """
         tc.FreeMemory(self.handle, self.meminfo[0], self.meminfo[1])
         #self.epix.pxd_goUnLive(0x1)
         tc.StopCapture(self.handle, waitMode)
@@ -141,6 +221,9 @@ class UC480:
         print("unlive now")
         
     def initialize_memory(self, pixelbytes=8):
+        """
+        Initializes the memory for holding the most recent frame from the camera.
+        """
         if self.meminfo != None:
             tc.FreeMemory(self.handle, self.meminfo[0], self.meminfo[1])
         
@@ -162,24 +245,41 @@ class UC480:
         self.meminfo = [c_buf, memid]
     
     def set_exposure(self, exposure):
-        #exposure should be given in ms
+        """
+        This sets the exposure of the camera in milliseconds (90 is a good exposure value).
+        """
         exposure_c = c_double(exposure)
         tc.SetExposure(self.handle, 12 , exposure_c, sizeof(exposure_c))
         self.exposure = exposure_c.value
     
     def set_framerate(self, fps):
-        #must reset exposure after setting framerate
-        #frametime should be givin in ms.        
-        set_framerate = c_double(0)
-        tc.SetFrameRate(self.handle, c_double(fps), byref(set_framerate))
-        self.framerate = set_framerate.value
+        """
+        Sets the framerate of the camera (fps). After calling
+        this function you must reset the exposure.
+        """      
+        s_framerate = c_double(0)
+        tc.SetFrameRate(self.handle, c_double(fps), byref(s_framerate))
+        self.framerate = s_framerate.value
 
     def set_color_mode(self, mode=11):
+        """
+        This sets the mode of image that is taken, almost always
+        use 11 which will give you the raw photosensor data in the format:
+            | R  G0 |...
+            | G1  B |...
+              .   .
+              .   .
+              .   .
+        This data is interpreted in the _get_image() function.
+        """
         i = tc.SetColorMode(self.handle, mode) #11 means raw 8-bit, 6 means gray 8-bit
         print("Color Mode:")
         print(i)
 
     def set_roi_shape(self, roi_shape):
+        """
+        Sets the dimmenstions of the region of interest (roi)
+        """
         AOI_size = tc.IS_2D(roi_shape[0], roi_shape[1]) #Width and Height
             
         i = tc.AOI(self.handle, 5, byref(AOI_size), 8)#5 for setting size, 3 for setting position
@@ -192,6 +292,9 @@ class UC480:
             print("Set ThorCam ROI size failed with error code "+str(i))
 
     def set_roi_pos(self, roi_pos):
+        """
+        Sets the origin position of the region of interest (usually (0,0))
+        """
         AOI_pos = tc.IS_2D(roi_pos[0], roi_pos[1]) #Width and Height
             
         i = tc.AOI(self.handle, 3, byref(AOI_pos), 8 )#5 for setting size, 3 for setting position
