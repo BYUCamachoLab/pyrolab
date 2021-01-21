@@ -40,13 +40,14 @@ from thorlabs_kinesis import kcube_dcservo as kcdc
 from thorlabs_kinesis._utils import c_word, c_dword
 
 from pyrolab.drivers.motion._kinesis import KinesisInstrument, ERROR_CODES
+from pyrolab.api import expose
 
 
 KCube_DC_Servo_Device_ID = 27
 
 def check_error(status):
-    if status.value != 0 and status.value in ERROR_CODES.keys():
-        raise RuntimeError(ERROR_CODES[status.value])
+    if status != 0:
+        raise RuntimeError(ERROR_CODES[status])
 
 if kcdc.TLI_BuildDeviceList() == 0:
     size = kcdc.TLI_GetDeviceListSize()
@@ -62,6 +63,7 @@ class HomingMixin:
             self.wait_for_completion()
 
 # TODO: Are requests necessary when polling is active?
+@expose
 class KDC101(KinesisInstrument):
     """
     A KCube DC Servo motor. 
@@ -96,10 +98,12 @@ class KDC101(KinesisInstrument):
     
     
     """
-    def __init__(self, serialno, polling=200, home=False):
+    def __init__(self, serialno: str, polling=200, home=False):
         self.serialno = serialno
         self._serialno = c_char_p(bytes(str(serialno), "utf-8"))
-        self.backlash = kcdc.CC_GetBacklash(self._serialno)
+        serialnos = create_string_buffer(10 * 1)
+        status = kcdc.TLI_GetDeviceListByTypeExt(serialnos, 10 * 1, KCube_DC_Servo_Device_ID)
+        self.backlash = kcdc.CC_GetBacklash(serialnos)
         self.velocity = kcdc.CC_GetHomingVelocity(self._serialno)
         
 
@@ -137,7 +141,7 @@ class KDC101(KinesisInstrument):
 
 
 
-    def __del__(self):
+    def close(self):
         kcdc.CC_Close(self._serialno)
 
     def _real_value_from_du(self, du, unit_type):

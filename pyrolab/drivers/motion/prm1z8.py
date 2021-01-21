@@ -33,7 +33,7 @@ class PRM1Z8(Motion, KDC101, HomingMixin):
     polling : int
         The polling rate in milliseconds.
     """
-    def __init__(self, serialno, polling=200):
+    def __init__(self, serialno: str, polling=200):
         super().__init__(serialno, polling)
 
     def _position_to_du(self, pos: float) -> int:
@@ -52,8 +52,8 @@ class PRM1Z8(Motion, KDC101, HomingMixin):
             The position as a percentage of max travel (device units), range 0 to
             32767, equivalent to 0 to 100%.
         """
-        POSITION_MAX = self.max_pos
-        pos_du = round(interp(pos, [0, POSITION_MAX], [0, SHORT_MAX]))
+        pos_du = self._max_pos
+        #pos_du = round(interp(pos, [0, POSITION_MAX], [0, SHORT_MAX]))
         return pos_du
 
     def _du_to_position(self, pos: int) -> float:
@@ -72,8 +72,8 @@ class PRM1Z8(Motion, KDC101, HomingMixin):
         pos : int
             The absolute position in degrees.
         """
-        POSITION_MAX = self.max_pos
-        pos = interp(int(pos), [-SHORT_MAX, SHORT_MAX], [-POSITION_MAX, POSITION_MAX])
+        pos = self._max_pos
+        #pos = interp(int(pos), [-SHORT_MAX, SHORT_MAX], [-POSITION_MAX, POSITION_MAX])
         return pos
 
     def move(self, position: float) -> None:
