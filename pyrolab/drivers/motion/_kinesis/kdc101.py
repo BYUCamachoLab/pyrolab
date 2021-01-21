@@ -56,9 +56,10 @@ if kcdc.TLI_BuildDeviceList() == 0:
         check_error(status)
 
 class HomingMixin:
-    def home(self):
+    def home(self, block=True):
         kcdc.CC_Home(self._serialno)
-        self.wait_for_completion()
+        if block:
+            self.wait_for_completion()
 
 # TODO: Are requests necessary when polling is active?
 class KDC101(KinesisInstrument):
@@ -172,10 +173,6 @@ class KDC101(KinesisInstrument):
         return device_unit.value
 
     @property
-    def serialno(self):
-        return int(self._serialno.value.decode("utf-8"))
-
-    @property
     def backlash(self):
         """
         The backlash setting (used to control hysteresis) in device units.
@@ -183,6 +180,7 @@ class KDC101(KinesisInstrument):
         # kcdc.CC_RequestBacklash(self._serialno)
         # time.sleep(0.1)
         backlash = kcdc.CC_GetBacklash(self._serialno)
+
         return backlash
 
     @backlash.setter
