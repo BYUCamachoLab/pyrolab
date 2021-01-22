@@ -20,12 +20,6 @@ c_word = c_ushort
 c_dword = c_ulong
 
 HEADERSIZE = 10
-global ready
-ready = True
-global start
-start = False
-global clientsocket
-clientsocket  = None
 
 import pyrolab.api
 
