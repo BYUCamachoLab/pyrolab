@@ -2,7 +2,7 @@ from pyrolab.drivers.lasers import ppcl550 as ppl
 import time
 
 laser = ppl.PPCL550()
-back = laser.connect("COM6",baudrate=9600)
+back = laser.connect("COM4",baudrate=9600)
 print(back)
 back = laser.setPower(14)
 print(back)

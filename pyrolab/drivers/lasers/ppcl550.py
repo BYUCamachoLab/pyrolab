@@ -106,13 +106,23 @@ class PPCL550:
             self.lasercom = serial.Serial(port,baudrate,timeout=1)
         except serial.SerialException:
             return(ITLA_ERROR_SERPORT)
-        back = self.communicate(REG_Nop,0,0)
-        print(back)
-        if back == ITLA_NOERROR:
-            return(ITLA_NOERROR)
-        else:
-            self.lasercom.close()
-            return(ITLA_ERROR_SERBAUD)
+        baudrate2=4800
+        while baudrate2<115200:
+            back = self.communicate(REG_Nop,0,0)
+            if back != ITLA_NOERROR:
+                #go to next baudrate
+                if baudrate2==4800: baudrate2=9600
+                elif baudrate2==9600: baudrate2=19200
+                elif baudrate2==19200: baudrate2=38400
+                elif baudrate2==38400: baudrate2=57600
+                elif baudrate2==57600: baudrate2=115200
+                conn.close()
+                self.lasercom = serial.Serial(port,baudrate2 , timeout=1)            
+            else:
+                return(ITLA_NOERROR)
+        print(baudrate2)
+        self.lasercom.close()
+        return(ITLA_ERROR_SERBAUD)
 
     def disconnect(self):
         self.lasercom.close()
@@ -161,10 +171,10 @@ class PPCL550:
             byte3 = int(data - byte2*256)
             self.latestregister = register
             msg = [0,register,byte2,byte3]
-            msg[0] = msg[0] & int(self.checksum(msg))*16
+            msg[0] = msg[0] | int(self.checksum(msg))*16
             self.send(msg)
             recvmsg = self.recieve()
-            print(recvmsg)
+            #print(recvmsg)
             datamsg = recvmsg[2]*256 + recvmsg[3]
             if (recvmsg[0] & 0x03) == 0x02:
                 extmsg = self.AEA(datamsg)
@@ -181,7 +191,7 @@ class PPCL550:
             byte2=int(data/256)
             byte3=int(data - byte2*256)
             msg = [0,register,byte2,byte3]
-            msg[0] = msg[0] & (int(self.checksum(msg))*16 + 1)
+            msg[0] = msg[0] | (int(self.checksum(msg))*16 + 1)
             self.send(msg)
             recvmsg = self.recieve()
             lock.acquire()
