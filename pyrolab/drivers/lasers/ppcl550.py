@@ -19,6 +19,7 @@ import time
 import struct
 import sys
 import threading
+import array
 
 from Pyro5.api import expose
 
@@ -103,7 +104,7 @@ class PPCL550:
         reftime = time.time()
         connected=False
         try:
-            self.lasercom = serial.Serial(port,baudrate,timeout=1)
+            self.lasercom = serial.Serial(port,baudrate,timeout=1,parity=serial.PARITY_NONE)
             #self.communicate(REG_Resena,0,1)
             #self.communicate(REG_Iocap,0,1)
         except serial.SerialException:
@@ -140,12 +141,12 @@ class PPCL550:
         return back
 
     def setWavelength(self,wavelength):
-        if(wavelength < 1515 or wavelength > 1625):
+        if(wavelength < 1570 or wavelength > 1625):
             return "wavelength not in range"
         else:
             freq = self.wl_freq(wavelength)
             freq_t = int(freq/1000)
-            freq_g = int(freq*10)
+            freq_g = int(freq*10) - freq_t*10000
             print(freq_t)
             print(freq_g)
             back = self.communicate(REG_Fcf1,freq_t,1)
@@ -155,7 +156,7 @@ class PPCL550:
     
     def start(self):
         back = self.communicate(REG_Resena,8,1)
-        for range(10):
+        for x in range(10):
             back = self.communicate(REG_Nop,0,0)
         return back
     
@@ -210,10 +211,8 @@ class PPCL550:
     def send(self,msg):
         self.lasercom.flush()
         print(f"Sent msg: {msg}")
-        self.lasercom.write(bytes(chr(msg[0]),"utf-8"))
-        self.lasercom.write(bytes(chr(msg[1]),"utf-8"))
-        self.lasercom.write(bytes(chr(msg[2]),"utf-8"))
-        self.lasercom.write(bytes(chr(msg[3]),"utf-8"))
+        sendBytes = array.array('B',msg).tobytes()
+        self.lasercom.write(sendBytes)
 
     def recieve(self):
         reftime = time.time()
@@ -223,7 +222,6 @@ class PPCL550:
                 return(0xFF,0xFF,0xFF,0xFF)
             time.sleep(0.0001)
         try:
-            time.sleep(0.5)
             num = self.lasercom.inWaiting()
             print(num)
             msg = []
