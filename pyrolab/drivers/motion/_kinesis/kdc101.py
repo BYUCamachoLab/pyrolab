@@ -89,60 +89,62 @@ class KDC101(KinesisInstrument):
     velocity : int
         The homing velocity in device units. It is always a positive integer.
     
-
-    
-    
-
-    
-
-    
-    
     """
     def __init__(self, serialno: str, polling=200, home=False):
         self.serialno = serialno
         self._serialno = c_char_p(bytes(str(serialno), "utf-8"))
-        serialnos = create_string_buffer(10 * 1)
-        status = kcdc.TLI_GetDeviceListByTypeExt(serialnos, 10 * 1, KCube_DC_Servo_Device_ID)
-        self.backlash = kcdc.CC_GetBacklash(serialnos)
+        check_error(kcdc.CC_Open(self._serialno))
+        print(self._serialno.value.decode("utf-8"))
+        self.backlash = kcdc.CC_GetBacklash(self._serialno)
+        print(f"Blacklash: {self.backlash}")
         self.velocity = kcdc.CC_GetHomingVelocity(self._serialno)
-        
+        print(f"Velocity: {self.velocity}")
 
         # Get and store device info
         self._device_info = kcdc.TLI_DeviceInfo()
         kcdc.TLI_GetDeviceInfo(self._serialno, byref(self._device_info))
+        print(f"Device Info: {self._device_info}")
 
         # Open communication with the device
-        kcdc.CC_Open(self._serialno)
         kcdc.CC_StartPolling(self._serialno, c_int(polling))
+        print(f"Started polling at rate: {polling}")
 
         # Sleep while device initialization occurs
         time.sleep(3)
 
         # Clear the message queue
         kcdc.CC_ClearMessageQueue(self._serialno)
-
-        # Is this necessary?
-        self.wait_for_completion()
+        print("Cleared Message Queue")
 
         if home:
-            if not kcdc.CC_CanHome(self._serialno).value:
+            if not kcdc.CC_CanHome(self._serialno):
                 self.homed = False
                 raise RuntimeError("Device '{}' is not homeable.")
             else:
                 status = kcdc.CC_Home(self._serialno)
                 check_error(status)
                 self.homed = True
+                # Is this necessary?
+                self.wait_for_completion()
+                print("Done waiting for completion")
         else:
             self.homed = False
 
+        print(f"Homed? {self.homed}")
+        pos = kcdc.CC_GetPosition(self._serialno)
+        print(f"Current Pos: {pos}")
+        
         # The following are in device units
         self._max_pos = kcdc.CC_GetStageAxisMaxPos(self._serialno)
         self._min_pos = kcdc.CC_GetStageAxisMinPos(self._serialno)
+        print(f"Max pos: {self._max_pos} Min pos: {self._min_pos}")
+        print(f"Max pos: {self._real_value_from_du(self._max_pos, 0)} Min pos: {self._real_value_from_du(self._min_pos, 0)}")
 
 
 
     def close(self):
         kcdc.CC_Close(self._serialno)
+        print(f"Closed device {self.serialno}")
 
     def _real_value_from_du(self, du, unit_type):
         """
@@ -157,6 +159,9 @@ class KDC101(KinesisInstrument):
             velocity, or ``2`` for acceleration.
         """
         real_unit = c_double()
+        print(f"du: {c_int(du)}")
+        print(f"Real Unit pointer: {byref(real_unit)}")
+        print(f"unit type: {c_int(unit_type)}")
         status = kcdc.CC_GetRealValueFromDeviceUnit(self._serialno, c_int(du), byref(real_unit), c_int(unit_type))
         check_error(status)
         return real_unit.value
@@ -287,6 +292,9 @@ class KDC101(KinesisInstrument):
         message_data = c_dword()
 
         kcdc.CC_WaitForMessage(self._serialno, byref(message_type), byref(message_id), byref(message_data))
+        # print(f"Message Type: {message_type}")
+        # print(f"Message ID: {message_id}")
+        # print(f"Message Data: {message_data}")
         while int(message_type.value) != 2 or int(message_id.value) != 0:
             kcdc.CC_WaitForMessage(self._serialno, byref(message_type), byref(message_id), byref(message_data))
 

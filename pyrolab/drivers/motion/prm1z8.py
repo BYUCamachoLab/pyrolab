@@ -33,8 +33,8 @@ class PRM1Z8(Motion, KDC101, HomingMixin):
     polling : int
         The polling rate in milliseconds.
     """
-    def __init__(self, serialno: str, polling=200):
-        super().__init__(serialno, polling)
+    def __init__(self, serialno: str, polling=200, home=False):
+        super().__init__(serialno, polling, home)
 
     def _position_to_du(self, pos: float) -> int:
         """
@@ -78,7 +78,7 @@ class PRM1Z8(Motion, KDC101, HomingMixin):
 
     def move(self, position: float) -> None:
         """
-        Set the postion of to the given position (degree). 
+        Set the postion of to the given position (radians). 
         
         If the requested position is not in the allowed range, it is set it to 
         minimum or maximum value accordingly.
@@ -88,6 +88,7 @@ class PRM1Z8(Motion, KDC101, HomingMixin):
         position : float
             The position to move to in degree.
         """
+        
         percent = self._position_to_du(position)
         self.position(percent)
 
