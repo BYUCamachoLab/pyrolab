@@ -104,6 +104,8 @@ class PPCL550:
         connected=False
         try:
             self.lasercom = serial.Serial(port,baudrate,timeout=1)
+            #self.communicate(REG_Resena,0,1)
+            #self.communicate(REG_Iocap,0,1)
         except serial.SerialException:
             return(ITLA_ERROR_SERPORT)
         baudrate2=4800
@@ -116,8 +118,8 @@ class PPCL550:
                 elif baudrate2==19200: baudrate2=38400
                 elif baudrate2==38400: baudrate2=57600
                 elif baudrate2==57600: baudrate2=115200
-                conn.close()
-                self.lasercom = serial.Serial(port,baudrate2 , timeout=1)            
+                self.lasercom.close()
+                self.lasercom = serial.Serial(port,baudrate2 , timeout=None)            
             else:
                 return(ITLA_NOERROR)
         print(baudrate2)
@@ -144,6 +146,8 @@ class PPCL550:
             freq = self.wl_freq(wavelength)
             freq_t = int(freq/1000)
             freq_g = int(freq*10)
+            print(freq_t)
+            print(freq_g)
             back = self.communicate(REG_Fcf1,freq_t,1)
             if(back == ITLA_NOERROR):
                 back = self.communicate(REG_Fcf2,freq_g,1)
@@ -170,7 +174,7 @@ class PPCL550:
             byte2 = int(data/256)
             byte3 = int(data - byte2*256)
             self.latestregister = register
-            msg = [0,register,byte2,byte3]
+            msg = [rw,register,byte2,byte3]
             msg[0] = msg[0] | int(self.checksum(msg))*16
             self.send(msg)
             recvmsg = self.recieve()
@@ -190,10 +194,11 @@ class PPCL550:
         else:
             byte2=int(data/256)
             byte3=int(data - byte2*256)
-            msg = [0,register,byte2,byte3]
-            msg[0] = msg[0] | (int(self.checksum(msg))*16 + 1)
+            msg = [rw,register,byte2,byte3]
+            msg[0] = msg[0] | int(self.checksum(msg))*16
             self.send(msg)
             recvmsg = self.recieve()
+            print("recieved")
             lock.acquire()
             self.queue.pop(0)
             lock.release()
@@ -201,6 +206,7 @@ class PPCL550:
             return(errorMsg)
 
     def send(self,msg):
+        self.lasercom.flush()
         print(f"Sent msg: {msg}")
         self.lasercom.write(bytes(chr(msg[0]),"utf-8"))
         self.lasercom.write(bytes(chr(msg[1]),"utf-8"))
@@ -215,11 +221,15 @@ class PPCL550:
                 return(0xFF,0xFF,0xFF,0xFF)
             time.sleep(0.0001)
         try:
+            time.sleep(0.5)
+            num = self.lasercom.inWaiting()
+            print(num)
             msg = []
-            msg.append(ord(self.lasercom.read(1)))
-            msg.append(ord(self.lasercom.read(1)))
-            msg.append(ord(self.lasercom.read(1)))
-            msg.append(ord(self.lasercom.read(1)))
+            bAll = self.lasercom.read(num)
+            print(bAll)
+            for b in bAll:
+                msg.append(b)
+            msg = msg[0:4]
         except:
             print(f"problem with serial communication. queue[0] = {self.queue[0]}")
             msg = [0xFF,0xFF,0xFF,0xFF]
