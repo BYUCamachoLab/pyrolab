@@ -155,6 +155,8 @@ class PPCL550:
     
     def start(self):
         back = self.communicate(REG_Resena,8,1)
+        for range(10):
+            back = self.communicate(REG_Nop,0,0)
         return back
     
     def stop(self):
