@@ -211,7 +211,7 @@ class PPCL550:
     def send(self,msg):
         self.lasercom.flush()
         print(f"Sent msg: {msg}")
-        sendBytes = array.array('B',msg).tobytes()
+        sendBytes = array.array('B',msg).tobytesg()
         self.lasercom.write(sendBytes)
 
     def recieve(self):
