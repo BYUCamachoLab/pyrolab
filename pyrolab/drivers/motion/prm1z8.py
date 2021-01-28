@@ -89,8 +89,8 @@ class PRM1Z8(Motion, KDC101, HomingMixin):
             The position to move to in degree.
         """
         
-        percent = self._position_to_du(position)
-        self.position(percent)
+        #percent = self._position_to_du(position)
+        self.move_to(position)
 
     def jog(self, step: float) -> None:
         """
@@ -104,7 +104,7 @@ class PRM1Z8(Motion, KDC101, HomingMixin):
         pos = self.get_position()
         self.move(pos + step)
 
-    def get_position(self) -> float:
+    def get_pos(self) -> float:
         """
         Gets the current position, as measured by the device. 
 
@@ -114,7 +114,7 @@ class PRM1Z8(Motion, KDC101, HomingMixin):
             The current position in degrees.
         """
         # Get the voltage position and map it to an integer position (returns in degree)
-        pos_du = self.position()
-        return self._du_to_position(pos_du)
+        return self.get_position()
+        #return self._du_to_position(pos_du)
 
     

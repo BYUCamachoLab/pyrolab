@@ -131,6 +131,9 @@ class KDC101(KinesisInstrument):
             self.homed = False
 
         print(f"Homed? {self.homed}")
+        accel_param, vel_param = c_int(), c_int()
+        kcdc.CC_GetJogVelParams(self._serialno, byref(accel_param), byref(vel_param))
+        print("Acceleration:", accel_param.value, "Velocity:", vel_param.value)
         pos = kcdc.CC_GetPosition(self._serialno)
         print(f"Current Pos: {pos}")
         
@@ -138,7 +141,8 @@ class KDC101(KinesisInstrument):
         self._max_pos = kcdc.CC_GetStageAxisMaxPos(self._serialno)
         self._min_pos = kcdc.CC_GetStageAxisMinPos(self._serialno)
         print(f"Max pos: {self._max_pos} Min pos: {self._min_pos}")
-        print(f"Max pos: {self._real_value_from_du(self._max_pos, 0)} Min pos: {self._real_value_from_du(self._min_pos, 0)}")
+        # print(self._du_from_real_value(100,2))
+        # print(f"Max pos: {self._real_value_from_du(self._max_pos, 0)} Min pos: {self._real_value_from_du(self._min_pos, 0)}")
 
 
 
@@ -278,25 +282,24 @@ class KDC101(KinesisInstrument):
         status = kcdc.CC_SetVelParams(self._serialno, c_int(acceleration), c_int(self.move_velocity))
         check_error(status)
 
-    @property
-    def position(self):
+    def get_position(self):
         # status = kcdc.CC_RequestPosition(self._serialno)
         # time.sleep(0.1)
         #TODO: add functionality to move_to_position
-        position = kcdc.CC_GetPosition(self._serialno)
-        return position
+        return kcdc.CC_GetPosition(self._serialno)
 
-    def wait_for_completion(self):
+    def wait_for_completion(self, id="homed"):
         message_type = c_word()
         message_id = c_word()
         message_data = c_dword()
+        
+        conditions = ["homed", "moved", "stopped", "limit_updated"]
+        cond = conditions.index(id)
 
         kcdc.CC_WaitForMessage(self._serialno, byref(message_type), byref(message_id), byref(message_data))
-        # print(f"Message Type: {message_type}")
-        # print(f"Message ID: {message_id}")
-        # print(f"Message Data: {message_data}")
-        while int(message_type.value) != 2 or int(message_id.value) != 0:
+        while int(message_type.value) != 2 or int(message_id.value) != cond:
             kcdc.CC_WaitForMessage(self._serialno, byref(message_type), byref(message_id), byref(message_data))
+    
 
     def reverse(self):
         status = kcdc.CC_SetDirection(self._serialno, True)
@@ -340,6 +343,7 @@ class KDC101(KinesisInstrument):
         """
         status = kcdc.CC_MoveRelative(self._serialno, c_int(displacement))
         check_error(status)
+        self.wait_for_completion(id="moved")
 
     def move_to(self, index):
         """
@@ -354,6 +358,7 @@ class KDC101(KinesisInstrument):
         """
         status = kcdc.CC_MoveToPosition(self._serialno, c_int(index))
         check_error(status)
+        self.wait_for_completion(id="moved")
     
     def stop(self, immediate=False):
         if immediate:
@@ -361,6 +366,7 @@ class KDC101(KinesisInstrument):
         else:
             status = kcdc.CC_StopProfiled(self._serialno)
         check_error(status)
+        self.wait_for_completion(id="stopped")
 
     def identify(self):
         kcdc.CC_Identify(self._serialno)
