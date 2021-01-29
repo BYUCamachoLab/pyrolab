@@ -140,18 +140,26 @@ class PPCL550:
         back = self.communicate(REG_Channel,channel,1)
         return back
 
-    def setWavelength(self,wavelength):
+    def setWavelength(self,wavelength,jump=0):
         if(wavelength < 1570 or wavelength > 1625):
-            return "wavelength not in range"
-        else:
-            freq = self.wl_freq(wavelength)
-            freq_t = int(freq/1000)
-            freq_g = int(freq*10) - freq_t*10000
-            print(freq_t)
-            print(freq_g)
+                return "wavelength not in range"
+        freq = self.wl_freq(wavelength)
+        freq_t = int(freq/1000)
+        freq_g = int(freq*10) - freq_t*10000
+        print(freq_t)
+        print(freq_g)
+
+        if jump == 0:
             back = self.communicate(REG_Fcf1,freq_t,1)
             if(back == ITLA_NOERROR):
                 back = self.communicate(REG_Fcf2,freq_g,1)
+            return back
+        if jump == 1:
+            back = self.communicate(REG_CjumpTHz,freq_t,1)
+            if(back == ITLA_NOERROR):
+                back = self.communicate(REG_CjumpGHz,freq_g,1)
+            if(back == ITLA_NOERROR):
+                back == self.communicate(REG_Cjumpon,1,1)
             return back
     
     def start(self):
