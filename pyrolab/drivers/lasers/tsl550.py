@@ -166,7 +166,7 @@ class TSL550:
             Default is None.
         """
         self.write(command)
-        time.sleep(query_delay)
+        time.sleep(query_delay if query_delay is not None else self.query_delay)
         response = self.read()
 
         return response
