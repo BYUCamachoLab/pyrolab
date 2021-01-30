@@ -91,6 +91,7 @@ class KDC101(KinesisInstrument):
     
     """
     def __init__(self, serialno: str, polling=200, home=False):
+        self.home=home
         self.serialno = serialno
         self._serialno = c_char_p(bytes(str(serialno), "utf-8"))
         check_error(kcdc.CC_Open(self._serialno))
@@ -103,7 +104,9 @@ class KDC101(KinesisInstrument):
         # Get and store device info
         self._device_info = kcdc.TLI_DeviceInfo()
         kcdc.TLI_GetDeviceInfo(self._serialno, byref(self._device_info))
-        print(f"Device Info: {self._device_info}")
+        print(f"Device Info: {self._device_info.serialNo}")
+
+        kcdc.CC_LoadSettings(self._serialno)
 
         # Open communication with the device
         kcdc.CC_StartPolling(self._serialno, c_int(polling))
@@ -116,6 +119,7 @@ class KDC101(KinesisInstrument):
         kcdc.CC_ClearMessageQueue(self._serialno)
         print("Cleared Message Queue")
 
+        print(f"Go Home: {self.home}")
         if home:
             if not kcdc.CC_CanHome(self._serialno):
                 self.homed = False
@@ -136,13 +140,19 @@ class KDC101(KinesisInstrument):
         print("Acceleration:", accel_param.value, "Velocity:", vel_param.value)
         pos = kcdc.CC_GetPosition(self._serialno)
         print(f"Current Pos: {pos}")
+        print(f"Conversion Test: {self._real_value_from_du(200000, 0)}")
         
         # The following are in device units
         self._max_pos = kcdc.CC_GetStageAxisMaxPos(self._serialno)
         self._min_pos = kcdc.CC_GetStageAxisMinPos(self._serialno)
         print(f"Max pos: {self._max_pos} Min pos: {self._min_pos}")
+
+        minpos = c_double()
+        maxpos = c_double()
+        self._max_pos = kcdc.CC_GetMotorTravelLimits(self._serialno, byref(minpos), byref(maxpos))
+        print(f"Max pos: {minpos} Min pos: {maxpos}")
         # print(self._du_from_real_value(100,2))
-        # print(f"Max pos: {self._real_value_from_du(self._max_pos, 0)} Min pos: {self._real_value_from_du(self._min_pos, 0)}")
+        print(f"Conveted Max pos: {self._real_value_from_du(self._max_pos, 0)} Min pos: {self._real_value_from_du(self._min_pos, 0)}")
 
 
 

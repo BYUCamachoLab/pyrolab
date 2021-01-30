@@ -1,15 +1,17 @@
 import os
 os.add_dll_directory("C:\\Program Files\\Thorlabs\\Kinesis")
 
-from pyrolab.drivers.motion.prm1z8 import PRM1Z8
-rotator = PRM1Z8("27003366", home=True)
+from ctypes import c_int, c_double, byref, pointer
+import time
+
+from pyrolab.drivers.motion.z825b import Z825B
+linear = Z825B("27003497", home=False)
 while True:
-    rot_pos = int(input("Rotational Position:"))
-    pos = rotator.get_pos()
+    rot_pos = int(input("Translation Position:"))
+    pos = linear.get_position()
     print(f"Before Move: {pos}")
-    rotator.move_by(rot_pos)
-    pos = rotator.get_pos()
+    linear.move_to(rot_pos)
+    pos = linear.get_position()
     print(f"After Move: {pos}")
 
-
-rotator.close()
+linear.close()
