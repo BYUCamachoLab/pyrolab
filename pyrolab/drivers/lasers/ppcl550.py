@@ -140,6 +140,11 @@ class PPCL550:
         back = self.communicate(REG_Channel,channel,1)
         return back
 
+    def setMode(self,mode){
+        back = self.communicate(REG_Mode,mode,1)
+        return back
+    }
+
     def setWavelength(self,wavelength,jump=0):
         if(wavelength < 1570 or wavelength > 1625):
                 return "wavelength not in range"
