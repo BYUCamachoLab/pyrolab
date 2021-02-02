@@ -95,13 +95,17 @@ class PPCL55x:
     lasercom = serial.Serial()
     minWavelength = 0
     maxWavelength = 0
+    minPower = 0
+    maxPower = 0
 
     _error=ITLA_NOERROR
     seriallock = 0
     
-    def __init__(self,minWL=1515,maxWL=1570):
+    def __init__(self,minWL=1515,maxWL=1570,minPow=7,maxPow=13.5):
         self.minWavelength = minWL
         self.maxWavelength = maxWL
+        self.minPower = minPow
+        self.maxPower = maxPow
         pass
 
     def connect(self,port,baudrate=9600):
