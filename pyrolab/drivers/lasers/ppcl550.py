@@ -5,9 +5,9 @@
 # (see pyrolab/__init__.py for details)
 
 """
-Pure Photonics Tunable Laser 550 (PPCL550)
+Pure Photonics Tunable Laser 5xx (specifically designed for PPCL550 and PPCL551)
 -----------------------------------------------
-Driver for the Santec PPCL-550 Tunable Laser.
+Driver for the Santec PPCL-5xx Tunable Laser.
 Contributors
  * David Hill (https://github.com/hillda3141)
  * Sequoia Ploeg (https://github.com/sequoiap)
@@ -85,7 +85,7 @@ READ=0
 WRITE=1
 
 @expose
-class PPCL550:
+class PPCL55x:
 
     latestregister = 0
     tempport = 0
@@ -93,11 +93,15 @@ class PPCL550:
     queue = []
     maxrowticket = 0
     lasercom = serial.Serial()
+    minWavelength = 0
+    maxWavelength = 0
 
     _error=ITLA_NOERROR
     seriallock = 0
     
-    def __init__(self):
+    def __init__(self,minWL=1515,maxWL=1570):
+        self.minWavelength = minWL
+        self.maxWavelength = maxWL
         pass
 
     def connect(self,port,baudrate=9600):
@@ -105,8 +109,6 @@ class PPCL550:
         connected=False
         try:
             self.lasercom = serial.Serial(port,baudrate,timeout=1,parity=serial.PARITY_NONE)
-            #self.communicate(REG_Resena,0,1)
-            #self.communicate(REG_Iocap,0,1)
         except serial.SerialException:
             return(ITLA_ERROR_SERPORT)
         baudrate2=4800
@@ -154,7 +156,7 @@ class PPCL550:
 
     def setWavelength(self,wavelength,jump=0):
         init_time = time.time()
-        if(wavelength < 1570 or wavelength > 1625):
+        if(wavelength < self.minWavelength or wavelength > self.maxWavelength):
                 return "wavelength not in range"
         freq = self.wl_freq(wavelength)
         freq_t = int(freq/1000)
