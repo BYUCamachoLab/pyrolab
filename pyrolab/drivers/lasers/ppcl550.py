@@ -145,11 +145,11 @@ class PPCL550:
         return back
 
     def sweep(self,minWL,maxWL,pause=0.3,timetaken=10):
-        num_measurments = int(timetaken/pause) + 1
-        step = int((maxWL - minWL)/num_measurments)
-        for count in range(num_measurements):
+        number = int(timetaken/pause) + 1
+        step = int((maxWL - minWL)/number)
+        for count in range(number):
             currWL = min(minWL + count*step,maxWL)
-            setWavelength(self,currWL,jump=1)
+            self.setWavelength(currWL,jump=1)
             time.sleep(pause)
 
     def setWavelength(self,wavelength,jump=0):
