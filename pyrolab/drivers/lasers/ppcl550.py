@@ -140,10 +140,17 @@ class PPCL550:
         back = self.communicate(REG_Channel,channel,1)
         return back
 
-    def setMode(self,mode){
+    def setMode(self,mode):
         back = self.communicate(REG_Mode,mode,1)
         return back
-    }
+
+    def sweep(self,minWL,maxWL,pause=0.3,timetaken=10):
+        num_measurments = int(timetaken/pause) + 1
+        step = int((maxWL - minWL)/num_measurments)
+        for count in range(num_measurements):
+            currWL = min(minWL + count*step,maxWL)
+            setWavelength(self,currWL,jump=1)
+            time.sleep(pause)
 
     def setWavelength(self,wavelength,jump=0):
         init_time = time.time()
@@ -159,7 +166,7 @@ class PPCL550:
             back = self.communicate(REG_Fcf1,freq_t,1)
             if(back == ITLA_NOERROR):
                 back = self.communicate(REG_Fcf2,freq_g,1)
-            time_diff = time.time() - init_time()
+            time_diff = time.time() - init_time
             print(time_diff)
             return back
         if jump == 1:
@@ -168,7 +175,7 @@ class PPCL550:
                 back = self.communicate(REG_CjumpGHz,freq_g,1)
             if(back == ITLA_NOERROR):
                 back == self.communicate(REG_Cjumpon,1,1)
-            time_diff = time.time() - init_time()
+            time_diff = time.time() - init_time
             print(time_diff)
             return back
     
