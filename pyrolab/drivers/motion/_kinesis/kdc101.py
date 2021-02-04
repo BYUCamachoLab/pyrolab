@@ -138,8 +138,7 @@ class KDC101(KinesisInstrument):
         check_error(kcdc.CC_GetMotorParamsExt(self._serialno, byref(stepsPerRev), byref(gearBoxRatio), byref(pitch)))
 
 
-    def close(self):
-        kcdc.CC_Close(self._serialno)
+
 
     def _du_to_real_value(self, du, unit_type):
         """
@@ -423,6 +422,46 @@ class KDC101(KinesisInstrument):
         status = kcdc.CC_SetDirection(self._serialno, True)
         check_error(status)
 
+    def identify(self):
+        kcdc.CC_Identify(self._serialno)
+    
+    def go_home(self):
+        """
+        Takes the device home and sets self.homed to true
+        """
+        status = kcdc.CC_Home(self._serialno)
+        check_error(status)
+        self.homed = True
+        self.wait_for_completion()
+
+    def move_to(self, index):
+        """
+        Move the device to the specified position (index).
+
+        The motor may need to be homed before a position can be set.
+
+        Parameters
+        ----------
+        index : int
+            The position in device units.
+        """
+        status = kcdc.CC_MoveToPosition(self._serialno, c_int(self._real_value_to_du(index)))
+        check_error(status)
+        self.wait_for_completion(id="moved")
+    
+    def move_by(self, displacement):
+        """
+        Move the motor by a relative amount.
+
+        Parameters
+        ----------
+        displacement : int
+            The (signed) displacement in real units.
+        """
+        status = kcdc.CC_MoveRelative(self._serialno, c_int(self._real_value_to_du(displacement)))
+        check_error(status)
+        self.wait_for_completion(id="moved")
+
     def move_continuous(self, direction="forward"):
         """
         Moves the motor at a constant velocity in the specified direction.
@@ -447,34 +486,6 @@ class KDC101(KinesisInstrument):
     def jog(self):
         pass
 
-    def move_by(self, displacement):
-        """
-        Move the motor by a relative amount.
-
-        Parameters
-        ----------
-        displacement : int
-            The (signed) displacement in real units.
-        """
-        status = kcdc.CC_MoveRelative(self._serialno, c_int(self._real_value_to_du(displacement)))
-        check_error(status)
-        self.wait_for_completion(id="moved")
-
-    def move_to(self, index):
-        """
-        Move the device to the specified position (index).
-
-        The motor may need to be homed before a position can be set.
-
-        Parameters
-        ----------
-        index : int
-            The position in device units.
-        """
-        status = kcdc.CC_MoveToPosition(self._serialno, c_int(self._real_value_to_du(index)))
-        check_error(status)
-        self.wait_for_completion(id="moved")
-    
     def stop(self, immediate=False):
         if immediate:
             status = kcdc.CC_StopImmediate(self._serialno)
@@ -483,15 +494,6 @@ class KDC101(KinesisInstrument):
         check_error(status)
         self.wait_for_completion(id="stopped")
 
-    def identify(self):
-        kcdc.CC_Identify(self._serialno)
-    
-    def go_home(self):
-        """
-        Takes the device home and sets self.homed to true
-        """
-        status = kcdc.CC_Home(self._serialno)
-        check_error(status)
-        self.homed = True
-        self.wait_for_completion()
+    def close(self):
+        kcdc.CC_Close(self._serialno)
         
