@@ -145,7 +145,6 @@ class TSL550:
         # Read response
         response = ""
         in_byte = self.device.read()
-
         while in_byte != self.terminator:
             response += in_byte.decode("ASCII")
             in_byte = self.device.read()
@@ -222,8 +221,8 @@ class TSL550:
 
     def wavelength(self, val=None):
         """
-        Sets the output wavelength. If a value is not specified, returns the 
-        currently set wavelength.
+        Sets the output wavelength, and returns nothing. If a value is not 
+        specified, returns the currently set wavelength.
 
         Parameters
         ----------
@@ -246,15 +245,17 @@ class TSL550:
         The following sets the output wavelength to 1560.123 nanometers.
 
         >>> laser.wavelength(1560.123)
-        1630.0 # Bug returns the last set wavelength
         """
-
-        return self._set_var("WA", 4, val)
+        if val is not None:
+            self._set_var("WA", 4, val)
+            return
+        else:
+            return self._set_var("WA", 4, val)
 
     def frequency(self, val=None):
         """
-        Tune the laser to a new frequency. If a value is not
-        specified, returns the currently set frequency.
+        Tune the laser to a new frequency, and will not return a value. 
+        If a value is not specified, returns the currently set frequency.
 
         Parameters
         ----------
@@ -272,10 +273,13 @@ class TSL550:
         >>> laser.frequency()
         183.92175
         >>> laser.frequency(192.0000)
-        183.92175 # Bug returns the last set frequency
         """
 
-        return self._set_var("FQ", 5, val)
+        if val is not None:
+            self._set_var("FQ", 5, val)
+            return
+        else:
+            return self._set_var("FQ", 5, val)
 
     def power_mW(self, val=None):
         """
@@ -337,9 +341,44 @@ class TSL550:
 
         return self._set_var("OP", 2, val)
 
+    def power_att(self, val=None):
+        """
+
+        Parameters
+        ----------
+        val : float, optional
+            The power to be set on the laser in decibels.
+            Range: 0 to +30 (dB)
+            Minimum step: 0.01 (dB)
+
+        Returns
+        -------
+        float
+            The currently set power in decibel-milliwatts.
+
+        Examples
+        --------
+        You can get the current power by calling without arguments.
+        The below code indicates the currently output power is -40 dBm.
+
+        >>> laser.power_dBm()
+        -040.000
+
+        The following sets the output optical power to +3 dBm.
+
+        >>> laser.power_dBm(3)
+        -040.000 # Bug returns the last set power
+        """
+
+        return self._set_var("AT", 2, val)
+
     def power_auto(self):
         """
         Turn on automatic power control.
+
+        Warning
+        -------
+        Shutter must be open to switch power modes.
         """
 
         self.power_control = "auto"
@@ -348,10 +387,14 @@ class TSL550:
     def power_manual(self):
         """
         Turn on manual power control.
+        
+        Warning
+        -------
+        Shutter must be open to switch power modes.
         """
 
         self.power_control = "manual"
-        self.query("AO")
+        return self.query("AO")
 
     def sweep_wavelength(self, start, stop, duration, number=1,
                          delay=0, continuous=True, step_size=1,
@@ -1133,4 +1176,38 @@ class TSL550:
         # Check if LD is on
         self.is_on = True if int(status) < 0 else False
 
-        return status
+        code = {    '-' : "'-': ON\n",
+                    ' ' : "none: OFF\n"
+        }
+        digit_6 = { '0' : "Coherence control: OFF\n",
+                    '1' : "Coherence control: ON\n"
+        }
+        digit_5 = { '0' : "Fine-tuning: OFF\n",
+                    '1' : "Fine-tuning: ON\n"
+        }
+        digit_4 = { '0' : "Power Control: Auto\nAttenuator Control: Hold\nPower Monitor Range Control: Auto\n",
+                    '1' : "Power Control: Manual\nAttenuator Control: Hold (Manual)\nPower Monitor Range Control: Auto\n",
+                    '2' : "Power Control: Auto\nAttenuator Control: Auto\nPower Monitor Range Control: Auto\n",
+                    '3' : "4th digit is not specified for a value of 3\n",
+                    '4' : "Power Control: Auto\nAttenuator Control: Hold\nPower Monitor Range Control: Hold\n",
+                    '5' : "Power Control: Manual\nAttenuator Control: Hold (Manual)\nPower Monitor Range Control: Hold\n",
+        }
+        digit_3 = { '0' : "Laser diode temperature error: No error\n",
+                    '1' : "Laser diode temperature error: Error occurred\n",
+        }
+        digit_2 = { '0' : "Laser diode current limit error: No error\n",
+                    '1' : "Laser diode current limit error: Error occurred\n"
+        }
+        digit_1 = { '0' : "Operation status: Operation is completed\n",
+                    '1' : "Operation status: Wavelength is tuning\n",
+                    '2' : "Operation status: Laser diode current is setting (LD is on state and power control is Auto)\n",
+                    '3' : "Operation status: Wavelength is tuning and LD current is setting\n",
+                    '4' : "Operation status: Attenuator is setting\n",
+                    '5' : "Operation status: Wavelength is setting and attenuator is setting\n",
+                    '6' : "Operation status: LD current is setting and attenuator is setting\n",
+                    '7' : "Operation status: Wavelength is tuning, LD current is setting, and attenuator is setting\n"
+        }
+        output = status + code[status[0]] + digit_6[status[1]] \
+            + digit_5[status[2]] + digit_4[status[3]] + digit_3[status[4]] \
+            + digit_2[status[5]] + digit_1[status[6]]
+        return output
