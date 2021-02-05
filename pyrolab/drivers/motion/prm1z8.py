@@ -14,7 +14,6 @@ Contributors
  * Benjamin Arnesen (https://github.com/BenA8)  
  * Christian Carver (https://github.com/cjcarver)
 """
-from numpy import interp
 
 from pyrolab.drivers.motion import Motion
 from pyrolab.drivers.motion._kinesis.kdc101 import KDC101, HomingMixin
@@ -32,89 +31,11 @@ class PRM1Z8(Motion, KDC101, HomingMixin):
         The serial number of the device to connect to.
     polling : int
         The polling rate in milliseconds.
+    home : bool
+        True tells the device to home when initializing
     """
     def __init__(self, serialno: str, polling=200, home=False):
         super().__init__(serialno, polling, home)
 
-    def _position_to_du(self, pos: float) -> int:
-        """
-        Map a position value to the range 0 to SHORT_MAX (which is the range of 
-        positions for serial communication).
-
-        Parameters
-        ----------
-        pos : float
-            The position to map in microns.
-
-        Returns
-        -------
-        pos_du : int
-            The position as a percentage of max travel (device units), range 0 to
-            32767, equivalent to 0 to 100%.
-        """
-        pos_du = self._max_pos
-        #pos_du = round(interp(pos, [0, POSITION_MAX], [0, SHORT_MAX]))
-        return pos_du
-
-    def _du_to_position(self, pos: int) -> float:
-        """
-        Map a position (device units in the range -SHORT_MAX to SHORT_MAX) to 
-        the real unit range -max_pos to max_pos.
-
-        Parameters
-        ----------
-        pos : int
-            The position as a percentage of max travel, range -32767 to 32767 
-            equivalent to -100% to 100%.
-
-        Returns
-        -------
-        pos : int
-            The absolute position in degrees.
-        """
-        pos = self._max_pos
-        #pos = interp(int(pos), [-SHORT_MAX, SHORT_MAX], [-POSITION_MAX, POSITION_MAX])
-        return pos
-
-    def move(self, position: float) -> None:
-        """
-        Set the postion of to the given position (radians). 
-        
-        If the requested position is not in the allowed range, it is set it to 
-        minimum or maximum value accordingly.
-
-        Parameters
-        ----------
-        position : float
-            The position to move to in degree.
-        """
-        
-        #percent = self._position_to_du(position)
-        self.move_to(position)
-
-    def jog(self, step: float) -> None:
-        """
-        Jog the position by some step value in degrees.
-
-        Parameters
-        ----------
-        step : float
-            The amount to jog the stage by (in degrees).
-        """
-        pos = self.get_position()
-        self.move(pos + step)
-
-    def get_pos(self) -> float:
-        """
-        Gets the current position, as measured by the device. 
-
-        Returns
-        -------
-        position : float
-            The current position in degrees.
-        """
-        # Get the voltage position and map it to an integer position (returns in degree)
-        return self.get_position()
-        #return self._du_to_position(pos_du)
 
     
