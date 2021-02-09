@@ -87,9 +87,27 @@ WRITE=1
 @expose
 class PPCL55x:
 
+    """ A Pure Photonics Laser.
+    ----------
+    latestregister : int
+        stores the last register that was read or written
+    queue : array<int>
+        stores the errors that come back
+    maxrowticket : int
+        stores the placement for communication
+    lasercom : serial.Serial()
+        serial object for communication with the laser
+    minWavelength : int
+        minimum wavelength that the laser can be set to
+    maxWavelength : int
+        maximum wavelength that the laser can be set to
+    minPower : int
+        minimum power that the laser can be set to
+    maxPower : int
+        maximum power that the laser can be set to
+    """
+
     latestregister = 0
-    tempport = 0
-    raybin = 0
     queue = []
     maxrowticket = 0
     lasercom = serial.Serial()
@@ -100,7 +118,9 @@ class PPCL55x:
 
     _error=ITLA_NOERROR
     seriallock = 0
-    
+    """
+    Initialize limiting values for the laser
+    """
     def __init__(self,minWL=1515,maxWL=1570,minPow=7,maxPow=13.5):
         self.minWavelength = minWL
         self.maxWavelength = maxWL
@@ -108,6 +128,9 @@ class PPCL55x:
         self.maxPower = maxPow
         pass
 
+    """
+    Connect with the laser via the serial port specified
+    """
     def connect(self,port,baudrate=9600):
         reftime = time.time()
         connected=False
@@ -133,23 +156,41 @@ class PPCL55x:
         self.lasercom.close()
         return(ITLA_ERROR_SERBAUD)
 
+    """
+    Disconnect from the laser
+    """
     def disconnect(self):
         self.lasercom.close()
         return 0
 
+    """
+    Set the power on the laser.
+    """
     def setPower(self,power):
         sendPower = int(power*100)
         back = self.communicate(REG_Power,sendPower,1)
         return back
 
+    """
+    Set the channel (should always be 1)
+    """
     def setChannel(self,channel=1):
         back = self.communicate(REG_Channel,channel,1)
         return back
 
+    """
+    Set the mode of operation for the laser
+      0: regular mode
+      1: no dither mode
+      2: clean mode
+    """
     def setMode(self,mode):
         back = self.communicate(REG_Mode,mode,1)
         return back
 
+    """
+    Sweep the wavelength on the range inputed, for the time inputed
+    """
     def sweep(self,minWL,maxWL,pause=0.3,timetaken=10):
         number = int(timetaken/pause) + 1
         step = int((maxWL - minWL)/number)
@@ -158,6 +199,9 @@ class PPCL55x:
             self.setWavelength(currWL,jump=1)
             time.sleep(pause)
 
+    """
+    initialize limiting values for the laser
+    """
     def setWavelength(self,wavelength,jump=0):
         init_time = time.time()
         if(wavelength < self.minWavelength or wavelength > self.maxWavelength):
@@ -185,16 +229,25 @@ class PPCL55x:
             print(time_diff)
             return back
     
+    """
+    Send a message to the laser to set up the communication link
+    """
     def start(self):
         back = self.communicate(REG_Resena,8,1)
         for x in range(10):
             back = self.communicate(REG_Nop,0,0)
         return back
     
+    """
+    Send the stop message to the laser
+    """
     def stop(self):
         back = self.communicate(REG_Resena,0,1)
         return back
 
+    """
+    Function used to send and recieve response messages
+    """
     def communicate(self,register,data,rw):
         lock = threading.Lock()
         lock.acquire()
@@ -239,12 +292,18 @@ class PPCL55x:
             errorMsg = int(recvmsg[0] & 0x03)
             return(errorMsg)
 
+    """
+    Function sends message of four bytes to the laser.
+    """
     def send(self,msg):
         self.lasercom.flush()
         print(f"Sent msg: {msg}")
         sendBytes = array.array('B',msg).tobytes()
         self.lasercom.write(sendBytes)
 
+    """
+    Functions recieves the next four bytes from the laser.
+    """
     def recieve(self):
         reftime = time.time()
         while self.lasercom.inWaiting()<4:
@@ -274,14 +333,23 @@ class PPCL55x:
             self._error=ITLA_CSERROR
             return(msg)  
 
+    """
+    Function calculates the checksum.
+    """
     def checksum(self,msg):
         bip8=(msg[0] & 0x0f) ^ msg[1] ^ msg[2] ^ msg[3]
         bip4=((bip8 & 0xf0) >> 4) ^ (bip8 & 0x0f)
         return bip4
 
+    """
+    Convert from wavelength to frequency
+    """
     def wl_freq(self,unit):
         return C_SPEED/unit
 
+    """
+    Lock and unlock serial.
+    """
     def SerialLock(self):
         seriallock=1
     
