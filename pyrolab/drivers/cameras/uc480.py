@@ -92,7 +92,6 @@ class UC480:
         """
         num = c_int(0)
         tc.GetNumberOfCameras(byref(num))
-        print(num.value)
         self.bit_depth = bit_depth
         self.camera = camera
         
@@ -146,22 +145,24 @@ class UC480:
         It will loop, sending frame by frame accross the socket connection,
         until the threading.Event() stop_video is triggered.
         """
+        bad = False
         while not self.stop_video.is_set():
-            if self.start_socket==True:
+            if bad == False:
+                if self.start_socket==True:
+                    while True:
+                        self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        self.serversocket.bind((socket.gethostname(), 2222))
+                        self.serversocket.listen(5)
+                        self.clientsocket, address = self.serversocket.accept()
+                        self.start_socket = False
+                        break
+                msg = self._get_image()
+                self.clientsocket.send(msg)
                 while True:
-                    print("setting up server...")
-                    self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    self.serversocket.bind((socket.gethostname(), 2222))
-                    self.serversocket.listen(5)
-                    self.clientsocket, address = self.serversocket.accept()
-                    print("server set up")
-                    self.start_socket = False
+                    check_msg = self.clientsocket.recv(2)
+                    if(check_msg == b'b'):
+                        bad = True
                     break
-            msg = self._get_image()
-            self.clientsocket.send(msg)
-            while True:
-                check_msg = self.clientsocket.recv(2)
-                break
         
     def set_pixel_clock(self, clockspeed):
         """
