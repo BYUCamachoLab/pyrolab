@@ -54,9 +54,10 @@ while(True):
 
     cv2.imshow('scope',dStack)
     keyCode = cv2.waitKey(1)
-    if cv2.getWindowProperty('scope',cv2.WND_PROP_VISIBLE) < 1:        
+    
+    if cv2.getWindowProperty('scope',cv2.WND_PROP_VISIBLE) < 1:
+        clientsocket.send(b'b')     
         break
-    count = count + 1
     clientsocket.send(b'g')
 
 cam.close(1)
