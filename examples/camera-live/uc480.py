@@ -6,31 +6,14 @@ import socket
 import pickle
 import time
 
+import os
+os.environ['PATH'] = "C:\\Program Files\\ThorLabs\\Scientific Imaging\\ThorCam" + ";" + os.environ['PATH']  #this path must be change to the location of the .dll files from Thorlabs
+
 HEADERSIZE = 10
 BRIGHTNESS = 5
 
 def bayer_convert(bayer):
-    w = bayer.shape[0]
-    h = bayer.shape[1]
-
-    ow = (w//4) * 4
-    oh = (h//4) * 4
-    #print(ow)
-    #print(oh)
-
-    R  = bayer[0::2, 0::2]     # rows 0,2,4,6 columns 0,2,4,6
-    B  = bayer[1::2, 1::2]     # rows 1,3,5,7 columns 1,3,5,7
-    G0 = bayer[0::2, 1::2]     # rows 0,2,4,6 columns 1,3,5,7
-    G1 = bayer[1::2, 0::2]     # rows 1,3,5,7 columns 0,2,4,6
-
-    # Chop any left-over edges and average the 2 Green values
-    R = R[:oh,:ow]
-    B = B[:oh,:ow]
-    G = G0[:oh,:ow]//2 + G1[:oh,:ow]//2
-    #print(bayer.dtype)
-    dStack = np.dstack((B,G,R))
-    #dStack = np.clip((np.dstack((0.005*(bayer^2) + 0.718*bayer + 96.754,1.037*bayer - 3.961,1.296*bayer))),0,255).astype('uint8')
-    #print(dStack)
+    dStack = np.clip((np.dstack(((0.469 + bayer*0.75 - (bayer^2)*0.003)*(BRIGHTNESS/5),(bayer*0.95)*(BRIGHTNESS/5),(0.389 + bayer*1.34 - (bayer^2)*0.004)*(BRIGHTNESS/5)))),0,255).astype('uint8')
     return dStack
 
 ns = locate_ns(host="camacholab.ee.byu.edu")
@@ -64,17 +47,6 @@ while(True):
         start_time = time.time()
         count = 0
 
-    #old_time = new_time
-    #new_time = time.time()
-    #time_diff = new_time - old_time
-    #avg_time = (0.2*count + time_diff)/(count + 1)
-    #count = count + 1
-    #print(f"running avg: {avg_time} seconds")
-
-    #print(f"frame period: {time_diff} (sec)")
-
-    #bayer = cam.get_image()
-    #cam.get_frame()
     msg = b''
     new_msg = True
     msg_len = None
@@ -95,10 +67,7 @@ while(True):
                 break
                 
     bayer = np.array(imList, dtype=np.uint8).reshape(512, 640)
-    #print(bayer)
-    dStack = np.clip((np.dstack(((0.469 + bayer*0.75 - (bayer^2)*0.003)*(BRIGHTNESS/5),(bayer*0.95)*(BRIGHTNESS/5),(0.389 + bayer*1.34 - (bayer^2)*0.004)*(BRIGHTNESS/5)))),0,255).astype('uint8')
-    #dStack = bayer_convert(bayer)
-    #print(dStack)
+    dStack = bayer_convert(bayer)
 
     cv2.imshow('scope',dStack)
     keyCode = cv2.waitKey(1)

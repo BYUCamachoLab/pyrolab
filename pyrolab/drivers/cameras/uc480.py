@@ -20,10 +20,6 @@ import time
 import threading
 
 from Pyro5.api import expose
-
-import os
-os.environ['PATH'] = "C:\\Program Files\\ThorLabs\\Scientific Imaging\\ThorCam" + ";" + os.environ['PATH']  #this path must be change to the location of the .dll files from Thorlabs
-
 from thorlabs_kinesis import thor_camera as tc
 
 import numpy as np
@@ -100,7 +96,6 @@ class UC480:
         Opens the serial communication with the Thorlabs camera and sets
         some low-level values, including the bit depth and camera name.
         """
-        print(tc.GetCameraList)
         num = c_int(0)
         tc.GetNumberOfCameras(byref(num))
         print(num.value)
@@ -109,13 +104,9 @@ class UC480:
         
         self.handle = c_int(0)
         i = tc.InitCamera(byref(self.handle))     
-        #print("Display Mode:")
         tc.SetDisplayMode(self.handle, c_int(32768)) 
-        #print(i)
-        if i == 0:
-            print("ThorCam opened successfully.")
-        else:
-            print("Opening the ThorCam failed with error code "+str(i))
+        if i ~= 0:
+            raise Exception("Opening the ThorCam failed with error code "+str(i))
 
     def close(self, waitMode):
         """
@@ -125,10 +116,8 @@ class UC480:
         if self.handle != None:
             self.stop_capture(waitMode)
             i = tc.ExitCamera(self.handle) 
-            if i == 0:
-                print("ThorCam closed successfully.")
-            else:
-                print("Closing ThorCam failed with error code "+str(i))
+            if i ~= 0:
+                raise Exception("Closing ThorCam failed with error code "+str(i))
         else:
             return
 
@@ -153,12 +142,7 @@ class UC480:
 
         GRAY = R[:oh,:ow]//3 + B[:oh,:ow]//3 + (G0[:oh,:ow]//2 + G1[:oh,:ow]//2)//3
 
-        #print(np.dstack((B,G,R)))
-
-        #print(im)
-        #image = GRAY.tolist()
         msg = pickle.dumps(GRAY)
-        #print(len(msg))
         msg = bytes(f'{len(msg):<{HEADERSIZE}}', "utf-8") + msg
         return msg
 
@@ -180,9 +164,7 @@ class UC480:
                     self.start_socket = False
                     break
             msg = self._get_image()
-            #print("image grabbed")
             self.clientsocket.send(msg)
-            #print("message sent")
             while True:
                 check_msg = self.clientsocket.recv(2)
                 break
@@ -193,8 +175,6 @@ class UC480:
         """
         pixelclock = c_uint(clockspeed)
         i = tc.PixelClock(self.handle, 6, byref(pixelclock), sizeof(pixelclock))
-        print("Pixel:")
-        print(i)
 
     def start_capture(self, waitMode):
         """
@@ -214,11 +194,9 @@ class UC480:
         the stop_video event which will end the parrallel socket thread.
         """
         tc.FreeMemory(self.handle, self.meminfo[0], self.meminfo[1])
-        #self.epix.pxd_goUnLive(0x1)
         tc.StopCapture(self.handle, waitMode)
         self.clientsocket.close()
         self.stop_video.set()
-        print("unlive now")
         
     def initialize_memory(self, pixelbytes=8):
         """
@@ -229,18 +207,12 @@ class UC480:
         
         xdim = self.roi_shape[0]
         ydim = self.roi_shape[1]
-        #print(xdim)
-        #print(ydim)
         imagesize = xdim*ydim
-        #print(imagesize)
             
         memid = c_int(0)
         c_buf = (c_ubyte * imagesize)(0)
-        #print(c_buf)
 
         tc.AllocateMemory(self.handle, xdim, ydim, c_int(pixelbytes), c_buf, byref(memid))
-        #print(c_buf)
-        #print(memid)
         tc.SetImageMemory(self.handle, c_buf, memid)
         self.meminfo = [c_buf, memid]
     
@@ -273,8 +245,6 @@ class UC480:
         This data is interpreted in the _get_image() function.
         """
         i = tc.SetColorMode(self.handle, mode) #11 means raw 8-bit, 6 means gray 8-bit
-        print("Color Mode:")
-        print(i)
 
     def set_roi_shape(self, roi_shape):
         """
@@ -286,10 +256,8 @@ class UC480:
         tc.AOI(self.handle, 6, byref(AOI_size), 8)#6 for getting size, 4 for getting position
         self.roi_shape = [AOI_size.s32X, AOI_size.s32Y]
         print(self.roi_shape)
-        if i == 0:
-            print("ThorCam ROI size set successfully.")
-        else:
-            print("Set ThorCam ROI size failed with error code "+str(i))
+        if i ~= 0:
+            raise Exception("Set ThorCam ROI size failed with error code "+str(i))
 
     def set_roi_pos(self, roi_pos):
         """
@@ -302,7 +270,5 @@ class UC480:
         self.roi_pos = [AOI_pos.s32X, AOI_pos.s32Y]
         print(self.roi_pos)
         
-        if i == 0:
-            print("ThorCam ROI position set successfully.")
-        else:
-            print("Set ThorCam ROI pos failed with error code "+str(i))
+        if i ~= 0:
+            raise Exception("Set ThorCam ROI pos failed with error code "+str(i))
