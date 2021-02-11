@@ -99,7 +99,7 @@ class UC480:
         self.handle = c_int(0)
         i = tc.InitCamera(byref(self.handle))     
         tc.SetDisplayMode(self.handle, c_int(32768)) 
-        if i ~= 0:
+        if i != 0:
             raise Exception("Opening the ThorCam failed with error code "+str(i))
 
     def close(self, waitMode):
@@ -110,7 +110,7 @@ class UC480:
         if self.handle != None:
             self.stop_capture(waitMode)
             i = tc.ExitCamera(self.handle) 
-            if i ~= 0:
+            if i != 0:
                 raise Exception("Closing ThorCam failed with error code "+str(i))
         else:
             return
@@ -249,9 +249,6 @@ class UC480:
         i = tc.AOI(self.handle, 5, byref(AOI_size), 8)#5 for setting size, 3 for setting position
         tc.AOI(self.handle, 6, byref(AOI_size), 8)#6 for getting size, 4 for getting position
         self.roi_shape = [AOI_size.s32X, AOI_size.s32Y]
-        print(self.roi_shape)
-        if i ~= 0:
-            raise Exception("Set ThorCam ROI size failed with error code "+str(i))
 
     def set_roi_pos(self, roi_pos):
         """
@@ -262,7 +259,3 @@ class UC480:
         i = tc.AOI(self.handle, 3, byref(AOI_pos), 8 )#5 for setting size, 3 for setting position
         tc.AOI(self.handle, 4, byref(AOI_pos), 8 )#6 for getting size, 4 for getting position
         self.roi_pos = [AOI_pos.s32X, AOI_pos.s32Y]
-        print(self.roi_pos)
-        
-        if i ~= 0:
-            raise Exception("Set ThorCam ROI pos failed with error code "+str(i))
