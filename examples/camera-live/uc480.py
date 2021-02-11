@@ -28,25 +28,11 @@ cam.set_framerate(10)
 cam.set_exposure(90)
 
 cam.initialize_memory(pixelbytes=8)
-print("start capture")
 cam.start_capture(1)
-print("socket time")
 clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 clientsocket.connect(('10.32.112.191', 2222))
 
-start_time = None
-frame_rate = None
-count = 0
-
 while(True):
-    if(count==0):
-        start_time = time.time()
-
-    if(time.time() >= start_time + 10):
-        print(f"fps: {count/10.0}")
-        start_time = time.time()
-        count = 0
-
     msg = b''
     new_msg = True
     msg_len = None
@@ -55,14 +41,11 @@ while(True):
         if new_msg:
             sub_msg = clientsocket.recv(HEADERSIZE)
             msg_len = int((sub_msg[:HEADERSIZE]))
-            #print(f"new message length: {msg_len}")
             new_msg = False
         else:
             sub_msg = clientsocket.recv(32800)
             msg += sub_msg
-            #print(f"current message length: {len(msg)}")
             if len(msg) == msg_len:
-                #print("full message recieved")
                 imList = pickle.loads(msg)
                 break
                 
