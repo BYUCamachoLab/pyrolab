@@ -42,6 +42,7 @@ import pyrolab.api
 class ARD_LAMP:
 
     def __init__(self, port="COM5"):
+        self.port = port
         pass
 
     def set_port(self,port='COM5'):
