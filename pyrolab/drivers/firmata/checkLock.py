@@ -6,8 +6,10 @@ async def hello(websocket, path):
     print(name)
     if name == "lock":
         await websocket.send("LOCKED")
-    if name == "unlock":
+    elif name == "unlock":
         await websocket.send("UNLOCKED")
+    else:
+        await websocket.send("Good to meet you " + name)
 
 start_server = websockets.serve(hello, "localhost", 80)
 
