@@ -6,10 +6,12 @@ async def hello(websocket, path):
     print(name)
     if name == "lock":
         await websocket.send("LOCKED")
-    if name == "unlock":
+    elif name == "unlock":
         await websocket.send("UNLOCKED")
+    else:
+        await websocket.send("Good to meet you " + name)
 
-start_server = websockets.serve(hello, "localhost", 80)
+start_server = websockets.serve(hello, "10.32.112.191", 80)
 
 asyncio.get_event_loop().run_until_complete(start_server)
 asyncio.get_event_loop().run_forever()
