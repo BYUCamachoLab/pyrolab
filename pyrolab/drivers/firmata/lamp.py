@@ -19,11 +19,8 @@ import pyrolab.api
 @expose
 class LAMP:
 
-    def __init__(self,port="COM5"):
-        self.port = port
-        pass
-
-    def set_port(self,port="COM5"):
+    def __init__(self,port):
+        print("yeet2")
         self.port = port
 
     def start(self):
@@ -34,3 +31,6 @@ class LAMP:
 
     def off(self,pin=13):
         self.board.digital[pin].write(0)
+    
+    def exit(self):
+        self.board.exit()
