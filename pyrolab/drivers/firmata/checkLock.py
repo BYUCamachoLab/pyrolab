@@ -3,23 +3,23 @@ import websockets
 from pyrolab.api import locate_ns, Proxy
 
 def getNames(reference):
-    names = []
+    names = ""
     if(reference == "TSL"):
-        names = ["lasers.TSL550"]
+        names = "lasers.TSL550"
     elif(reference == "PPC"):
-        names = ["PPCL550"]
+        names = "PPCL550"
     elif(reference == "PP2"):
-        names = ["PPCL551"]
+        names = "PPCL551"
     elif(reference == "MIC"):
-        names = ["UC480"]
+        names = "UC480"
     elif(reference == "LAM"):
-        names = ["LAMP"]
+        names = "LAMP"
     elif(reference == "KCU"):
-        names = ["KCUBES"]
+        names = "KCUBES"
     return names
 
 def get_status(name):
-    valid = True
+    print(name)
     try:
         ns = locate_ns(host="camacholab.ee.byu.edu")
         service = Proxy(ns.lookup(name))
@@ -30,17 +30,17 @@ def get_status(name):
         else:
             return 0
     except:
-        valid = False
         return -1
 
 def lock(name):
+    print(name)
     try:
         ns = locate_ns(host="camacholab.ee.byu.edu")
         service = Proxy(ns.lookup(name))
         service.lock()
         service._pyroRelease()
         return "LOCKED"
-    except(Pyro5.errors.NamingError):  
+    except:  
         return "UNLOCKED"
 
 def unlock(name):
@@ -50,7 +50,7 @@ def unlock(name):
         service.release()
         service._pyroRelease()
         return "UNLOCKED"
-    except(Pyro5.errors.NamingError):
+    except:
         return "LOCKED"
 
 def refresh():
@@ -110,14 +110,12 @@ async def read(websocket, path):
 
     if(request[:4] == "lock"):
         reference = request[4:]
-        names = getNames(reference)
-        for name in names:
-            msg = lock(name)
+        name = getNames(reference)
+        msg = lock(name)
     elif(request[:4] == "unlk"):
         reference = request[4:]
-        names = getNames(reference)
-        for name in names:
-            msg = unlock(name)
+        name = getNames(reference)
+        msg = unlock(name)
     elif(request[:4] == "refr"):
         msg = refresh()
     
