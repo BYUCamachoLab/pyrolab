@@ -2,7 +2,7 @@ import asyncio
 import websockets
 from pyrolab.api import locate_ns, Proxy
 
-def getNames(reference):
+def get_names(reference):
     name = ""
     if(reference == "TSL"):
         name = "lasers.TSL550"
@@ -32,33 +32,54 @@ def get_status(name):
     except:
         return -1
 
-def lock(name):
+def lock(name,user):
     print(name)
     try:
         ns = locate_ns(host="camacholab.ee.byu.edu")
         service = Proxy(ns.lookup(name))
-        service.lock()
+        stat = service.lock(user)
         service._pyroRelease()
-        return "LOCKED"
+        if stat == 1:
+            return "LOCKED"
+        else:
+            return "UNLOCKED"
     except:  
         return "UNLOCKED"
 
-def unlock(name):
+def unlock(name,user):
     try:
         ns = locate_ns(host="camacholab.ee.byu.edu")
         service = Proxy(ns.lookup(name))
-        service.release()
+        stat = service.release(user)
         service._pyroRelease()
-        return "UNLOCKED"
+        if stat == 1:
+            return "UNLOCKED"
+        else:
+            return "LOCKED"
     except:
         return "LOCKED"
+
+def get_user(name):
+    print(name)
+    try:
+        ns = locate_ns(host="camacholab.ee.byu.edu")
+        service = Proxy(ns.lookup(name))
+        user = service.get_user()
+        service._pyroRelease()
+        return user
+    except:  
+        return ""
 
 def refresh():
     names = ["lasers.TCL550","PPCL550","PPCL551","UC480","LAMP","KCUBES"]
     status = []
+    users = ""
     for name in names:
         s = get_status(name)
         status.append(s)
+        users = users + ":"
+        if s == 1:
+            users = users + get_user(name)
     msg = ""
     if status[0] == 1:
         msg = msg + "L"
@@ -102,6 +123,8 @@ def refresh():
         msg = msg + "U"
     else:
         msg = msg + "-"
+    msg = msg + users
+    print(msg)
     return msg
 
 async def read(websocket, path):
@@ -109,13 +132,15 @@ async def read(websocket, path):
     msg = ""
 
     if(request[:4] == "lock"):
-        reference = request[4:]
-        name = getNames(reference)
-        msg = lock(name)
+        reference = request[4:7]
+        user = request[7:]
+        name = get_names(reference)
+        msg = lock(name,user)
     elif(request[:4] == "unlk"):
-        reference = request[4:]
-        name = getNames(reference)
-        msg = unlock(name)
+        reference = request[4:7]
+        user = request[7:]
+        name = get_names(reference)
+        msg = unlock(name,user)
     elif(request[:4] == "refr"):
         msg = refresh()
     
