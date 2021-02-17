@@ -3,20 +3,20 @@ import websockets
 from pyrolab.api import locate_ns, Proxy
 
 def getNames(reference):
-    names = ""
+    name = ""
     if(reference == "TSL"):
-        names = "lasers.TSL550"
+        name = "lasers.TSL550"
     elif(reference == "PPC"):
-        names = "PPCL550"
+        name = "PPCL550"
     elif(reference == "PP2"):
-        names = "PPCL551"
+        name = "PPCL551"
     elif(reference == "MIC"):
-        names = "UC480"
+        name = "UC480"
     elif(reference == "LAM"):
-        names = "LAMP"
+        name = "LAMP"
     elif(reference == "KCU"):
-        names = "KCUBES"
-    return names
+        name = "KCUBES"
+    return name
 
 def get_status(name):
     print(name)
