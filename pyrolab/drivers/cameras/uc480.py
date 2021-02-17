@@ -81,8 +81,10 @@ class UC480:
     serversocket = None
     clientsocket = None
     start_socket = None
+    enabled = False
 
     def __init__(self):
+        self.enabled = True
         pass
 
     def open(self, bit_depth=8, camera="ThorCam FS"):
@@ -90,6 +92,9 @@ class UC480:
         Opens the serial communication with the Thorlabs camera and sets
         some low-level values, including the bit depth and camera name.
         """
+        if self.enabled == False:
+            raise Exception("Device is locked")
+
         num = c_int(0)
         tc.GetNumberOfCameras(byref(num))
         self.bit_depth = bit_depth
@@ -106,6 +111,9 @@ class UC480:
         Calls self.stop_capture to free memory and end the socket server
         and then closes serial communication with the camera.
         """
+        if self.enabled == False:
+            raise Exception("Device is locked")
+        
         if self.handle != None:
             self.stop_capture(waitMode)
             i = tc.ExitCamera(self.handle) 
@@ -123,6 +131,9 @@ class UC480:
         will be called from the function _video_loop() which is on a
         parrallel thread with Pyro5.
         """
+        if self.enabled == False:
+            raise Exception("Device is locked")
+        
         bayer = np.frombuffer(self.meminfo[0], c_ubyte).reshape(self.roi_shape[1], self.roi_shape[0])
 
         ow = (bayer.shape[0]//4) * 4
@@ -145,6 +156,9 @@ class UC480:
         It will loop, sending frame by frame accross the socket connection,
         until the threading.Event() stop_video is triggered.
         """
+        if self.enabled == False:
+            raise Exception("Device is locked")
+        
         bad = False
         while not self.stop_video.is_set():
             if bad == False:
@@ -168,6 +182,9 @@ class UC480:
         """
         Sets the clockspeed of the camera, usually in the range of 24.
         """
+        if self.enabled == False:
+            raise Exception("Device is locked")
+        
         pixelclock = c_uint(clockspeed)
         i = tc.PixelClock(self.handle, 6, byref(pixelclock), sizeof(pixelclock))
 
@@ -177,6 +194,9 @@ class UC480:
         memory location as well as starts a new parallel thread
         for the socket server to stream from memory to the client.
         """
+        if self.enabled == False:
+            raise Exception("Device is locked")
+        
         tc.StartCapture(self.handle, waitMode)
         self.start_socket = True
         self.stop_video = threading.Event()
@@ -188,6 +208,9 @@ class UC480:
         This frees the memory used for storing the frames then triggers
         the stop_video event which will end the parrallel socket thread.
         """
+        if self.enabled == False:
+            raise Exception("Device is locked")
+        
         tc.FreeMemory(self.handle, self.meminfo[0], self.meminfo[1])
         tc.StopCapture(self.handle, waitMode)
         self.clientsocket.close()
@@ -197,6 +220,9 @@ class UC480:
         """
         Initializes the memory for holding the most recent frame from the camera.
         """
+        if self.enabled == False:
+            raise Exception("Device is locked")
+        
         if self.meminfo != None:
             tc.FreeMemory(self.handle, self.meminfo[0], self.meminfo[1])
         
@@ -215,6 +241,9 @@ class UC480:
         """
         This sets the exposure of the camera in milliseconds (90 is a good exposure value).
         """
+        if self.enabled == False:
+            raise Exception("Device is locked")
+        
         exposure_c = c_double(exposure)
         tc.SetExposure(self.handle, 12 , exposure_c, sizeof(exposure_c))
         self.exposure = exposure_c.value
@@ -223,7 +252,10 @@ class UC480:
         """
         Sets the framerate of the camera (fps). After calling
         this function you must reset the exposure.
-        """      
+        """  
+        if self.enabled == False:
+            raise Exception("Device is locked")
+            
         s_framerate = c_double(0)
         tc.SetFrameRate(self.handle, c_double(fps), byref(s_framerate))
         self.framerate = s_framerate.value
@@ -239,12 +271,18 @@ class UC480:
               .   .
         This data is interpreted in the _get_image() function.
         """
+        if self.enabled == False:
+            raise Exception("Device is locked")
+        
         i = tc.SetColorMode(self.handle, mode) #11 means raw 8-bit, 6 means gray 8-bit
 
     def set_roi_shape(self, roi_shape):
         """
         Sets the dimmenstions of the region of interest (roi)
         """
+        if self.enabled == False:
+            raise Exception("Device is locked")
+        
         AOI_size = tc.IS_2D(roi_shape[0], roi_shape[1]) #Width and Height
             
         i = tc.AOI(self.handle, 5, byref(AOI_size), 8)#5 for setting size, 3 for setting position
@@ -255,6 +293,9 @@ class UC480:
         """
         Sets the origin position of the region of interest (usually (0,0))
         """
+        if self.enabled == False:
+            raise Exception("Device is locked")
+        
         AOI_pos = tc.IS_2D(roi_pos[0], roi_pos[1]) #Width and Height
             
         i = tc.AOI(self.handle, 3, byref(AOI_pos), 8 )#5 for setting size, 3 for setting position
