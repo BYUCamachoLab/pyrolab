@@ -20,7 +20,6 @@ import pyrolab.api
 class LAMP:
 
     def __init__(self,port):
-        print("yeet2")
         self.port = port
 
     def start(self):
