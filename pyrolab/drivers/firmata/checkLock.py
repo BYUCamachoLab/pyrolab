@@ -15,7 +15,7 @@ def getNames(reference):
     elif(reference == "LAM"):
         names = ["LAMP"]
     elif(reference == "KCU"):
-        names = ["KCUBES"]
+        names = ["KCUBE_ROT","KCUBE_LAT","KCUBE_LON"]
     return names
 
 def get_status(name):
@@ -33,28 +33,30 @@ def get_status(name):
         valid = False
         return -1
 
-def lock(name):
+def lock(names):
     try:
-        ns = locate_ns(host="camacholab.ee.byu.edu")
-        service = Proxy(ns.lookup(name))
-        service.lock()
-        service._pyroRelease()
+        for name in names:
+            ns = locate_ns(host="camacholab.ee.byu.edu")
+            service = Proxy(ns.lookup(name))
+            service.lock()
+            service._pyroRelease()
         return "LOCKED"
     except(Pyro5.errors.NamingError):  
         return "UNLOCKED"
 
-def unlock(name):
+def unlock(names):
     try:
-        ns = locate_ns(host="camacholab.ee.byu.edu")
-        service = Proxy(ns.lookup(name))
-        service.release()
-        service._pyroRelease()
+        for name in names:
+            ns = locate_ns(host="camacholab.ee.byu.edu")
+            service = Proxy(ns.lookup(name))
+            service.release()
+            service._pyroRelease()
         return "UNLOCKED"
     except(Pyro5.errors.NamingError):
         return "LOCKED"
 
 def refresh():
-    names = ["lasers.TCL550","PPCL550","PPCL551","UC480","LAMP","KCUBES"]
+    names = ["lasers.TCL550","PPCL550","PPCL551","UC480","LAMP","KCUBE_ROT","KCUBE_LAT","KCUBE_LON"]
     status = []
     for name in names:
         s = get_status(name)
@@ -96,9 +98,9 @@ def refresh():
         msg = msg + "U"
     else:
         msg = msg + "-"
-    if status[5] == 1:
+    if status[5] == 1 and status[6] == 1 and status[7] == 1:
         msg = msg + "L"
-    elif status[5] == 0:
+    elif status[5] == 0 and status[6] == 0 and status[7] == 0:
         msg = msg + "U"
     else:
         msg = msg + "-"
