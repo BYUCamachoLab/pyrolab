@@ -115,6 +115,7 @@ class PPCL55x:
     maxWavelength = 0
     minPower = 0
     maxPower = 0
+    enabled = False
 
     _error=ITLA_NOERROR
     seriallock = 0
@@ -122,16 +123,23 @@ class PPCL55x:
     Initialize limiting values for the laser
     """
     def __init__(self,minWL=1515,maxWL=1570,minPow=7,maxPow=13.5):
+        #self.enabled = True
+        #print(self.enabled)
         self.minWavelength = minWL
         self.maxWavelength = maxWL
         self.minPower = minPow
         self.maxPower = maxPow
+        print("done init")
         pass
 
     """
     Connect with the laser via the serial port specified
     """
     def connect(self,port,baudrate=9600):
+
+        if self.enabled == False:
+            raise Exception("Device is locked")
+
         reftime = time.time()
         connected=False
         try:
@@ -160,6 +168,10 @@ class PPCL55x:
     Disconnect from the laser
     """
     def disconnect(self):
+
+        if self.enabled == False:
+            raise Exception("Device is locked")
+
         self.lasercom.close()
         return 0
 
@@ -167,6 +179,10 @@ class PPCL55x:
     Set the power on the laser.
     """
     def setPower(self,power):
+
+        if self.enabled == False:
+            raise Exception("Device is locked")
+
         sendPower = int(power*100)  #scale the power inputed
         back = self.communicate(REG_Power,sendPower,1)  #on the REG_Power register, send the power
         return back
@@ -175,6 +191,10 @@ class PPCL55x:
     Set the channel (should always be 1)
     """
     def setChannel(self,channel=1):
+
+        if self.enabled == False:
+            raise Exception("Device is locked")
+
         back = self.communicate(REG_Channel,channel,1)  #on the REG_Channel register, send the channel
         return back
 
@@ -185,6 +205,10 @@ class PPCL55x:
       2: clean mode
     """
     def setMode(self,mode):
+
+        if self.enabled == False:
+            raise Exception("Device is locked")
+
         back = self.communicate(REG_Mode,mode,1)    #on the REG_Mode register, send the mode
         return back
 
@@ -192,6 +216,10 @@ class PPCL55x:
     Sweep the wavelength on the range inputed, for the time inputed
     """
     def sweep(self,minWL,maxWL,pause=0.3,timetaken=10):
+
+        if self.enabled == False:
+            raise Exception("Device is locked")
+
         number = int(timetaken/pause) + 1   #calculate the number of steps based on the pause length and time the sweep takes
         step = int((maxWL - minWL)/number)  #calculate the step size given the number of steps
         for count in range(number): #for each step
@@ -203,6 +231,10 @@ class PPCL55x:
     initialize limiting values for the laser
     """
     def setWavelength(self,wavelength,jump=0):
+
+        if self.enabled == False:
+            raise Exception("Device is locked")
+
         init_time = time.time()
         if(wavelength < self.minWavelength or wavelength > self.maxWavelength): #if the wavelength is not in the allowed range
                 return "wavelength not in range"
@@ -233,6 +265,10 @@ class PPCL55x:
     Send a message to the laser to set up the communication link
     """
     def start(self):
+
+        if self.enabled == False:
+            raise Exception("Device is locked")
+
         back = self.communicate(REG_Resena,8,1) #start communication by sending 8 to REG_Resena register
         for x in range(10):
             back = self.communicate(REG_Nop,0,0)    #send 0 to REG_Nop register to wait for a "ready" response
@@ -242,6 +278,10 @@ class PPCL55x:
     Send the stop message to the laser
     """
     def stop(self):
+
+        if self.enabled == False:
+            raise Exception("Device is locked")
+
         back = self.communicate(REG_Resena,0,1) #stop communication by sending 0 to REG_Resena register
         return back
 
@@ -249,6 +289,10 @@ class PPCL55x:
     Function used to send and recieve response messages
     """
     def communicate(self,register,data,rw):
+
+        if self.enabled == False:
+            raise Exception("Device is locked")
+
         lock = threading.Lock()
         lock.acquire()
         rowticket = self.maxrowticket + 1
@@ -296,6 +340,10 @@ class PPCL55x:
     Function sends message of four bytes to the laser.
     """
     def send(self,msg):
+
+        if self.enabled == False:
+            raise Exception("Device is locked")
+
         self.lasercom.flush()
         print(f"Sent msg: {msg}")
         sendBytes = array.array('B',msg).tobytes()  #construct the bytes from the inputed message
@@ -305,6 +353,10 @@ class PPCL55x:
     Functions recieves the next four bytes from the laser.
     """
     def recieve(self):
+
+        if self.enabled == False:
+            raise Exception("Device is locked")
+
         reftime = time.time()
         while self.lasercom.inWaiting()<4:  #wait until 4 bytes are recieved
             if(time.time() > reftime + 0.25):   #if it takes longer than 0.25 seconds break
@@ -337,6 +389,10 @@ class PPCL55x:
     Function calculates the checksum.
     """
     def checksum(self,msg):     #calculate checksum
+
+        if self.enabled == False:
+            raise Exception("Device is locked")
+
         bip8=(msg[0] & 0x0f) ^ msg[1] ^ msg[2] ^ msg[3]
         bip4=((bip8 & 0xf0) >> 4) ^ (bip8 & 0x0f)
         return bip4
@@ -345,14 +401,26 @@ class PPCL55x:
     Convert from wavelength to frequency
     """
     def wl_freq(self,unit):
+
+        if self.enabled == False:
+            raise Exception("Device is locked")
+
         return C_SPEED/unit
 
     """
     Lock and unlock serial.
     """
     def SerialLock(self):
+
+        if self.enabled == False:
+            raise Exception("Device is locked")
+
         seriallock=1
     
     def SerialUnlock(self):
+
+        if self.enabled == False:
+            raise Exception("Device is locked")
+
         seriallock=0
         self.queue.pop(0)    
