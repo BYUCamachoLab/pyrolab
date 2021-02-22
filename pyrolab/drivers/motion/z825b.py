@@ -12,8 +12,10 @@ Submodule containing drivers for the ThorLabs Z825B linear stage.
 """
 
 from pyrolab.drivers.motion import Motion
+from Pyro5.api import expose
 from pyrolab.drivers.motion._kinesis.kdc101 import KDC101, HomingMixin
 
+@expose
 class Z825B(Motion, KDC101, HomingMixin):
     """
     A Z825B motorized linear actuator controlled by a KCube DC Servo motor. 
