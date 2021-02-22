@@ -123,13 +123,11 @@ class PPCL55x:
     Initialize limiting values for the laser
     """
     def __init__(self,minWL=1515,maxWL=1570,minPow=7,maxPow=13.5):
-        #self.enabled = True
-        #print(self.enabled)
+        self.enabled = True
         self.minWavelength = minWL
         self.maxWavelength = maxWL
         self.minPower = minPow
         self.maxPower = maxPow
-        print("done init")
         pass
 
     """
