@@ -2,24 +2,24 @@ import asyncio
 import websockets
 from pyrolab.api import locate_ns, Proxy
 
-def getNames(reference):
-    names = []
+def get_names(reference):
+    name = ""
     if(reference == "TSL"):
-        names = ["lasers.TSL550"]
+        name = "lasers.TSL550"
     elif(reference == "PPC"):
-        names = ["PPCL550"]
+        name = "PPCL550"
     elif(reference == "PP2"):
-        names = ["PPCL551"]
+        name = "PPCL551"
     elif(reference == "MIC"):
-        names = ["UC480"]
+        name = "UC480"
     elif(reference == "LAM"):
-        names = ["LAMP"]
+        name = "LAMP"
     elif(reference == "KCU"):
-        names = ["KCUBE_ROT","KCUBE_LAT","KCUBE_LON"]
-    return names
+        name = "KCUBES"
+    return name
 
 def get_status(name):
-    valid = True
+    print(name)
     try:
         ns = locate_ns(host="camacholab.ee.byu.edu")
         service = Proxy(ns.lookup(name))
@@ -30,37 +30,56 @@ def get_status(name):
         else:
             return 0
     except:
-        valid = False
         return -1
 
-def lock(names):
+def lock(name,user):
+    print(name)
     try:
-        for name in names:
-            ns = locate_ns(host="camacholab.ee.byu.edu")
-            service = Proxy(ns.lookup(name))
-            service.lock()
-            service._pyroRelease()
-        return "LOCKED"
-    except(Pyro5.errors.NamingError):  
+        ns = locate_ns(host="camacholab.ee.byu.edu")
+        service = Proxy(ns.lookup(name))
+        stat = service.lock(user)
+        service._pyroRelease()
+        if stat == 1:
+            return "LOCKED"
+        else:
+            return "UNLOCKED"
+    except:  
         return "UNLOCKED"
 
-def unlock(names):
+def unlock(name,user):
     try:
-        for name in names:
-            ns = locate_ns(host="camacholab.ee.byu.edu")
-            service = Proxy(ns.lookup(name))
-            service.release()
-            service._pyroRelease()
-        return "UNLOCKED"
-    except(Pyro5.errors.NamingError):
+        ns = locate_ns(host="camacholab.ee.byu.edu")
+        service = Proxy(ns.lookup(name))
+        stat = service.release(user)
+        service._pyroRelease()
+        if stat == 1:
+            return "UNLOCKED"
+        else:
+            return "LOCKED"
+    except:
         return "LOCKED"
+
+def get_user(name):
+    print(name)
+    try:
+        ns = locate_ns(host="camacholab.ee.byu.edu")
+        service = Proxy(ns.lookup(name))
+        user = service.get_user()
+        service._pyroRelease()
+        return user
+    except:  
+        return ""
 
 def refresh():
-    names = ["lasers.TCL550","PPCL550","PPCL551","UC480","LAMP","KCUBE_ROT","KCUBE_LAT","KCUBE_LON"]
+    names = ["lasers.TCL550","PPCL550","PPCL551","UC480","LAMP","KCUBES"]
     status = []
+    users = ""
     for name in names:
         s = get_status(name)
         status.append(s)
+        users = users + ":"
+        if s == 1:
+            users = users + get_user(name)
     msg = ""
     if status[0] == 1:
         msg = msg + "L"
@@ -98,12 +117,14 @@ def refresh():
         msg = msg + "U"
     else:
         msg = msg + "-"
-    if status[5] == 1 and status[6] == 1 and status[7] == 1:
+    if status[5] == 1:
         msg = msg + "L"
-    elif status[5] == 0 and status[6] == 0 and status[7] == 0:
+    elif status[5] == 0:
         msg = msg + "U"
     else:
         msg = msg + "-"
+    msg = msg + users
+    print(msg)
     return msg
 
 async def read(websocket, path):
@@ -111,15 +132,15 @@ async def read(websocket, path):
     msg = ""
 
     if(request[:4] == "lock"):
-        reference = request[4:]
-        names = getNames(reference)
-        for name in names:
-            msg = lock(name)
+        reference = request[4:7]
+        user = request[7:]
+        name = get_names(reference)
+        msg = lock(name,user)
     elif(request[:4] == "unlk"):
-        reference = request[4:]
-        names = getNames(reference)
-        for name in names:
-            msg = unlock(name)
+        reference = request[4:7]
+        user = request[7:]
+        name = get_names(reference)
+        msg = unlock(name,user)
     elif(request[:4] == "refr"):
         msg = refresh()
     

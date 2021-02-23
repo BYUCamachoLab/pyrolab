@@ -13,34 +13,44 @@ class LOCKER():
     MASTER_PWD = "override"
 
     def __init__(self,deviceName):
-        self.fileName = deviceName + "_LOCK.txt"
+        self.fileName = "C:\\LockedDevices\\" + deviceName + "_LOCK.txt"
 
     def lock(self,pwd=""):
         exists = self.get_status()
         if exists == True:
-            return "already locked"
+            return 1
         else:
             self.password = pwd
             f = open(self.fileName,"w")
             f.write(pwd)
             f.close()
-            return "locked"
+            return 1
 
-    def release(self,pwd=""):
+    def release(self,name=""):
         exists = self.get_status()
         if exists == True:
             f = open(self.fileName,"r")
-            password = f.read()
+            pwd = f.read()
             f.close()
-            if (password == pwd or self.MASTER_PWD == pwd):
+            if (name == pwd or name == self.MASTER_PWD):
                 os.remove(self.fileName)
-                return "released"
+                return 1
             else:
-                return "realease is password protected"
+                return 0
         else:
-            return "already released"
+            return 1
 
     def get_status(self):
         self.status = os.path.exists(self.fileName)
         return self.status
+    
+    def get_user(self):
+        exists = self.get_status()
+        if exists == True:
+            f = open(self.fileName,"r")
+            name = f.read()
+            f.close()
+            return name
+        else:
+            return ""
         

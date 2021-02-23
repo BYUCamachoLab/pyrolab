@@ -19,17 +19,32 @@ import pyrolab.api
 @expose
 class LAMP:
 
+    activated = False
+
     def __init__(self,port):
+        self.activated = True
         self.port = port
 
     def start(self):
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         self.board = pyfirmata.Arduino(self.port)
 
     def on(self,pin=13):
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         self.board.digital[pin].write(1)
 
     def off(self,pin=13):
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         self.board.digital[pin].write(0)
     
     def exit(self):
+        if(self.activated == False):
+            raise Exception("Device is locked")
+            
         self.board.exit()
