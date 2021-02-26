@@ -1,3 +1,18 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright © PyroLab Project Contributors
+# Licensed under the terms of the GNU GPLv3+ License
+# (see pyrolab/__init__.py for details)
+
+"""
+Pyrolab Locker Class
+-----------------------------------------------
+Driver for the Santec TSL-550 Tunable Laser.
+Contributors
+ * David Hill (https://github.com/hillda3141)
+ * Sequoia Ploeg (https://github.com/sequoiap)
+"""
+
 import os
 from os import path
 import time
@@ -7,25 +22,39 @@ import pyrolab.api
 @expose
 class Locker():
 
+    """
+    This class "locks" a device by creating a text document named after it in the director C:\\LockedDevices.
+    This directory must exist before exectuing this code. The txt file that it creates can be empty (no username given)
+    or have a username as its content. Adding a name is often usefull so others
+    can see who is using the device.
+    """
+
     fileName = ""
-    lock_status = True
     MASTER_PWD = "override"
 
     def __init__(self,deviceName):
+        """
+        Initialize the file name that we are dealing with, depending on the device name.
+        """
         self.fileName = "C:\\LockedDevices\\" + deviceName + "_LOCK.txt"
 
-    def lock(self,pwd=""):
+    def lock(self,name=""):
+        """
+        Create the txt file and write the password inside, unless the file already exhists.
+        """
         exists = self.get_status()
         if exists == True:
             return 1
         else:
-            self.password = pwd
             f = open(self.fileName,"w")
-            f.write(pwd)
+            f.write(name)
             f.close()
             return 1
 
     def release(self,name=""):
+        """
+        If the password that is inputed matches the content of the txt file, delete the file to unlock.
+        """
         exists = self.get_status()
         if exists == True:
             f = open(self.fileName,"r")
@@ -40,10 +69,16 @@ class Locker():
             return 1
 
     def get_status(self):
-        self.lock_status = os.path.exists(self.fileName)
-        return self.lock_status
+        """
+        Return True if the file exists, false otherwise.
+        """
+        lock_status = os.path.exists(self.fileName)
+        return lock_status
     
     def get_user(self):
+        """
+        Return the username or contents of the txt file.
+        """
         exists = self.get_status()
         if exists == True:
             f = open(self.fileName,"r")
