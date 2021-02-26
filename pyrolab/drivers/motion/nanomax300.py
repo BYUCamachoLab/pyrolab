@@ -5,7 +5,7 @@
 # (see pyrolab/__init__.py for details)
 
 """
-PRM1Z8
+Nanomax300
 ------
 
 Submodule containing drivers for the ThorLabs NanoMax 300 piezo controlled
