@@ -1,9 +1,19 @@
+"""
+Author: David Hill
+Modified: 2/26/2021
+A script that acts as a server to lock and unlock pyrolab devices. The sever is accessed through web sockets, port 8765.
+"""
+
 import asyncio
 import websockets
 import sys
 from pyrolab.api import locate_ns, Proxy
 
 def get_names(reference):
+    """
+    The web socket client will include a 3-character key phrase in order to request an action. The three characters are mapped to
+    pyrolab service names in this function.
+    """
     name = ""
     if(reference == "TSL"):
         name = "TSL550"
@@ -20,6 +30,10 @@ def get_names(reference):
     return name
 
 def get_status(name):
+    """
+    Function returns if the device is locked or not. It will instantiate a Proxy pyrolab object using the given name and will
+    request its status.
+    """
     try:
         ns = locate_ns(host="camacholab.ee.byu.edu")
         service = Proxy(ns.lookup(name))
@@ -33,6 +47,9 @@ def get_status(name):
         return -1
 
 def lock(name,user):
+    """
+    Function instantiates a Proxy pyrolab object with the inputed name and locks it.
+    """
     try:
         ns = locate_ns(host="camacholab.ee.byu.edu")
         service = Proxy(ns.lookup(name))
@@ -46,6 +63,9 @@ def lock(name,user):
         return "UNLOCKED"
 
 def unlock(name,user):
+    """
+    Function instantiates a Proxy pyrolab object with the inputed name and releases it.
+    """
     try:
         ns = locate_ns(host="camacholab.ee.byu.edu")
         service = Proxy(ns.lookup(name))
@@ -59,6 +79,10 @@ def unlock(name,user):
         return "LOCKED"
 
 def get_user(name):
+    """
+    Function instantiates a Proxy pyrolab object with the inputed name and requests the user that is using it.
+    If it is not in use it will return a "". However, returning a "" does not mean that is necessarily not in use.
+    """
     try:
         ns = locate_ns(host="camacholab.ee.byu.edu")
         service = Proxy(ns.lookup(name))
@@ -69,6 +93,9 @@ def get_user(name):
         return ""
 
 def refresh():
+    """
+    Function checks the status of all pyrolab objects, returning a string of "L"s "U"s and "-" for locked, unlocked, and offline.
+    """
     names = ["TSL550","PPCL550","PPCL551","UC480","LAMP","KCUBES"]
     status = []
     users = ""
@@ -128,6 +155,10 @@ def refresh():
     return msg
 
 async def read(websocket, path):
+    """
+    With message from a web socket client, this function is called and will parse the message to determine the desired action:
+    lock, unlock, or refresh. 
+    """
     request = await websocket.recv()
     msg = ""
     if(request[:4] == "lock"):
