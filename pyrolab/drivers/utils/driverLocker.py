@@ -1,6 +1,5 @@
 import os
 from os import path
-import pyfirmata
 import time
 from Pyro5.api import expose
 import pyrolab.api
@@ -9,7 +8,7 @@ import pyrolab.api
 class LOCKER():
 
     fileName = ""
-    status = True
+    lock_status = True
     MASTER_PWD = "override"
 
     def __init__(self,deviceName):
@@ -17,7 +16,6 @@ class LOCKER():
 
     def lock(self,pwd=""):
         exists = self.get_status()
-        print(exists)
         if exists == True:
             return 1
         else:
@@ -42,9 +40,8 @@ class LOCKER():
             return 1
 
     def get_status(self):
-        self.status = os.path.exists(self.fileName)
-        print(self.status)
-        return self.status
+        self.lock_status = os.path.exists(self.fileName)
+        return self.lock_status
     
     def get_user(self):
         exists = self.get_status()

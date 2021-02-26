@@ -34,11 +34,11 @@ import time
 import struct
 
 import serial
-
+from Pyro5.api import expose
 import pyrolab.api
 
 
-@pyrolab.api.expose
+@expose
 class TSL550:
     """ A Santec TSL-550 laser.
 
@@ -104,7 +104,7 @@ class TSL550:
 
         # Make sure the shutter is on
         #self.is_on = True
-        print(self.query("SU"))
+        self.query("SU")
         shutter = self.close_shutter()
 
         # Set power management to auto
