@@ -13,38 +13,48 @@ Repo: https://github.com/BYUCamachoLab/pyrolab/blob/bpc303/pyrolab/drivers/motio
 
 import pyfirmata
 import time
+from Pyro5.errors import PyroError
 from Pyro5.api import expose
 import pyrolab.api
 
 @expose
 class LAMP:
 
-    activated = False
-
     def __init__(self,port):
-        self.activated = True
+        self._activated = True
         self.port = port
 
     def start(self):
-        if(self.activated == False):
-            raise Exception("Device is locked")
+        try:
+            self._activated
+        except AttributeError:
+            raise PyroError("DeviceLockedError")
 
-        self.board = pyfirmata.Arduino(self.port)
+        self.board = pyfirmata.Arduino(self.port)        
 
     def on(self,pin=13):
-        if(self.activated == False):
-            raise Exception("Device is locked")
+        try:
+            self._activated
+        except AttributeError:
+            raise PyroError("DeviceLockedError")
 
         self.board.digital[pin].write(1)
 
     def off(self,pin=13):
-        if(self.activated == False):
-            raise Exception("Device is locked")
+        try:
+            self._activated
+        except AttributeError:
+            raise PyroError("DeviceLockedError")
 
         self.board.digital[pin].write(0)
-    
-    def exit(self):
-        if(self.activated == False):
-            raise Exception("Device is locked")
-            
+
+    def close(self):
+        try:
+            self._activated
+        except AttributeError:
+            raise PyroError("DeviceLockedError")
+
         self.board.exit()
+    
+    def __del__(self):
+        self.close()

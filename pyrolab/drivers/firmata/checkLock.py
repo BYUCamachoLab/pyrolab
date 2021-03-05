@@ -5,7 +5,7 @@ from pyrolab.api import locate_ns, Proxy
 def get_names(reference):
     name = ""
     if(reference == "TSL"):
-        name = "lasers.TSL550"
+        name = "TSL550"
     elif(reference == "PPC"):
         name = "PPCL550"
     elif(reference == "PP2"):
@@ -71,7 +71,7 @@ def get_user(name):
         return ""
 
 def refresh():
-    names = ["lasers.TCL550","PPCL550","PPCL551","UC480","LAMP","KCUBES"]
+    names = ["TSL550","PPCL550","PPCL551","UC480","LAMP","KCUBES"]
     status = []
     users = ""
     for name in names:
