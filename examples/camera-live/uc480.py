@@ -6,8 +6,8 @@ import socket
 import pickle
 import time
 
-import os
-os.environ['PATH'] = "C:\\Program Files\\ThorLabs\\Scientific Imaging\\ThorCam" + ";" + os.environ['PATH']  #this path must be change to the location of the .dll files from Thorlabs
+#import os
+#os.environ['PATH'] = "C:\\Program Files\\ThorLabs\\Scientific Imaging\\ThorCam" + ";" + os.environ['PATH']  #this path must be change to the location of the .dll files from Thorlabs
 
 HEADERSIZE = 10
 BRIGHTNESS = 5
@@ -19,16 +19,16 @@ def bayer_convert(bayer):
 ns = locate_ns(host="camacholab.ee.byu.edu")
 cam = Proxy(ns.lookup("UC480"))
 
-cam.open()
-cam.set_pixel_clock(24)
-cam.set_color_mode(mode=11)
-cam.set_roi_shape(roi_shape=(1024, 1280))
-cam.set_roi_pos(roi_pos=(0,0))
-cam.set_framerate(10)
-cam.set_exposure(90)
+cam.start()
+# cam.set_pixel_clock(24)
+# cam.set_color_mode(mode=11)
+# cam.set_roi_shape(roi_shape=(1024, 1280))
+# cam.set_roi_pos(roi_pos=(0,0))
+# cam.set_framerate(10)
+# cam.set_exposure(90)
 
-cam.initialize_memory(pixelbytes=8)
-cam.start_capture(1)
+# cam.initialize_memory(pixelbytes=8)
+cam.start_capture()
 clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 clientsocket.connect(('10.32.112.191', 2222))
 
@@ -60,4 +60,4 @@ while(True):
         break
     clientsocket.send(b'g')
 
-cam.close(1)
+cam.close()
