@@ -12,17 +12,26 @@ Contributors
  * David Hill (https://github.com/hillda3141)
  * Sequoia Ploeg (https://github.com/sequoiap)
 Repo: https://github.com/BYUCamachoLab/pyrolab
+
+Functions
+---------
+    __init__(self,port)
+    start(self)
+    on(self,pin=13)
+    off(self,pin=13)
+    close(self)
+    __del__(self)
 """
 
 import socket
 import pickle
 import time
 import threading
-
+import numpy as np
+from Pyro5.error import PyroError
 from Pyro5.api import expose
 from thorlabs_kinesis import thor_camera as tc
 
-import numpy as np
 
 from ctypes import *
 
@@ -87,13 +96,13 @@ class UC480:
         self.enabled = True
         pass
 
-    def open(self, bit_depth=8, camera="ThorCam FS"):
+    def start(self, bit_depth=8, camera="ThorCam FS", pixel_clock=24, color_mode=11, roi_shape=(1024, 1280), roi_pos=(0,0), framerate=10, exposure=90, pixelbytes=8):
         """
         Opens the serial communication with the Thorlabs camera and sets
         some low-level values, including the bit depth and camera name.
         """
         if self.enabled == False:
-            raise Exception("Device is locked")
+            raise PyroError("DeviceLockedError")
 
         num = c_int(0)
         tc.GetNumberOfCameras(byref(num))
@@ -103,8 +112,17 @@ class UC480:
         self.handle = c_int(0)
         i = tc.InitCamera(byref(self.handle))     
         tc.SetDisplayMode(self.handle, c_int(32768)) 
+
         if i != 0:
             raise Exception("Opening the ThorCam failed with error code "+str(i))
+        
+        cam.set_pixel_clock(pixel_clock)
+        cam.set_color_mode(color_mode)
+        cam.set_roi_shape(roi_shape)
+        cam.set_roi_pos(roi_pos)
+        cam.set_framerate(framerate)
+        cam.set_exposure(exposure)
+        cam.initialize_memory(pixelbytes)
 
     def close(self, waitMode):
         """
