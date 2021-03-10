@@ -5,104 +5,103 @@
 # (see pyrolab/__init__.py for details)
 
 """
-Santec Tunable Semiconductor Laser 550 (TSL550)
 -----------------------------------------------
-Driver for the Santec TSL-550 Tunable Laser.
-Contributors
- * David Hill (https://github.com/hillda3141)
- * Sequoia Ploeg (https://github.com/sequoiap)
-Repo: https://github.com/BYUCamachoLab/pyrolab
+Driver for a Thorlabs Microscope Lamp.
+Author: David Hill (https://github.com/hillda3141)
+Repo: https://github.com/BYUCamachoLab/pyrolab/pyrolab/drivers/cameras
 
 Functions
 ---------
     __init__(self,port)
-    start(self)
-    on(self,pin=13)
-    off(self,pin=13)
+    start(self, bit_depth=8, camera="ThorCam FS", pixel_clock=24, color_mode=11, roi_shape=(1024, 1280), roi_pos=(0,0), framerate=10, exposure=90, pixelbytes=8)
+    set_pixel_clock(self, clockspeed)
+    initialize_memory(self, pixelbytes=8)
+    set_exposure(self, exposure)
+    set_framerate(self, fps)
+    set_color_mode(self, mode=11)
+    set_roi_shape(self, roi_shape)
+    set_roi_pos(self, roi_pos)
+    start_capture(self)
+    stop_capture(self)
+    _get_image(self)
+    _video_loop(self)
     close(self)
     __del__(self)
 """
 
 import socket
 import pickle
-import time
 import threading
 import numpy as np
-from Pyro5.error import PyroError
+from ctypes import *
+from Pyro5.errors import PyroError
 from Pyro5.api import expose
 from thorlabs_kinesis import thor_camera as tc
-
-
-from ctypes import *
-
-c_word = c_ushort
-c_dword = c_ulong
-
-HEADERSIZE = 10
-
 import pyrolab.api
 
 @expose
 class UC480:
 
-    """ A Thorlabs UC480 Camera.
-    This assumes there is only one camera connected to the computer.
-    ----------
-    handle : handle
-        c-type handle to reference camera (serial port, etc)
-    camera: str
-        camera name
-    bit_depth : int
-        the number of bits used for each pixel (usually is 8)
-    meminfo : array(int)
-        points to the memory location where captured frames are stored
-    roi_shape : array(int)
-        dimentions of the image that is taken by the camera (usually 1024 x 1280)
-    roi_pos : array(int)
-        position of the top left corner of the roi (region of interest) in relation to the sensor array (usaually 0,0)
-    framerate : int
-        the framerate of the camera in frames per second
-    video_thread : thread
-        seperate thread used to run parrell to the main loop that streams the video fromt he camera
-    stop_video : threading.Event (similar to boolean)
-        this is used to end the video streaming by ending the parrellel "video_thread"
-    serversocket : socket
-        socket that represents the server computer (running on port 2222)
-    clientsocket : socket
-        socket that represents the client computer
-    start_socket : boolean
-        if true, initiates the socket server connection
+    """
     Attributes
     ----------
     HEADERSIZE : int
         the size of the header file used to communicate the size of the message (10 bytes is a safe size)
     """
-
-    handle = None
-    camera = None
-    bit_depth = None
-    meminfo = None
-    roi_shape = None
-    roi_pos = None
-    framerate = None
-    video_thread = None
-    stop_video = None
-    serversocket = None
-    clientsocket = None
-    start_socket = None
-    enabled = False
+    HEADERSIZE = 10
 
     def __init__(self):
-        self.enabled = True
+        self._activated = True
         pass
 
     def start(self, bit_depth=8, camera="ThorCam FS", pixel_clock=24, color_mode=11, roi_shape=(1024, 1280), roi_pos=(0,0), framerate=10, exposure=90, pixelbytes=8):
         """
         Opens the serial communication with the Thorlabs camera and sets
         some low-level values, including the bit depth and camera name.
+
+        Parameters
+        ----------
+        bit_depth : int
+            the number of bits used for each pixel (usually is 8)
+        camera: string
+            camera name
+        pixel_clock: int
+            clock speed of the camera
+        color_mode: int
+            mode of color that the camera returns data in. 11 returns raw format:
+            | R  G0 |...
+            | G1  B |...
+              .   .
+              .   .
+              .   .
+        roi_shape : array(int)
+            dimentions of the image that is taken by the camera (usually 1024 x 1280)
+        roi_pos : array(int)
+            position of the top left corner of the roi (region of interest) in relation to the sensor array (usaually 0,0)
+        framerate : int
+            the framerate of the camera in frames per second
+        exposure: int
+            in milliseconds, the time the shutter is open on the camera (90 default)
+        pixelbytes: int
+            the amount of memory space allocated per pixel in bytes
         """
-        if self.enabled == False:
+        try:
+            self._activated
+        except AttributeError:
             raise PyroError("DeviceLockedError")
+
+        self.handle = None
+        self.camera = None
+        self.bit_depth = None
+        self.meminfo = None
+        self.roi_shape = None
+        self.roi_pos = None
+        self.framerate = None
+        self.video_thread = None
+        self.stop_video = None
+        self.serversocket = None
+        self.clientsocket = None
+        self.start_socket = None
 
         num = c_int(0)
         tc.GetNumberOfCameras(byref(num))
@@ -114,31 +113,16 @@ class UC480:
         tc.SetDisplayMode(self.handle, c_int(32768)) 
 
         if i != 0:
-            raise Exception("Opening the ThorCam failed with error code "+str(i))
-        
-        cam.set_pixel_clock(pixel_clock)
-        cam.set_color_mode(color_mode)
-        cam.set_roi_shape(roi_shape)
-        cam.set_roi_pos(roi_pos)
-        cam.set_framerate(framerate)
-        cam.set_exposure(exposure)
-        cam.initialize_memory(pixelbytes)
+            raise PyroError("Opening the ThorCam failed with error code "+str(i))
 
-    def close(self, waitMode):
-        """
-        Calls self.stop_capture to free memory and end the socket server
-        and then closes serial communication with the camera.
-        """
-        if self.enabled == False:
-            raise Exception("Device is locked")
         
-        if self.handle != None:
-            self.stop_capture(waitMode)
-            i = tc.ExitCamera(self.handle) 
-            if i != 0:
-                raise Exception("Closing ThorCam failed with error code "+str(i))
-        else:
-            return
+        self.set_pixel_clock(pixel_clock)
+        self.set_color_mode(color_mode)
+        self.set_roi_shape(roi_shape)
+        self.set_roi_pos(roi_pos)
+        self.set_framerate(framerate)
+        self.set_exposure(exposure)
+        self.initialize_memory(pixelbytes)
 
     def _get_image(self):
         """
@@ -149,8 +133,10 @@ class UC480:
         will be called from the function _video_loop() which is on a
         parrallel thread with Pyro5.
         """
-        if self.enabled == False:
-            raise Exception("Device is locked")
+        try:
+            self._activated
+        except AttributeError:
+            raise PyroError("DeviceLockedError")
         
         bayer = np.frombuffer(self.meminfo[0], c_ubyte).reshape(self.roi_shape[1], self.roi_shape[0])
 
@@ -165,7 +151,7 @@ class UC480:
         GRAY = R[:oh,:ow]//3 + B[:oh,:ow]//3 + (G0[:oh,:ow]//2 + G1[:oh,:ow]//2)//3
 
         msg = pickle.dumps(GRAY)
-        msg = bytes(f'{len(msg):<{HEADERSIZE}}', "utf-8") + msg
+        msg = bytes(f'{len(msg):<{self.HEADERSIZE}}', "utf-8") + msg
         return msg
 
     def _video_loop(self):
@@ -174,8 +160,10 @@ class UC480:
         It will loop, sending frame by frame accross the socket connection,
         until the threading.Event() stop_video is triggered.
         """
-        if self.enabled == False:
-            raise Exception("Device is locked")
+        try:
+            self._activated
+        except AttributeError:
+            raise PyroError("DeviceLockedError")
         
         bad = False
         while not self.stop_video.is_set():
@@ -200,37 +188,43 @@ class UC480:
         """
         Sets the clockspeed of the camera, usually in the range of 24.
         """
-        if self.enabled == False:
-            raise Exception("Device is locked")
+        try:
+            self._activated
+        except AttributeError:
+            raise PyroError("DeviceLockedError")
         
         pixelclock = c_uint(clockspeed)
         i = tc.PixelClock(self.handle, 6, byref(pixelclock), sizeof(pixelclock))
 
-    def start_capture(self, waitMode):
+    def start_capture(self):
         """
         This starts the capture from the camera to the allocated
         memory location as well as starts a new parallel thread
         for the socket server to stream from memory to the client.
         """
-        if self.enabled == False:
-            raise Exception("Device is locked")
+        try:
+            self._activated
+        except AttributeError:
+            raise PyroError("DeviceLockedError")
         
-        tc.StartCapture(self.handle, waitMode)
+        tc.StartCapture(self.handle, 1)
         self.start_socket = True
         self.stop_video = threading.Event()
         self.video_thread = threading.Thread(target=self._video_loop, args=())
         self.video_thread.start()
 
-    def stop_capture(self, waitMode):
+    def stop_capture(self):
         """
         This frees the memory used for storing the frames then triggers
         the stop_video event which will end the parrallel socket thread.
         """
-        if self.enabled == False:
-            raise Exception("Device is locked")
+        try:
+            self._activated
+        except AttributeError:
+            raise PyroError("DeviceLockedError")
         
         tc.FreeMemory(self.handle, self.meminfo[0], self.meminfo[1])
-        tc.StopCapture(self.handle, waitMode)
+        tc.StopCapture(self.handle, 1)
         self.clientsocket.close()
         self.stop_video.set()
         
@@ -238,8 +232,10 @@ class UC480:
         """
         Initializes the memory for holding the most recent frame from the camera.
         """
-        if self.enabled == False:
-            raise Exception("Device is locked")
+        try:
+            self._activated
+        except AttributeError:
+            raise PyroError("DeviceLockedError")
         
         if self.meminfo != None:
             tc.FreeMemory(self.handle, self.meminfo[0], self.meminfo[1])
@@ -259,8 +255,10 @@ class UC480:
         """
         This sets the exposure of the camera in milliseconds (90 is a good exposure value).
         """
-        if self.enabled == False:
-            raise Exception("Device is locked")
+        try:
+            self._activated
+        except AttributeError:
+            raise PyroError("DeviceLockedError")
         
         exposure_c = c_double(exposure)
         tc.SetExposure(self.handle, 12 , exposure_c, sizeof(exposure_c))
@@ -271,8 +269,10 @@ class UC480:
         Sets the framerate of the camera (fps). After calling
         this function you must reset the exposure.
         """  
-        if self.enabled == False:
-            raise Exception("Device is locked")
+        try:
+            self._activated
+        except AttributeError:
+            raise PyroError("DeviceLockedError")
             
         s_framerate = c_double(0)
         tc.SetFrameRate(self.handle, c_double(fps), byref(s_framerate))
@@ -289,8 +289,10 @@ class UC480:
               .   .
         This data is interpreted in the _get_image() function.
         """
-        if self.enabled == False:
-            raise Exception("Device is locked")
+        try:
+            self._activated
+        except AttributeError:
+            raise PyroError("DeviceLockedError")
         
         i = tc.SetColorMode(self.handle, mode) #11 means raw 8-bit, 6 means gray 8-bit
 
@@ -298,8 +300,10 @@ class UC480:
         """
         Sets the dimmenstions of the region of interest (roi)
         """
-        if self.enabled == False:
-            raise Exception("Device is locked")
+        try:
+            self._activated
+        except AttributeError:
+            raise PyroError("DeviceLockedError")
         
         AOI_size = tc.IS_2D(roi_shape[0], roi_shape[1]) #Width and Height
             
@@ -311,11 +315,38 @@ class UC480:
         """
         Sets the origin position of the region of interest (usually (0,0))
         """
-        if self.enabled == False:
-            raise Exception("Device is locked")
+        try:
+            self._activated
+        except AttributeError:
+            raise PyroError("DeviceLockedError")
         
         AOI_pos = tc.IS_2D(roi_pos[0], roi_pos[1]) #Width and Height
             
         i = tc.AOI(self.handle, 3, byref(AOI_pos), 8 )#5 for setting size, 3 for setting position
         tc.AOI(self.handle, 4, byref(AOI_pos), 8 )#6 for getting size, 4 for getting position
         self.roi_pos = [AOI_pos.s32X, AOI_pos.s32Y]
+
+    def close(self):
+        """
+        Calls self.stop_capture to free memory and end the socket server
+        and then closes serial communication with the camera.
+        """
+        try:
+            self._activated
+        except AttributeError:
+            raise PyroError("DeviceLockedError")
+        
+        try:
+            self.handle
+        except AttributeError:
+            return
+        self.stop_capture()
+        i = tc.ExitCamera(self.handle) 
+        if i != 0:
+            raise PyroError("Closing ThorCam failed with error code "+str(i))
+
+    def __del__(self):
+        """"
+        Function called when Proxy connection is lost.
+        """
+        self.close()
