@@ -6,7 +6,7 @@ from Pyro5.api import expose
 import pyrolab.api
 
 @expose
-class LOCKER():
+class Locker():
 
     fileName = ""
     status = True

@@ -21,13 +21,12 @@ Functions
 """
 
 import pyfirmata
-import time
 from Pyro5.errors import PyroError
 from Pyro5.api import expose
 import pyrolab.api
 
 @expose
-class LAMP:
+class Lamp:
 
     def __init__(self,port):
         """"
@@ -44,11 +43,6 @@ class LAMP:
     def start(self):
         """"
         Initialize a connection with the arduino.
-
-        Parameters
-        ----------
-        self.port : string
-            Port name that is initialized in __init__(). Ex: "COM4"
         
         Raises
         ------
@@ -68,8 +62,6 @@ class LAMP:
 
         Parameters
         ----------
-        self.board : pyfirmata.Arduino
-            Oject that represents an arduino initialized in start(). Ex: pyfirmata.Arduino("COM4")
         pin : int
             Integer that represents the digital out pin number on an arduino. Ex: 13
         
@@ -91,8 +83,6 @@ class LAMP:
 
         Parameters
         ----------
-        self.board : pyfirmata.Arduino
-            Oject that represents an arduino initialized in start(). Ex: pyfirmata.Arduino("COM4")
         pin : int
             Integer that represents the digital out pin number on an arduino. Ex: 13
         
@@ -111,13 +101,6 @@ class LAMP:
     def close(self):
         """"
         Close the connection with the arduino.
-
-        Parameters
-        ----------
-        self.board : pyfirmata.Arduino
-            Oject that represents an arduino initialized in start(). Ex: pyfirmata.Arduino("COM4")
-        pin : int
-            Integer that represents the digital out pin number on an arduino. Ex: 13
         
         Raises
         ------
