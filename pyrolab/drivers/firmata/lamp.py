@@ -8,7 +8,7 @@
 -----------------------------------------------
 Driver for the Arduino that is connected to a Thorlabs Microscope Lamp.
 Author: David Hill (https://github.com/hillda3141)
-Repo: https://github.com/BYUCamachoLab/pyrolab/blob/bpc303/pyrolab/drivers/motion
+Repo: https://github.com/BYUCamachoLab/pyrolab/pyrolab/drivers/firmata
 
 Functions
 ---------
