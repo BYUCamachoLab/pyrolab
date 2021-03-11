@@ -9,15 +9,6 @@
 Driver for the Arduino that is connected to a Thorlabs Microscope Lamp.
 Author: David Hill (https://github.com/hillda3141)
 Repo: https://github.com/BYUCamachoLab/pyrolab/pyrolab/drivers/firmata
-
-Functions
----------
-    __init__(self,port)
-    start(self)
-    on(self,pin=13)
-    off(self,pin=13)
-    close(self)
-    __del__(self)
 """
 
 import pyfirmata
@@ -26,11 +17,11 @@ from Pyro5.api import expose
 import pyrolab.api
 
 @expose
-class Lamp:
+class ArduinoRelay:
 
     def __init__(self,port):
         """"
-        LAMP constructor.
+        Lamp constructor.
 
         Parameters
         ----------
@@ -40,7 +31,7 @@ class Lamp:
         self._activated = True
         self.port = port
 
-    def start(self):
+    def connect(self):
         """"
         Initialize a connection with the arduino.
         
