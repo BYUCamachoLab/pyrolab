@@ -21,7 +21,7 @@ class ArduinoRelay:
 
     def __init__(self,port):
         """"
-        Lamp constructor.
+        ArduinoRelay constructor.
 
         Parameters
         ----------
