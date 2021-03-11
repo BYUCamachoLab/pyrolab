@@ -111,7 +111,8 @@ class Lamp:
             self._activated
         except AttributeError:
             raise PyroError("DeviceLockedError")
-
+        
+        self.off()
         self.board.exit()
     
     def __del__(self):
