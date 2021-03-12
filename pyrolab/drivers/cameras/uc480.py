@@ -10,25 +10,6 @@ Driver for a Thorlabs Microscope.
 Author: David Hill (https://github.com/hillda3141)
 Repo: https://github.com/BYUCamachoLab/pyrolab/pyrolab/drivers/cameras
 
-Functions
----------
-    __init__(self,port)
-    start(self, bit_depth=8, camera="ThorCam FS", pixel_clock=24, color_mode=11, roi_shape=(1024, 1280), roi_pos=(0,0), framerate=10, exposure=90, pixelbytes=8)
-    set_pixel_clock(self, clockspeed)
-    initialize_memory(self, pixelbytes=8)
-    set_exposure(self, exposure)
-    set_framerate(self, fps)
-    set_color_mode(self, mode=11)
-    set_roi_shape(self, roi_shape)
-    set_roi_pos(self, roi_pos)
-    start_capture(self)
-    stop_capture(self)
-    _get_image(self)
-    _video_loop(self)
-    close(self)
-    __del__(self)
-"""
-
 import socket
 import pickle
 import threading
