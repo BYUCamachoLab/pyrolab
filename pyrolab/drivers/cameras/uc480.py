@@ -9,7 +9,7 @@
 Driver for a Thorlabs Microscope.
 Author: David Hill (https://github.com/hillda3141)
 Repo: https://github.com/BYUCamachoLab/pyrolab/pyrolab/drivers/cameras
-
+"""
 import socket
 import pickle
 import threading
