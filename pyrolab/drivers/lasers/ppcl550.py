@@ -99,7 +99,7 @@ WRITE=1
 @expose
 class PPCL55x:
 
-    def __init__(self,minWL=1515,maxWL=1570,minPow=7,maxPow=13.5):
+    def __init__(self,minWL=1515,maxWL=1570,minPow=7,maxPow=13.5,port="COM4"):
         """"
         Initialize limiting values for the laser.
 
@@ -119,6 +119,7 @@ class PPCL55x:
         self.maxWavelength = maxWL
         self.minPower = minPow
         self.maxPower = maxPow
+        self.port = port
         self._error=ITLA_NOERROR
         self.latestregister = 0
         self.queue = []
@@ -126,7 +127,7 @@ class PPCL55x:
         pass
 
 
-    def start(self,port,baudrate=9600):
+    def start(self,baudrate=9600):
         """"
         Connect with the laser via the serial port specified.
 
@@ -150,7 +151,7 @@ class PPCL55x:
         reftime = time.time()
         connected=False
         try:
-            self.lasercom = serial.Serial(port,baudrate,timeout=1,parity=serial.PARITY_NONE)    #attempt connection with given baudrate
+            self.lasercom = serial.Serial(self.port,baudrate,timeout=1,parity=serial.PARITY_NONE)    #attempt connection with given baudrate
         except serial.SerialException:
             return(ITLA_ERROR_SERPORT)
         baudrate2=4800
@@ -164,7 +165,7 @@ class PPCL55x:
                 elif baudrate2==38400: baudrate2=57600
                 elif baudrate2==57600: baudrate2=115200
                 self.lasercom.close()
-                self.lasercom = serial.Serial(port,baudrate2,timeout=None,parity=serial.PARITY_NONE)            
+                self.lasercom = serial.Serial(self.port,baudrate2,timeout=None,parity=serial.PARITY_NONE)            
             else:
                 return(ITLA_NOERROR)
         print(baudrate2)
@@ -278,7 +279,7 @@ class PPCL55x:
             time.sleep(pause)   #pause for the time wanted
 
 
-    def setWavelength(self,wavelength,jump=False):
+    def setWavelength(self,wavelength,jump=0):
         """
         Set the wavelength of the laser
 
@@ -310,14 +311,14 @@ class PPCL55x:
         print(freq_t)
         print(freq_g)
 
-        if jump == False:   #if the laser is currently off, use a certain register
+        if jump == 0:   #if the laser is currently off, use a certain register
             back = self._communicate(REG_Fcf1,freq_t,1)
             if(back == ITLA_NOERROR):
                 back = self._communicate(REG_Fcf2,freq_g,1)  #write the new wavelength to the REG_Fcf2 register
             time_diff = time.time() - init_time
             print(time_diff)
             return back
-        if jump == True:   #if the laser is currently on, use a different register
+        if jump == 1:   #if the laser is currently on, use a different register
             back = self._communicate(REG_CjumpTHz,freq_t,1)
             if(back == ITLA_NOERROR):
                 back = self._communicate(REG_CjumpGHz,freq_g,1)  #write the new wavelength to the REG_CjumpGHz register
