@@ -23,8 +23,9 @@ import pyrolab.api
 class Locker():
 
     """
-    This class "locks" a device by creating a text document named after it in the director C:\\LockedDevices.
-    This directory must exist before exectuing this code. The txt file that it creates can be empty (no username given)
+    This class "locks" a device by creating a text document named after it in
+    the director C:\\LockedDevices. This directory must exist before exectuing
+    this code. The txt file that it creates can be empty (no username given)
     or have a username as its content. Adding a name is often usefull so others
     can see who is using the device.
     """
@@ -34,13 +35,15 @@ class Locker():
 
     def __init__(self,deviceName):
         """
-        Initialize the file name that we are dealing with, depending on the device name.
+        Initialize the file name that we are dealing with, depending on the
+        device name.
         """
         self.fileName = "C:\\LockedDevices\\" + deviceName + "_LOCK.txt"
 
     def lock(self,name=""):
         """
-        Create the txt file and write the password inside, unless the file already exhists.
+        Create the txt file and write the password inside, unless the file
+        already exhists.
         """
         exists = self.get_status()
         if exists == True:
@@ -53,7 +56,8 @@ class Locker():
 
     def release(self,name=""):
         """
-        If the password that is inputed matches the content of the txt file, delete the file to unlock.
+        If the password that is inputed matches the content of the txt file,
+        delete the file to unlock.
         """
         exists = self.get_status()
         if exists == True:
