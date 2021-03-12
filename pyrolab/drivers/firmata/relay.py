@@ -30,22 +30,7 @@ class ArduinoRelay:
         """
         self._activated = True
         self.port = port
-
-    def connect(self):
-        """"
-        Initialize a connection with the arduino.
-        
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
-        """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
-
-        self.board = pyfirmata.Arduino(self.port)        
+        self.board = pyfirmata.Arduino(self.port)             
 
     def on(self,pin=13):
         """"
@@ -55,16 +40,7 @@ class ArduinoRelay:
         ----------
         pin : int
             Integer that represents the digital out pin number on an arduino. Ex: 13
-        
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
 
         self.board.digital[pin].write(1)
 
@@ -76,32 +52,14 @@ class ArduinoRelay:
         ----------
         pin : int
             Integer that represents the digital out pin number on an arduino. Ex: 13
-        
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
 
         self.board.digital[pin].write(0)
 
     def close(self):
         """"
         Close the connection with the arduino.
-        
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
         
         self.off()
         self.board.exit()
@@ -110,4 +68,5 @@ class ArduinoRelay:
         """"
         Function called when Proxy connection is lost.
         """
+        
         self.close()
