@@ -32,11 +32,7 @@ class UC480:
     """
     HEADERSIZE = 10
 
-    def __init__(self):
-        self._activated = True
-        pass
-
-    def start(self, bit_depth=8, camera="ThorCam FS", pixel_clock=24, color_mode=11,
+    def __init__(self, ser_no, bit_depth=8, camera="ThorCam FS", pixel_clock=24, color_mode=11,
     roi_shape=(1024, 1280), roi_pos=(0,0), framerate=10, exposure=90, pixelbytes=8):
         """
         Opens the serial communication with the Thorlabs camera and sets
@@ -44,6 +40,8 @@ class UC480:
 
         Parameters
         ----------
+        ser_no : long
+            the serial number of the camera that should be initiated
         bit_depth : int
             the number of bits used for each pixel (usually is 8)
         camera: string
@@ -68,26 +66,23 @@ class UC480:
             in milliseconds, the time the shutter is open on the camera (90 default)
         pixelbytes: int
             the amount of memory space allocated per pixel in bytes
-        
-        Raises
-        ------
-        PyroError("Opening the ThorCam failed with error code "+str(i))
-            Error to signal that the connection with the camera could not be
-            established. Usually means that the last person using
-            it did not close out of it correctly or is still accessing it.
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
 
         num = c_int(0)
         tc.GetNumberOfCameras(byref(num))
+        for i in range(num.value):
+            handle = c_int(i)
+            temp = tc.InitCamera(byref(handle))
+            info = tc.CAMINFO()
+            out = tc.GetCameraInfo(handle,byref(info))
+            if(int(info.SerNo) == ser_no):
+                self.handle = handle
+            elif(i == num.value - 1):
+                raise PyroError("Camera not found")
+
         self.bit_depth = bit_depth
         self.camera = camera
-        
-        self.handle = c_int(0)
-        i = tc.InitCamera(byref(self.handle))     
+   
         tc.SetDisplayMode(self.handle, c_int(32768)) 
 
         if i != 0:
@@ -101,7 +96,7 @@ class UC480:
         self.set_roi_pos(roi_pos)
         self.set_framerate(framerate)
         self.set_exposure(exposure)
-        self.initialize_memory(pixelbytes)
+        self.initialize_memory(pixelbytes)        
 
     def _get_image(self):
         """
@@ -111,17 +106,7 @@ class UC480:
         the message is. This should not be called from the client. It
         will be called from the function _video_loop() which is on a
         parrallel thread with Pyro5.
-
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the
-            device is locked.
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
         
         bayer = np.frombuffer(self.meminfo[0], c_ubyte).reshape(self.roi_shape[1],
         self.roi_shape[0])
@@ -145,17 +130,7 @@ class UC480:
         This function is called as a seperate thread when streaming is initiated.
         It will loop, sending frame by frame accross the socket connection,
         until the threading.Event() stop_video is triggered.
-        
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore
-            the device is locked.
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
         
         bad = False
         while not self.stop_video.is_set():
@@ -183,18 +158,8 @@ class UC480:
         Parameters
         ----------
         clockspeed: int
-            clock speed of the camera
-        
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore
-            the device is locked.        
+            clock speed of the camera       
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
         
         pixelclock = c_uint(clockspeed)
         i = tc.PixelClock(self.handle, 6, byref(pixelclock), sizeof(pixelclock))
@@ -204,17 +169,7 @@ class UC480:
         This starts the capture from the camera to the allocated
         memory location as well as starts a new parallel thread
         for the socket server to stream from memory to the client.
-
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore
-            the device is locked.
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
         
         tc.StartCapture(self.handle, 1)
         self.start_socket = True
@@ -226,17 +181,7 @@ class UC480:
         """
         This frees the memory used for storing the frames then triggers
         the stop_video event which will end the parrallel socket thread.
-
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore
-            the device is locked.
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
         
         tc.FreeMemory(self.handle, self.meminfo[0], self.meminfo[1])
         tc.StopCapture(self.handle, 1)
@@ -251,17 +196,7 @@ class UC480:
         ----------
         pixelbytes: int
             the amount of memory space allocated per pixel in bytes
-
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore
-            the device is locked.
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
         
         if self.meminfo != None:
             tc.FreeMemory(self.handle, self.meminfo[0], self.meminfo[1])
@@ -286,17 +221,7 @@ class UC480:
         exposure: int
             in milliseconds, the time the shutter is open on the camera (90 is
             a good exposure value)
-
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore
-            the device is locked.
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
         
         exposure_c = c_double(exposure)
         tc.SetExposure(self.handle, 12 , exposure_c, sizeof(exposure_c))
@@ -311,17 +236,7 @@ class UC480:
         ----------
         framerate: int
             the framerate of the camera in frames per second
-
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore
-            the device is locked.
-        """  
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
+        """
             
         s_framerate = c_double(0)
         tc.SetFrameRate(self.handle, c_double(framerate), byref(s_framerate))
@@ -341,17 +256,7 @@ class UC480:
         ----------
         mode: int
             the color mode of the pixel data
-
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore
-            the device is locked.
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
         
         i = tc.SetColorMode(self.handle, mode) #11 means raw 8-bit, 6 means gray 8-bit
 
@@ -363,17 +268,7 @@ class UC480:
         ----------
         roi_shape : int x int
             dimentions of the image that is taken by the camera (usually 1024 x 1280)
-
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore
-            the device is locked.
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
         
         AOI_size = tc.IS_2D(roi_shape[0], roi_shape[1]) #Width and Height
             
@@ -392,17 +287,7 @@ class UC480:
         roi_pos : int x int
             position of the top left corner of the roi (region of interest) in
             relation to the sensor array (usaually 0,0)
-
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore
-            the device is locked.
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
         
         AOI_pos = tc.IS_2D(roi_pos[0], roi_pos[1]) #Width and Height
             
@@ -419,17 +304,10 @@ class UC480:
 
         Raises
         ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore
-            the device is locked.
         PyroError("Closing ThorCam failed with error code "+str(i))
             Error to signal that the connection to the camera was closed abruptly
             or another error was thrown upon closing (usually is ignorable)
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
         
         try:
             self.handle
