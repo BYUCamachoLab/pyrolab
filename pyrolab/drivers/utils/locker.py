@@ -18,6 +18,7 @@ from os import path
 import time
 from Pyro5.api import expose
 import pyrolab.api
+import tempfile
 
 @expose
 class Locker():
@@ -38,9 +39,10 @@ class Locker():
         Initialize the file name that we are dealing with, depending on the
         device name.
         """
-        self.fileName = "C:\\LockedDevices\\" + deviceName + "_LOCK.txt"
 
-    def lock(self,name=""):
+        self.file_name = deviceName + "_LOCK"
+
+    def lock(self,user=""):
         """
         Create the txt file and write the password inside, unless the file
         already exhists.
@@ -49,23 +51,24 @@ class Locker():
         if exists == True:
             return 1
         else:
-            f = open(self.fileName,"w")
-            f.write(name)
-            f.close()
+            temp = tempfile.NamedTemporaryFile(prefix = self.file_name, suffix = user, delete=False)
+            temp.close()
             return 1
 
-    def release(self,name=""):
+    def release(self,user=""):
         """
         If the password that is inputed matches the content of the txt file,
         delete the file to unlock.
         """
         exists = self.get_status()
         if exists == True:
-            f = open(self.fileName,"r")
-            pwd = f.read()
-            f.close()
-            if (name == pwd or name == self.MASTER_PWD):
-                os.remove(self.fileName)
+            directory = tempfile.gettempdir()
+            prefixed = [filename for filename in os.listdir(tempfile.gettempdir()) if filename.startswith(self.file_name)]
+            file_full = prefixed[0]
+            pwd = file_full[len(self.file_name)+8:len(file_full)]
+            if (user == pwd or user == self.MASTER_PWD):
+                del_file = directory + "\\" + file_full
+                os.remove(del_file)
                 return 1
             else:
                 return 0
@@ -76,7 +79,10 @@ class Locker():
         """
         Return True if the file exists, false otherwise.
         """
-        lock_status = os.path.exists(self.fileName)
+        lock_status = False
+        prefixed = [filename for filename in os.listdir(tempfile.gettempdir()) if filename.startswith(self.file_name)]
+        if(len(prefixed) > 0):
+            lock_status = True
         return lock_status
     
     def get_user(self):
@@ -84,10 +90,10 @@ class Locker():
         Return the username or contents of the txt file.
         """
         exists = self.get_status()
-        if exists == True:
-            f = open(self.fileName,"r")
-            name = f.read()
-            f.close()
+        prefixed = [filename for filename in os.listdir(tempfile.gettempdir()) if filename.startswith(self.file_name)]
+        if(len(prefixed) > 0):
+            file_full = prefixed[0]
+            name = file_full[len(self.file_name)+8:len(file_full)]
             return name
         else:
             return ""
