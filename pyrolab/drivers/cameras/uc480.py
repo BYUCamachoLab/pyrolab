@@ -27,7 +27,8 @@ class UC480:
     Attributes
     ----------
     HEADERSIZE : int
-        the size of the header file used to communicate the size of the message (10 bytes is a safe size)
+        the size of the header file used to communicate the size of the message
+        (10 bytes is a safe size)
     """
     HEADERSIZE = 10
 
@@ -35,7 +36,8 @@ class UC480:
         self._activated = True
         pass
 
-    def start(self, bit_depth=8, camera="ThorCam FS", pixel_clock=24, color_mode=11, roi_shape=(1024, 1280), roi_pos=(0,0), framerate=10, exposure=90, pixelbytes=8):
+    def start(self, bit_depth=8, camera="ThorCam FS", pixel_clock=24, color_mode=11,
+    roi_shape=(1024, 1280), roi_pos=(0,0), framerate=10, exposure=90, pixelbytes=8):
         """
         Opens the serial communication with the Thorlabs camera and sets
         some low-level values, including the bit depth and camera name.
@@ -58,7 +60,8 @@ class UC480:
         roi_shape : array(int)
             dimentions of the image that is taken by the camera (usually 1024 x 1280)
         roi_pos : array(int)
-            position of the top left corner of the roi (region of interest) in relation to the sensor array (usaually 0,0)
+            position of the top left corner of the roi (region of interest) in
+            relation to the sensor array (usaually 0,0)
         framerate : int
             the framerate of the camera in frames per second
         exposure: int
@@ -69,7 +72,8 @@ class UC480:
         Raises
         ------
         PyroError("Opening the ThorCam failed with error code "+str(i))
-            Error to signal that the connection with the camera could not be established. Usually means that the last person using
+            Error to signal that the connection with the camera could not be
+            established. Usually means that the last person using
             it did not close out of it correctly or is still accessing it.
         """
         try:
@@ -111,14 +115,16 @@ class UC480:
         Raises
         ------
         PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
+            Error to signal that the constuctor was not called and therefore the
+            device is locked.
         """
         try:
             self._activated
         except AttributeError:
             raise PyroError("DeviceLockedError")
         
-        bayer = np.frombuffer(self.meminfo[0], c_ubyte).reshape(self.roi_shape[1], self.roi_shape[0])
+        bayer = np.frombuffer(self.meminfo[0], c_ubyte).reshape(self.roi_shape[1],
+        self.roi_shape[0])
 
         ow = (bayer.shape[0]//4) * 4
         oh = (bayer.shape[1]//4) * 4
@@ -143,7 +149,8 @@ class UC480:
         Raises
         ------
         PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
+            Error to signal that the constuctor was not called and therefore
+            the device is locked.
         """
         try:
             self._activated
@@ -181,7 +188,8 @@ class UC480:
         Raises
         ------
         PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.        
+            Error to signal that the constuctor was not called and therefore
+            the device is locked.        
         """
         try:
             self._activated
@@ -200,7 +208,8 @@ class UC480:
         Raises
         ------
         PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
+            Error to signal that the constuctor was not called and therefore
+            the device is locked.
         """
         try:
             self._activated
@@ -221,7 +230,8 @@ class UC480:
         Raises
         ------
         PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
+            Error to signal that the constuctor was not called and therefore
+            the device is locked.
         """
         try:
             self._activated
@@ -245,7 +255,8 @@ class UC480:
         Raises
         ------
         PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
+            Error to signal that the constuctor was not called and therefore
+            the device is locked.
         """
         try:
             self._activated
@@ -273,12 +284,14 @@ class UC480:
         Parameters
         ----------
         exposure: int
-            in milliseconds, the time the shutter is open on the camera (90 is a good exposure value)
+            in milliseconds, the time the shutter is open on the camera (90 is
+            a good exposure value)
 
         Raises
         ------
         PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
+            Error to signal that the constuctor was not called and therefore
+            the device is locked.
         """
         try:
             self._activated
@@ -302,7 +315,8 @@ class UC480:
         Raises
         ------
         PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
+            Error to signal that the constuctor was not called and therefore
+            the device is locked.
         """  
         try:
             self._activated
@@ -331,7 +345,8 @@ class UC480:
         Raises
         ------
         PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
+            Error to signal that the constuctor was not called and therefore
+            the device is locked.
         """
         try:
             self._activated
@@ -352,7 +367,8 @@ class UC480:
         Raises
         ------
         PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
+            Error to signal that the constuctor was not called and therefore
+            the device is locked.
         """
         try:
             self._activated
@@ -361,8 +377,10 @@ class UC480:
         
         AOI_size = tc.IS_2D(roi_shape[0], roi_shape[1]) #Width and Height
             
-        i = tc.AOI(self.handle, 5, byref(AOI_size), 8)#5 for setting size, 3 for setting position
-        tc.AOI(self.handle, 6, byref(AOI_size), 8)#6 for getting size, 4 for getting position
+        i = tc.AOI(self.handle, 5, byref(AOI_size), 8)#5 for setting size,
+                                                      #3 for setting position
+        tc.AOI(self.handle, 6, byref(AOI_size), 8)#6 for getting size
+                                                  #4 for getting position
         self.roi_shape = [AOI_size.s32X, AOI_size.s32Y]
 
     def set_roi_pos(self, roi_pos):
@@ -372,12 +390,14 @@ class UC480:
         Parameters
         ----------
         roi_pos : int x int
-            position of the top left corner of the roi (region of interest) in relation to the sensor array (usaually 0,0)
+            position of the top left corner of the roi (region of interest) in
+            relation to the sensor array (usaually 0,0)
 
         Raises
         ------
         PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
+            Error to signal that the constuctor was not called and therefore
+            the device is locked.
         """
         try:
             self._activated
@@ -386,8 +406,10 @@ class UC480:
         
         AOI_pos = tc.IS_2D(roi_pos[0], roi_pos[1]) #Width and Height
             
-        i = tc.AOI(self.handle, 3, byref(AOI_pos), 8 )#5 for setting size, 3 for setting position
-        tc.AOI(self.handle, 4, byref(AOI_pos), 8 )#6 for getting size, 4 for getting position
+        i = tc.AOI(self.handle, 3, byref(AOI_pos), 8 )#5 for setting size
+                                                      #3 for setting position
+        tc.AOI(self.handle, 4, byref(AOI_pos), 8 )#6 for getting size
+                                                  #4 for getting position
         self.roi_pos = [AOI_pos.s32X, AOI_pos.s32Y]
 
     def close(self):
@@ -398,9 +420,11 @@ class UC480:
         Raises
         ------
         PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
+            Error to signal that the constuctor was not called and therefore
+            the device is locked.
         PyroError("Closing ThorCam failed with error code "+str(i))
-            Error to signal that the connection to the camera was closed abruptly or another error was thrown upon closing (usually is ignorable)
+            Error to signal that the connection to the camera was closed abruptly
+            or another error was thrown upon closing (usually is ignorable)
         """
         try:
             self._activated

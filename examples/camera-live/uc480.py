@@ -6,9 +6,6 @@ import socket
 import pickle
 import time
 
-#import os
-#os.environ['PATH'] = "C:\\Program Files\\ThorLabs\\Scientific Imaging\\ThorCam" + ";" + os.environ['PATH']  #this path must be change to the location of the .dll files from Thorlabs
-
 HEADERSIZE = 10
 BRIGHTNESS = 5
 
