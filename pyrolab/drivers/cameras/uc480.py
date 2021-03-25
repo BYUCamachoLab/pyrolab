@@ -32,7 +32,7 @@ class UC480:
     """
     HEADERSIZE = 10
 
-    def __init__(self, ser_no, bit_depth=8, camera="ThorCam FS", pixel_clock=24, color_mode=11,
+    def __init__(self, ser_no, port=2222, bit_depth=8, camera="ThorCam FS", pixel_clock=24, color_mode=11,
     roi_shape=(1024, 1280), roi_pos=(0,0), framerate=10, exposure=90, pixelbytes=8):
         """
         Opens the serial communication with the Thorlabs camera and sets
@@ -96,7 +96,8 @@ class UC480:
         self.set_roi_pos(roi_pos)
         self.set_framerate(framerate)
         self.set_exposure(exposure)
-        self.initialize_memory(pixelbytes)        
+        self.initialize_memory(pixelbytes)     
+        self.port = port   
 
     def _get_image(self):
         """
@@ -138,7 +139,7 @@ class UC480:
                 if self.start_socket==True:
                     while True:
                         self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                        self.serversocket.bind((socket.gethostname(), 2222))
+                        self.serversocket.bind((socket.gethostname(), self.port))
                         self.serversocket.listen(5)
                         self.clientsocket, address = self.serversocket.accept()
                         self.start_socket = False
@@ -172,10 +173,12 @@ class UC480:
         """
         
         tc.StartCapture(self.handle, 1)
+        ip_address = socket.gethostbyname(socket.gethostname())
         self.start_socket = True
         self.stop_video = threading.Event()
         self.video_thread = threading.Thread(target=self._video_loop, args=())
         self.video_thread.start()
+        return ip_address
 
     def stop_capture(self):
         """
