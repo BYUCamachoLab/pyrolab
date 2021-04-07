@@ -34,7 +34,7 @@ class UC480:
 
     def __init__(self, ser_no, port=2222, bit_depth=8, camera="ThorCam FS",
     pixel_clock=24, color_mode=11, roi_shape=(1024, 1280), roi_pos=(0,0),
-    framerate=10, exposure=90, pixelbytes=8):
+    framerate=15, exposure=90, pixelbytes=8):
         """
         Opens the serial communication with the Thorlabs camera and sets
         some low-level values, including the bit depth and camera name.
@@ -97,6 +97,7 @@ class UC480:
         self.set_roi_pos(roi_pos)
         self.set_framerate(framerate)
         self.set_exposure(exposure)
+        print("setting exposure to " + str(exposure))
         self.initialize_memory(pixelbytes)     
         self.port = port   
 
