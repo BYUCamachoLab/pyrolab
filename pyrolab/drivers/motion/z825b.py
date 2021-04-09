@@ -15,6 +15,7 @@ Contributors
  * Christian Carver (https://github.com/cjcarver)
 """
 from pyrolab.drivers.motion import Motion
+from Pyro5.api import expose
 from pyrolab.drivers.motion._kinesis.kdc101 import KDC101, HomingMixin
 from pyrolab.api import expose
 
