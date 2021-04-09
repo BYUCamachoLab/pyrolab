@@ -185,6 +185,9 @@ class UC480:
         self.video_thread = threading.Thread(target=self._video_loop, args=())
         self.video_thread.start()
         return ip_address
+    
+    def color_gray(self,color=False):
+        self.color = color
 
     def stop_capture(self):
         """
