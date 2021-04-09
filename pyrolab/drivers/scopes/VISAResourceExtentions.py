@@ -83,7 +83,8 @@ visa.Resource.ext_error_checking = ext_error_checking
 
 # This function queries a binary data from the instrument and writes them to a file on your PC
 def ext_query_bin_data_to_file(device, query, pc_file_path):
-    file_data = device.query_binary_values(query, datatype='s')[0]
+    file_data = device.query_binary_values(query, datatype='s')
+    file_data = bytearray(file_data)
     new_file = open(pc_file_path, "wb")
     new_file.write(file_data)
     new_file.close()
