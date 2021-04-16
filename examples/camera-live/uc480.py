@@ -1,16 +1,17 @@
 from pyrolab.api import locate_ns, Proxy
 import numpy as np
 import cv2
-import sys
 import socket
 import pickle
 import time
+from PIL import Image
+from datetime import datetime
 
 HEADERSIZE = 10
 BRIGHTNESS = 5
 PORT = 2222
-SER_NUMBER = 4103238947
-COLOR = False
+SER_NUMBER = 4103257229
+COLOR = True
 
 def bayer_convert(bayer):
     if(COLOR):
@@ -34,15 +35,47 @@ def bayer_convert(bayer):
     return dStack
 
 ns = locate_ns(host="camacholab.ee.byu.edu")
-cam = Proxy(ns.lookup("UC480"))
+objs = str(ns.list())
+while(True):
+    temp_str = objs[objs.find('\'')+1:-1]
+    temp_obj = temp_str[0:temp_str.find('\'')]
+    if(temp_obj[0:5] ==  "UC480"):
+        temp_ser_no = int(temp_obj[6:len(temp_obj)])
+        if(temp_ser_no == SER_NUMBER):
+            cam_str = temp_obj 
+    if(objs.find(',') == -1):
+        break
+    objs = objs[objs.find(',')+1:-1]
+try:
+    cam_str
+except NameError:
+    raise Exception("Camera with serial number " + str(SER_NUMBER) + " could not be found")
 
-cam.start(ser_no = SER_NUMBER, port = PORT)
+cam = Proxy(ns.lookup(cam_str))
+
+cam.start(exposure=65)
 ip_address = cam.start_capture(COLOR)
 print(ip_address)
 clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 clientsocket.connect((str(ip_address), PORT))
 
+now = datetime.now()
+dt_string = now.strftime("rec_"+str(SER_NUMBER)+"/%Y-%m-%d_%H-%M-%S.avi")
+fourcc = cv2.VideoWriter_fourcc(*'XVID')
+out = cv2.VideoWriter(dt_string,fourcc, 4.0, (640,512))
+
+time_s = 0
+frame_rate = 0
+count = -1
 while(True):
+    if(count >= 0):
+        t = time.time() - time_s
+        frame_rate = (frame_rate*count + 1/t)/(count + 1)   
+        print(frame_rate)
+
+    time_s = time.time()
+    count = count + 1
+
     msg = b''
     new_msg = True
     msg_len = None
@@ -61,6 +94,9 @@ while(True):
                 
     dStack = bayer_convert(imList)
 
+    #frame = Image.fromarray(dStack)
+    out.write(dStack)
+
     cv2.imshow('scope',dStack)
     keyCode = cv2.waitKey(1)
     
@@ -69,4 +105,5 @@ while(True):
         break
     clientsocket.send(b'g')
 
+out.release()
 cam.close()
