@@ -34,7 +34,7 @@ class UC480:
 
     def __init__(self, ser_no, port=2222, bit_depth=8, camera="ThorCam FS",
     pixel_clock=24, color_mode=11, roi_shape=(1024, 1280), roi_pos=(0,0),
-    framerate=10, exposure=90, pixelbytes=8):
+    framerate=15, exposure=90, pixelbytes=8):
         """
         Opens the serial communication with the Thorlabs camera and sets
         some low-level values, including the bit depth and camera name.
@@ -97,6 +97,7 @@ class UC480:
         self.set_roi_pos(roi_pos)
         self.set_framerate(framerate)
         self.set_exposure(exposure)
+        print("setting exposure to " + str(exposure))
         self.initialize_memory(pixelbytes)     
         self.port = port   
 
@@ -109,22 +110,26 @@ class UC480:
         will be called from the function _video_loop() which is on a
         parrallel thread with Pyro5.
         """
-        
         bayer = np.frombuffer(self.meminfo[0], c_ubyte).reshape(self.roi_shape[1],
         self.roi_shape[0])
 
-        ow = (bayer.shape[0]//4) * 4
-        oh = (bayer.shape[1]//4) * 4
+        if(self.color == False):
+            ow = (bayer.shape[0]//4) * 4
+            oh = (bayer.shape[1]//4) * 4
 
-        R  = bayer[0::2, 0::2]
-        B  = bayer[1::2, 1::2]
-        G0 = bayer[0::2, 1::2]
-        G1 = bayer[1::2, 0::2]
+            R  = bayer[0::2, 0::2]
+            B  = bayer[1::2, 1::2]
+            G0 = bayer[0::2, 1::2]
+            G1 = bayer[1::2, 0::2]
 
-        GRAY = R[:oh,:ow]//3 + B[:oh,:ow]//3 + (G0[:oh,:ow]//2 + G1[:oh,:ow]//2)//3
+            GRAY = R[:oh,:ow]//3 + B[:oh,:ow]//3 + (G0[:oh,:ow]//2 + G1[:oh,:ow]//2)//3
 
-        msg = pickle.dumps(GRAY)
-        msg = bytes(f'{len(msg):<{self.HEADERSIZE}}', "utf-8") + msg
+            msg = pickle.dumps(GRAY)
+            msg = bytes(f'{len(msg):<{self.HEADERSIZE}}', "utf-8") + msg
+        else:
+            msg = pickle.dumps(bayer)
+            msg = bytes(f'{len(msg):<{self.HEADERSIZE}}', "utf-8") + msg
+            
         return msg
 
     def _video_loop(self):
@@ -166,13 +171,13 @@ class UC480:
         pixelclock = c_uint(clockspeed)
         i = tc.PixelClock(self.handle, 6, byref(pixelclock), sizeof(pixelclock))
 
-    def start_capture(self):
+    def start_capture(self,color=False):
         """
         This starts the capture from the camera to the allocated
         memory location as well as starts a new parallel thread
         for the socket server to stream from memory to the client.
         """
-        
+        self.color = color
         tc.StartCapture(self.handle, 1)
         ip_address = socket.gethostbyname(socket.gethostname())
         self.start_socket = True
@@ -180,6 +185,9 @@ class UC480:
         self.video_thread = threading.Thread(target=self._video_loop, args=())
         self.video_thread.start()
         return ip_address
+    
+    def color_gray(self,color=False):
+        self.color = color
 
     def stop_capture(self):
         """
