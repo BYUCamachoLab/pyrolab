@@ -60,9 +60,10 @@ class RTO(Scope):
         The protocol to use for the LAN connection. Can be "INSTR"
         or "hislip". Default is "hislip".
     timeout : int, optional
-        The device response timeout in milliseconds (default infinite).
+        The device response timeout in milliseconds (default 1 second).
+        Pass `None` for infinite timeout.
     """
-    def __init__(self, address, interface="TCPIP", protocol="hislip", timeout=None):
+    def __init__(self, address, interface="TCPIP", protocol="hislip", timeout=1e3):
         rm = visa.ResourceManager()
         self.device = rm.open_resource("{}::{}::{}".format(interface, address, protocol))
         self.device.timeout = timeout
@@ -94,7 +95,7 @@ class RTO(Scope):
             Delay in seconds between write and read operations. If None,
             defaults to `self.device.query_delay`.
         """
-        self.device.query(message, delay)
+        return self.device.query(message, delay)
 
     def write(self, message, termination=None, encoding=None):
         """
@@ -164,7 +165,9 @@ class RTO(Scope):
         -----
         This function is blocking.
         """
-        self.device.query('*OPC?')
+        res = self.device.query('*OPC?')
+        time.sleep(0.1)
+        return res
 
     def acquisition_settings(self, sample_rate, duration, force_realtime=False):
         """
@@ -187,7 +190,9 @@ class RTO(Scope):
             self.write_block('ACQ:MODE RTIM')
         self.write_block(short_command)
 
-    def set_channel(self, channel, state="ON", coupling="DCLimit", range=0.5, position=0, offset=0, invert="OFF"):
+    def set_channel(self, channel: int, state: str="ON", 
+                    coupling: str="DCLimit", range: float=0.5, 
+                    position: float=0, offset: float=0, invert: str="OFF"):
         """
         Configures a channel.
 
@@ -258,7 +263,7 @@ class RTO(Scope):
         #Add a trigger.
         self.write_block(short_command + settings)
 
-    def edge_trigger(self, channel, voltage):
+    def edge_trigger(self, channel: int, voltage: float) -> None:
         """
         Add an edge trigger to the specified channel.
 
@@ -278,12 +283,19 @@ class RTO(Scope):
             settings = "EDGE:SLOP POS"
         )
 
-    def acquire(self, run='single'):
+    def acquire(self, timeout: int=-1, run: str='single') -> None:
         """
         Asynchronous command that starts acquisition.
 
         Parameters
         ----------
+        timeout : int
+            The timeout to use for the given acquisition in milliseconds. The 
+            default timeout is used if no timeout is given. The timeout is not
+            permanently set; once the acquisition is complete, the original 
+            timeout is kept for any other query/write command. For an infinite
+            timeout, pass in None. If not specified, default timeout is the 
+            default for `acquire()`.
         run : str
             Specifies the type of run. Allowable values are ``continuous`` 
             (starts the continuous acquisition), ``single`` (starts a defined
@@ -299,13 +311,20 @@ class RTO(Scope):
             cmd = "STOP"
         else:
             raise ValueError("%s is not a valid argument" % run)
+
+        if timeout != -1:
+            default_timeout = self.timeout
+            self.timeout = timeout
         
         self.write(cmd)
+
+        if timeout != -1:
+            self.timeout = default_timeout
 
     @deprecation.deprecated(deprecated_in="0.1.0", removed_in="0.2.0",
                 current_version=__version__,
                 details="Use 'acquire()' instead.")
-    def start_acquisition(self, timeout, type='SING'):
+    def start_acquisition(self, timeout: int, type: str='SING') -> None:
         """
         Asynchronous command that starts acquisition.
 
@@ -331,6 +350,66 @@ class RTO(Scope):
             raise ValueError("%s is not a valid argument" % type)            
         
         self.write(type)
+
+    def set_timescale(self, time: float) -> None:
+        """
+        Sets the horizontal scale--the time per division on the x-axis--for all 
+        channel and math waveforms.
+
+        Parameters
+        ----------
+        time : float
+            The time (in seconds) per division. Valid range is from 25e-12 to 
+            10000 (RTO) | 5000 (RTE) in increments of 1e-12. (`*RST` value is 
+            10e-9).
+        """
+        self.write(f'TIM:SCAL {str(time)}')
+
+    def set_auto_measurement(self, measurement: int=1, source: str='C1W1', 
+                             meastype: str='MAX') -> None:
+        """
+        Convenience function for setting default measurements. 
+        
+        Use if you haven't configured any of your own measurements.
+
+        Parameters
+        ----------
+        measurement : int
+            The oscope supports storing up to 8 measurements. Default is 1.
+        channel : str
+            The source to setup the measurement on. See page 1377 of the User
+            Manual for valid sources. Common ones are of the format "C<m>W<n>",
+            where <m> is the channel and <n> is the waveform (e.g., "C1W1", 
+            which is the default).
+        meastype : str
+            The measurement type to associate with the measurement. See page 
+            1381 of the User Manual for valid measurement types. Common ones
+            are 'HIGH', 'LOW', 'AMPLitude', 'MAXimum', 'MINimum', 'MEAN'. 
+            Default is 'MAX'.
+        """
+        self.write(f'MEAS{measurement}:SOUR {source}')
+        # "MAX" will measure the max value in the current view window (Based on time base)
+        self.write(f'MEAS{measurement}:MAIN {meastype}')
+        self.write(f'MEAS{measurement} ON')
+
+    def measure(self, measurement: int=1) -> float:
+        """
+        Takes the result of an automatic measurement as setup using 
+        `set_auto_measurement()`.
+
+        Parameters
+        ----------
+        channel : int
+            The channel to take a single measurement on.
+        measurement : int
+            The measurement to take. Default is 1.
+
+        Returns
+        -------
+        float
+            The result of the automatic measurement.
+        """
+        return float(self.query(f'MEAS{measurement}:RES:ACT?'))
 
     def get_data(self, channel, form="ascii"):
         """
