@@ -43,6 +43,8 @@ class UC480:
         ----------
         ser_no : long
             the serial number of the camera that should be initiated
+        port : int
+            the port on which the socket transmits the video feed to the client
         bit_depth : int
             the number of bits used for each pixel (usually is 8)
         camera: string
@@ -164,7 +166,7 @@ class UC480:
 
         Parameters
         ----------
-        clockspeed: int
+        clockspeed : int
             clock speed of the camera       
         """
         
@@ -176,6 +178,11 @@ class UC480:
         This starts the capture from the camera to the allocated
         memory location as well as starts a new parallel thread
         for the socket server to stream from memory to the client.
+
+        Parameters
+        ----------
+        color : boolean
+            whether the video should be sent in full color or grayscale
         """
         self.color = color
         tc.StartCapture(self.handle, 1)
@@ -187,6 +194,13 @@ class UC480:
         return ip_address
     
     def color_gray(self,color=False):
+        """
+        This function switches whether the socket transmits color or grayscale.
+        Parameters
+        ----------
+        color : boolean
+            whether the video should be sent in full color or grayscale
+        """
         self.color = color
 
     def stop_capture(self):
@@ -274,11 +288,11 @@ class UC480:
 
     def set_roi_shape(self, roi_shape):
         """
-        Sets the dimmenstions of the region of interest (roi)
+        Sets the dimmentions of the region of interest (roi)
 
         Parameters
         ----------
-        roi_shape : int x int
+        roi_shape : (int,int)
             dimentions of the image that is taken by the camera (usually 1024 x 1280)
         """
         
