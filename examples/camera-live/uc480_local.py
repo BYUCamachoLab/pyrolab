@@ -1,4 +1,5 @@
 from pyrolab.api import locate_ns, Proxy
+from pyrolab.drivers.cameras import uc480 as UC480
 import numpy as np
 import cv2
 import socket
@@ -10,7 +11,7 @@ from datetime import datetime
 HEADERSIZE = 10
 BRIGHTNESS = 5
 PORT = 2222
-SER_NUMBER = 4103257229
+SER_NUMBER = 4103247225
 COLOR = True
 
 def bayer_convert(bayer):
@@ -34,26 +35,22 @@ def bayer_convert(bayer):
     #dStack = np.clip(np.dstack((bayer,bayer,bayer)),0,255).astype('uint8')
     return dStack
 
-ns = locate_ns(host="camacholab.ee.byu.edu")
-objs = str(ns.list())
-while(True):
-    temp_str = objs[objs.find('\'')+1:-1]
-    temp_obj = temp_str[0:temp_str.find('\'')]
-    if(temp_obj[0:5] ==  "UC480"):
-        temp_ser_no = int(temp_obj[6:len(temp_obj)])
-        if(temp_ser_no == SER_NUMBER):
-            cam_str = temp_obj 
-    if(objs.find(',') == -1):
+num = c_int(0)
+tc.GetNumberOfCameras(byref(num))
+for i in range(num.value):
+    handle = c_int(i)
+    cam = UC480(exposure=65)
+    info = tc.CAMINFO()
+    out = tc.GetCameraInfo(handle,byref(info))
+    if(int(info.SerNo) == SER_NUMBER):
         break
-    objs = objs[objs.find(',')+1:-1]
-try:
-    cam_str
-except NameError:
-    raise Exception("Camera with serial number " + str(SER_NUMBER) + " could not be found")
+    else:
+        i = tc.ExitCamera(handle)
+        if i != 0:
+            raise PyroError("Closing ThorCam failed with error code "+str(i))
+    if(i == num.value - 1):
+        raise Exception("Camera with serial number " + str(SER_NUMBER) + " could not be found")    
 
-cam = Proxy(ns.lookup(cam_str))
-
-cam.start(exposure=65)
 ip_address = cam.start_capture(COLOR)
 print(ip_address)
 clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
