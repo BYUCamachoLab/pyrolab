@@ -37,13 +37,11 @@ def bayer_convert(bayer):
     #dStack = np.clip(np.dstack((bayer,bayer,bayer)),0,255).astype('uint8')
     return dStack
 
-
+    
 cam = UC480(ser_no=SER_NUMBER,exposure=65)
 
-ip_address = cam.start_capture(COLOR)
+ip_address = cam.start_capture(COLOR,True)
 print(ip_address)
-clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-clientsocket.connect((str(ip_address), PORT))
 
 now = datetime.now()
 dt_string = now.strftime("rec_"+str(SER_NUMBER)+"/%Y-%m-%d_%H-%M-%S.avi")
