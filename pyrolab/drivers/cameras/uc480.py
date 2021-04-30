@@ -140,25 +140,29 @@ class UC480:
         It will loop, sending frame by frame accross the socket connection,
         until the threading.Event() stop_video is triggered.
         """
-        
-        bad = False
         while not self.stop_video.is_set():
-            if bad == False:
-                if self.start_socket==True:
+            bad = False
+            if(self.local == False):
+                if bad == False:
+                    if self.start_socket==True:
+                        while True:
+                            self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                            self.serversocket.bind((socket.gethostname(), self.port))
+                            self.serversocket.listen(5)
+                            self.clientsocket, address = self.serversocket.accept()
+                            self.start_socket = False
+                            break
+                    msg = self._get_image()
+                    self.clientsocket.send(msg)
                     while True:
-                        self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                        self.serversocket.bind((socket.gethostname(), self.port))
-                        self.serversocket.listen(5)
-                        self.clientsocket, address = self.serversocket.accept()
-                        self.start_socket = False
+                        check_msg = self.clientsocket.recv(2)
+                        if(check_msg == b'b'):
+                            bad = True
                         break
+            else:
                 msg = self._get_image()
-                self.clientsocket.send(msg)
-                while True:
-                    check_msg = self.clientsocket.recv(2)
-                    if(check_msg == b'b'):
-                        bad = True
-                    break
+                return msg
+
         
     def set_pixel_clock(self, clockspeed):
         """
@@ -173,7 +177,7 @@ class UC480:
         pixelclock = c_uint(clockspeed)
         i = tc.PixelClock(self.handle, 6, byref(pixelclock), sizeof(pixelclock))
 
-    def start_capture(self,color=False):
+    def start_capture(self,color=False,local=True):
         """
         This starts the capture from the camera to the allocated
         memory location as well as starts a new parallel thread
@@ -185,6 +189,7 @@ class UC480:
             whether the video should be sent in full color or grayscale
         """
         self.color = color
+        self.local = local
         tc.StartCapture(self.handle, 1)
         ip_address = socket.gethostbyname(socket.gethostname())
         self.start_socket = True

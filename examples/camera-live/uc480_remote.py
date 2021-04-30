@@ -56,7 +56,7 @@ except NameError:
 cam = Proxy(ns.lookup(cam_str))
 
 cam.start(exposure=65)
-ip_address = cam.start_capture(COLOR)
+ip_address = cam.start_capture(COLOR,False)
 print(ip_address)
 clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 clientsocket.connect((str(ip_address), PORT))
