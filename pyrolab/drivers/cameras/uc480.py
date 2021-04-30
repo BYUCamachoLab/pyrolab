@@ -114,7 +114,7 @@ class UC480:
         """
         bayer = np.frombuffer(self.meminfo[0], c_ubyte).reshape(self.roi_shape[1],
         self.roi_shape[0])
-
+        
         if(self.color == False):
             ow = (bayer.shape[0]//4) * 4
             oh = (bayer.shape[1]//4) * 4
@@ -126,13 +126,20 @@ class UC480:
 
             GRAY = R[:oh,:ow]//3 + B[:oh,:ow]//3 + (G0[:oh,:ow]//2 + G1[:oh,:ow]//2)//3
 
-            msg = pickle.dumps(GRAY)
-            msg = bytes(f'{len(msg):<{self.HEADERSIZE}}', "utf-8") + msg
+            if(self.local == True):
+                return GRAY
+            else:
+                msg = pickle.dumps(GRAY)
+                msg = bytes(f'{len(msg):<{self.HEADERSIZE}}', "utf-8") + msg
+                return msg
         else:
-            msg = pickle.dumps(bayer)
-            msg = bytes(f'{len(msg):<{self.HEADERSIZE}}', "utf-8") + msg
+            if(self.local == True):
+                return bayer
+            else:
+                msg = pickle.dumps(bayer)
+                msg = bytes(f'{len(msg):<{self.HEADERSIZE}}', "utf-8") + msg
+                return msg
             
-        return msg
 
     def _video_loop(self):
         """
@@ -160,8 +167,15 @@ class UC480:
                             bad = True
                         break
             else:
-                msg = self._get_image()
-                return msg
+                self.local_msg = self._get_image()
+            
+    def get_frame(self):
+        """
+        Returns the most recently updated frame from the camera. Only use if the
+        program is connecting to a local camera.   
+        """
+        if(self.local == True):
+            return self.local_msg
 
         
     def set_pixel_clock(self, clockspeed):
@@ -216,7 +230,8 @@ class UC480:
         
         tc.FreeMemory(self.handle, self.meminfo[0], self.meminfo[1])
         tc.StopCapture(self.handle, 1)
-        self.clientsocket.close()
+        if(self.local == False):
+            self.clientsocket.close()
         self.stop_video.set()
         
     def initialize_memory(self, pixelbytes=8):

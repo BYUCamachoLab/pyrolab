@@ -30,7 +30,7 @@ def bayer_convert(bayer):
         dStack = np.clip(np.dstack((bayer_B*(BRIGHTNESS/5),bayer_G*(BRIGHTNESS/5),bayer_R*(BRIGHTNESS/5))),0,255).astype('uint8')
     else:
         bayer_T = np.array(bayer, dtype=np.uint8).reshape(512, 640)
-        dStack = np.clip((np.dstack(((0.469 + bayer_T*0.75 - (bayer_T^2)*0.003)*(BRIGHTNESS/5),(bayer_T*0.95)*(BRIGHTNESS/5),(0.389 + bayer_T*1.34 - (bayer_T^2)*0.004)*(BRIGHTNESS/5)))),0,255).astype('uint8')
+        dStack = dStack = np.clip((np.dstack(((bayer_T)*(BRIGHTNESS/5),(bayer_T)*(BRIGHTNESS/5),(bayer_T)*(BRIGHTNESS/5)))),0,255).astype('uint8')
     #dStack = np.clip(np.dstack((bayer,bayer,bayer)),0,255).astype('uint8')
     return dStack
 
