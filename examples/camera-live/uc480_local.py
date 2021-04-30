@@ -1,10 +1,12 @@
 from pyrolab.api import locate_ns, Proxy
-from pyrolab.drivers.cameras import uc480 as UC480
+from pyrolab.drivers.cameras.uc480 import UC480
+from thorlabs_kinesis import thor_camera as tc
 import numpy as np
 import cv2
 import socket
 import pickle
 import time
+from ctypes import *
 from PIL import Image
 from datetime import datetime
 
@@ -35,21 +37,8 @@ def bayer_convert(bayer):
     #dStack = np.clip(np.dstack((bayer,bayer,bayer)),0,255).astype('uint8')
     return dStack
 
-num = c_int(0)
-tc.GetNumberOfCameras(byref(num))
-for i in range(num.value):
-    handle = c_int(i)
-    cam = UC480(exposure=65)
-    info = tc.CAMINFO()
-    out = tc.GetCameraInfo(handle,byref(info))
-    if(int(info.SerNo) == SER_NUMBER):
-        break
-    else:
-        i = tc.ExitCamera(handle)
-        if i != 0:
-            raise PyroError("Closing ThorCam failed with error code "+str(i))
-    if(i == num.value - 1):
-        raise Exception("Camera with serial number " + str(SER_NUMBER) + " could not be found")    
+
+cam = UC480(ser_no=SER_NUMBER,exposure=65)
 
 ip_address = cam.start_capture(COLOR)
 print(ip_address)
