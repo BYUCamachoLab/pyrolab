@@ -14,7 +14,7 @@ HEADERSIZE = 10
 BRIGHTNESS = 5
 PORT = 2222
 SER_NUMBER = 4103247225
-COLOR = False
+COLOR = True
 
 def bayer_convert(bayer):
     if(COLOR):

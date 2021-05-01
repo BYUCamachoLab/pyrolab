@@ -1,4 +1,4 @@
-from pyrolab.api import locate_ns, Proxy
+from Pyro5.api import locate_ns, Proxy
 import numpy as np
 import cv2
 import socket
