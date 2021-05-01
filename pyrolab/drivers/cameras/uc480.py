@@ -5,29 +5,28 @@
 # (see pyrolab/__init__.py for details)
 
 """
------------------------------------------------
+-------------------------------------------------------------------------------
 Driver for a Thorlabs Microscope.
 Author: David Hill (https://github.com/hillda3141)
 Repo: https://github.com/BYUCamachoLab/pyrolab/pyrolab/drivers/cameras
 """
+
+from Pyro5.errors import PyroError
+from pyrolab.api import expose
+from thorlabs_kinesis import thor_camera as tc
 import socket
 import pickle
 import threading
 import numpy as np
 from ctypes import *
-from Pyro5.errors import PyroError
-from Pyro5.api import expose
-from thorlabs_kinesis import thor_camera as tc
-import pyrolab.api
 
 @expose
 class UC480:
-
     """
     Attributes
     ----------
     HEADERSIZE : int
-        the size of the header file used to communicate the size of the message
+        the size of the header used to communicate the size of the message
         (10 bytes is a safe size)
     """
     HEADERSIZE = 10
@@ -99,7 +98,6 @@ class UC480:
         self.set_roi_pos(roi_pos)
         self.set_framerate(framerate)
         self.set_exposure(exposure)
-        print("setting exposure to " + str(exposure))
         self.initialize_memory(pixelbytes)     
         self.port = port   
 
@@ -153,7 +151,8 @@ class UC480:
                 if bad == False:
                     if self.start_socket==True:
                         while True:
-                            self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                            self.serversocket = socket.socket(socket.AF_INET,
+                                                              socket.SOCK_STREAM)
                             self.serversocket.bind((socket.gethostname(), self.port))
                             self.serversocket.listen(5)
                             self.clientsocket, address = self.serversocket.accept()
@@ -254,7 +253,8 @@ class UC480:
         memid = c_int(0)
         c_buf = (c_ubyte * imagesize)(0)
 
-        tc.AllocateMemory(self.handle, xdim, ydim, c_int(pixelbytes), c_buf, byref(memid))
+        tc.AllocateMemory(self.handle, xdim, ydim, c_int(pixelbytes), c_buf,
+                          byref(memid))
         tc.SetImageMemory(self.handle, c_buf, memid)
         self.meminfo = [c_buf, memid]
     
@@ -304,7 +304,8 @@ class UC480:
             the color mode of the pixel data
         """
         
-        i = tc.SetColorMode(self.handle, mode) #11 means raw 8-bit, 6 means gray 8-bit
+        i = tc.SetColorMode(self.handle, mode) #11 means raw 8-bit, 6 means
+                                               #gray 8-bit
 
     def set_roi_shape(self, roi_shape):
         """
