@@ -16,6 +16,7 @@ from pyrolab.drivers.cameras.uc480 import UC480
 import numpy as np
 import cv2
 import time
+import pickle
 
 BRIGHTNESS = 5  #be able to make the recieved video brighter or darker, this
                 #does nothing to the raw data, it is post-processing,
@@ -73,12 +74,16 @@ cam.start_capture(COLOR,True)   #start pulling frames from the camera
 time.sleep(0.5) #wait for the camera to start the capture
 
 while(True):    #loop to get frames
+    t_init = time.time()
     dStack = bayer_convert(cam.get_frame()) #get most recent frame
-    cv2.imshow('UC480',dStack)  #paint it to the cv2 window
+    cv2.imshow('UC480_1',dStack)  #paint it to the cv2 window
     keyCode = cv2.waitKey(1)
     
     #if window is exited, break from the loop
-    if cv2.getWindowProperty('UC480',cv2.WND_PROP_VISIBLE) < 1:
+    if cv2.getWindowProperty('UC480_1',cv2.WND_PROP_VISIBLE) < 1:
         break
+    # time.sleep(0.5)
+    pfs = 1.0/(time.time()-t_init)
+    print("pfs: " + str(pfs))
 
 cam.close() #close the camera connection

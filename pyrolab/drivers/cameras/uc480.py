@@ -69,26 +69,42 @@ class UC480:
         pixelbytes: int
             the amount of memory space allocated per pixel in bytes
         """
-
         num = c_int(0)
         tc.GetNumberOfCameras(byref(num))
+        print(num)
+        uci_format = tc.UC480_CAMERA_INFO * 2
+        uci = uci_format(tc.UC480_CAMERA_INFO(), tc.UC480_CAMERA_INFO())
+        dwCount = c_int(num.value)
+        cam_list = tc.UC480_CAMERA_LIST(dwCount=dwCount,uci=uci)
+        tc.GetCameraList(byref(cam_list))
         for i in range(num.value):
-            handle = c_int(i)
+            handle = c_int(cam_list.uci[i].dwCameraID)
             temp = tc.InitCamera(byref(handle))
+            if(temp != 0):
+                continue
             info = tc.CAMINFO()
             out = tc.GetCameraInfo(handle,byref(info))
             if(int(info.SerNo) == ser_no):
                 self.handle = handle
+                break
             elif(i == num.value - 1):
                 raise PyroError("Camera not found")
+            else:
+                i = tc.ExitCamera(handle)
+                if i != 0:
+                    raise PyroError("Closing ThorCam failed with error code "+str(i))
 
         self.bit_depth = bit_depth
         self.camera = camera
-   
-        tc.SetDisplayMode(self.handle, c_int(32768)) 
 
-        if i != 0:
-            raise PyroError("Opening the ThorCam failed with error code "+str(i))
+        #print("Trigger Mode: " + str(tc.SetTrigger(handle,tc.IS_SET_TRIGGER_SOFTWARE)))
+        print("Trigger Mode: " + str(tc.SetTrigger(handle,tc.IS_GET_EXTERNALTRIGGER)))
+   
+        tc.SetDisplayMode(self.handle, c_int(32768))
+
+        # if i  0:
+        #     print("shee")
+        #     raise PyroError("Opening the ThorCam failed with error code "+str(i))
 
         self.meminfo = None
 
@@ -100,6 +116,7 @@ class UC480:
         self.set_exposure(exposure)
         self.initialize_memory(pixelbytes)     
         self.port = port   
+        print("initialized")
 
     def _get_image(self):
         """
@@ -166,7 +183,7 @@ class UC480:
                             bad = True
                         break
             else:
-                self.local_msg = self._get_image()
+                break
             
     def get_frame(self):
         """
@@ -174,7 +191,7 @@ class UC480:
         program is connecting to a local camera.   
         """
         if(self.local == True):
-            return self.local_msg
+            return self._get_image()
 
         
     def set_pixel_clock(self, clockspeed):
@@ -186,7 +203,7 @@ class UC480:
         clockspeed : int
             clock speed of the camera       
         """
-        
+
         pixelclock = c_uint(clockspeed)
         i = tc.PixelClock(self.handle, 6, byref(pixelclock), sizeof(pixelclock))
 
@@ -203,7 +220,7 @@ class UC480:
         """
         self.color = color
         self.local = local
-        tc.StartCapture(self.handle, 1)
+        tc.StartCapture(self.handle, tc.IS_DONT_WAIT)
         ip_address = socket.gethostbyname(socket.gethostname())
         self.start_socket = True
         self.stop_video = threading.Event()
