@@ -115,7 +115,7 @@ class UC480:
         self.set_framerate(framerate)
         self.set_exposure(exposure)
         self.initialize_memory(pixelbytes)     
-        self.port = port   
+        self.port = port
         print("initialized")
 
     def _get_image(self):
