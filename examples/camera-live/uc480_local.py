@@ -9,6 +9,7 @@
 Example to connect to and stream a live video from a Thorlabs UC480 microscope
 locally.
 Author: David Hill (https://github.com/hillda3141)
+Modified: 5/4/2021
 Repo: https://github.com/BYUCamachoLab/pyrolab/examples/camera-live
 """
 
