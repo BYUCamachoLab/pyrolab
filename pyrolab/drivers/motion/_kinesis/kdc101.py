@@ -44,6 +44,7 @@ from thorlabs_kinesis._utils import c_word, c_dword
 
 from pyrolab.drivers.motion._kinesis import KinesisInstrument, ERROR_CODES
 from pyrolab.api import expose
+from Pyro5.server import oneway
 
 
 KCube_DC_Servo_Device_ID = 27
@@ -52,12 +53,12 @@ def check_error(status):
     if status != 0:
         raise RuntimeError(ERROR_CODES[status])
 
-if kcdc.TLI_BuildDeviceList() == 0:
-    size = kcdc.TLI_GetDeviceListSize()
-    if size > 0:
-        serialnos = create_string_buffer(10 * size)
-        status = kcdc.TLI_GetDeviceListByTypeExt(serialnos, 10 * size, KCube_DC_Servo_Device_ID)
-        check_error(status)
+# if kcdc.TLI_BuildDeviceList() == 0:
+#     size = kcdc.TLI_GetDeviceListSize()
+#     if size > 0:
+#         serialnos = create_string_buffer(10 * size)
+#         status = kcdc.TLI_GetDeviceListByTypeExt(serialnos, 10 * size, KCube_DC_Servo_Device_ID)
+#         check_error(status)
 
 class HomingMixin:
     def home(self, block=True):
@@ -476,6 +477,7 @@ class KDC101(KinesisInstrument):
         """
         kcdc.CC_Identify(self._serialno)
     
+    @oneway
     def go_home(self):
         """
         Takes the device home and sets self.homed to true
@@ -520,6 +522,7 @@ class KDC101(KinesisInstrument):
         check_error(status)
         self.wait_for_completion(id="moved")
 
+    @oneway
     def move_continuous(self, direction="forward"):
         """
         Moves the motor at a constant velocity in the specified direction.
@@ -548,6 +551,7 @@ class KDC101(KinesisInstrument):
         status = kcdc.CC_MoveAtVelocity(self._serialno, direction)
         check_error(status)
 
+    @oneway
     def jog(self, direction):
         """
         Jogs the motor using either stepped or continuous, 
@@ -579,6 +583,7 @@ class KDC101(KinesisInstrument):
         if (self.jog_mode == "stepped"):
             self.wait_for_completion("moved")
 
+    @oneway
     def stop(self, immediate=False):
         """
         Stops moving the motor either immediately or profiled.
@@ -595,7 +600,7 @@ class KDC101(KinesisInstrument):
         else:
             status = kcdc.CC_StopProfiled(self._serialno)
         check_error(status)
-        self.wait_for_completion(id="stopped")
+        #self.wait_for_completion(id="stopped")
 
     def close(self):
         """
