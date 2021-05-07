@@ -77,6 +77,7 @@ install_requires = [
     "deprecation",
     "numpy",
     "scipy",
+    "appdirs",
 ]
 
 extras_require = {
