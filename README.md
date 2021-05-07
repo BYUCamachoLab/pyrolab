@@ -33,6 +33,35 @@ one-stop-shop for laboratory instruments!
 OS-specific. For example, ThorLabs DLL's only work on Windows. However, you could
 use PyroLab to connect to those devices from any operating system.
 
+## Installation
+
+PyroLab is pip installable:
+
+```
+pip install pyrolab
+```
+
+You can also clone the repository, navigate to the toplevel, and install in 
+editable mode:
+
+```
+pip install -e .
+```
+
+## Uninstallation
+
+PyroLab creates data and configuration directories that aren't deleted when
+pip uninstalled. You can find their locations by running (before 
+uninstallation):
+
+```
+import pyrolab
+print(pyrolab.SITE_DATA_DIR)
+print(pyrolab.SITE_CONFIG_DIR)
+```
+
+These folders can be safely deleted after uninstallation.
+
 ## Example
 
 First, make sure all your configuration files on the nameserver computer, service
