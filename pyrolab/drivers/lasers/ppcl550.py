@@ -12,8 +12,8 @@ Author: David Hill (https://github.com/hillda3141)
 Repo: https://github.com/BYUCamachoLab/pyrolab/pyrolab/drivers/lasers
 Functions
 ---------
-    __init__(self,minWL=1515,maxWL=1570,minPow=7,maxPow=13.5)
-    start(self,port,baudrate=9600)
+    __init__(self,minWL=1515,maxWL=1570,minPow=7,maxPow=13.5,port="COM4",
+            baudrate=9600)
     setPower(self,power)
     setChannel(self,channel=1)
     setMode(self,mode)
@@ -99,7 +99,8 @@ WRITE=1
 @expose
 class PPCL55x:
 
-    def __init__(self,minWL=1515,maxWL=1570,minPow=7,maxPow=13.5,port="COM4"):
+    def __init__(self,minWL=1515,maxWL=1570,minPow=6,maxPow=13.5,port="COM4",
+            baudrate=9600):
         """"
         Initialize limiting values for the laser.
 
@@ -113,8 +114,11 @@ class PPCL55x:
             Minimum power level of the laser in dBm
         maxPow : double
             Maximum power level of the laser in dBm
+        port : str
+            COM port the laser is connected to (e.g. "COM4")
+        baudrate : int
+            baudrate of the serial connection default is 9600
         """
-        self._activated = True
         self.minWavelength = minWL
         self.maxWavelength = maxWL
         self.minPower = minPow
@@ -124,38 +128,16 @@ class PPCL55x:
         self.latestregister = 0
         self.queue = []
         self.maxrowticket = 0
-        pass
+        self.powerState = 0
 
-
-    def start(self,baudrate=9600):
-        """"
-        Connect with the laser via the serial port specified.
-
-        Parameters
-        ----------
-        port : string
-            Name of the port that the laser is connected to
-        baudrate : int
-            baudrate that the laser will use to communicate serially
-        
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
-        """
         try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
-
-        reftime = time.time()
-        connected=False
-        try:
-            self.lasercom = serial.Serial(self.port,baudrate,timeout=1,parity=serial.PARITY_NONE)    #attempt connection with given baudrate
+            self.lasercom = serial.Serial(self.port,baudrate,timeout=1,
+                parity=serial.PARITY_NONE) #attempt connection with given baudrate
         except serial.SerialException:
-            return(ITLA_ERROR_SERPORT)
+            raise IOError("Serial Connection Error")
         baudrate2=4800
-        while baudrate2<115200: #if the initial connection doesn't work try different baudrates
+        #if the initial connection doesn't work try different baudrates
+        while baudrate2<115200: 
             back = self._communicate(REG_Nop,0,0)
             if back != ITLA_NOERROR:
                 #go to next baudrate
@@ -165,13 +147,13 @@ class PPCL55x:
                 elif baudrate2==38400: baudrate2=57600
                 elif baudrate2==57600: baudrate2=115200
                 self.lasercom.close()
-                self.lasercom = serial.Serial(self.port,baudrate2,timeout=None,parity=serial.PARITY_NONE)            
+                self.lasercom = serial.Serial(self.port,baudrate2,timeout=None,
+                    parity=serial.PARITY_NONE)            
             else:
-                return(ITLA_NOERROR)
+                return
         print(baudrate2)
         self.lasercom.close()
-        return(ITLA_ERROR_SERBAUD)
-
+        raise IOError("Serial Connection Error")
 
     def setPower(self,power):
         """"
@@ -181,19 +163,11 @@ class PPCL55x:
         ----------
         power : double
             Power that the laser will be set to in dBm
-        
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
 
         sendPower = int(power*100)  #scale the power inputed
-        back = self._communicate(REG_Power,sendPower,1)  #on the REG_Power register, send the power
+        #on the REG_Power register, send the power
+        back = self._communicate(REG_Power,sendPower,1)  
         return back
 
 
@@ -205,18 +179,9 @@ class PPCL55x:
         ----------
         channel : int
             channel that the laser is on
-        
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
-
-        back = self._communicate(REG_Channel,channel,1)  #on the REG_Channel register, send the channel
+        #on the REG_Channel register, send the channel
+        back = self._communicate(REG_Channel,channel,1)  
         return back
 
     
@@ -231,166 +196,95 @@ class PPCL55x:
             0 - regular mode
             1 - no dither mode
             2 - clean mode
-        
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
-
-        back = self._communicate(REG_Mode,mode,1)    #on the REG_Mode register, send the mode
+        #on the REG_Mode register, send the mode
+        back = self._communicate(REG_Mode,mode,1)
         return back
 
 
-    def sweep(self,minWL,maxWL,pause=0.3,timetaken=10):
+    def setWavelength(self,wavelength):
         """
-        Sweep the wavelength on the range inputed, for the time inputed
-
-        Parameters
-        ----------
-        minWL : double
-            starting wavelength (smallest) in nm
-        maxWL : double
-            ending wavelength (largest) in nm
-        pause : double
-            time between wavelength changes
-        timetaken : double
-            total time of the sweep
-        
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
-        """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
-
-        number = int(timetaken/pause) + 1   #calculate the number of steps based on the pause length and time the sweep takes
-        step = int((maxWL - minWL)/number)  #calculate the step size given the number of steps
-        for count in range(number): #for each step
-            currWL = min(minWL + count*step,maxWL)  #calculate the wavelength desired
-            self.setWavelength(currWL,jump=1)   #set the wavelength
-            time.sleep(pause)   #pause for the time wanted
-
-
-    def setWavelength(self,wavelength,jump=0):
-        """
-        Set the wavelength of the laser
+        Set the wavelength of the laser. Laser must be off in order to set the 
+        wavelength. If laser is not off this function will turn it off and then 
+        back on.
 
         Parameters
         ----------
         wavelength : double
             Wavelength of the laser
-        jump : boolean
-            Variable to define if the laser is currently on
-            False - laser is off and normal method of setting the wavelength can be used
-            True - laser is on and "clean jump" must be used *note that not all firmware supports clean jump*
-        
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
 
         init_time = time.time()
-        if(wavelength < self.minWavelength or wavelength > self.maxWavelength): #if the wavelength is not in the allowed range
+        #if the wavelength is not in the allowed range
+        if(wavelength < self.minWavelength or wavelength > self.maxWavelength):
                 return "wavelength not in range"
         freq = self._wl_freq(wavelength)
         freq_t = int(freq/1000)
-        freq_g = int(freq*10) - freq_t*10000    #convert the wavelength to frequency for each register
-        print(freq_t)
-        print(freq_g)
+        #convert the wavelength to frequency for each register
+        freq_g = int(freq*10) - freq_t*10000    
+        # print(freq_t)
+        # print(freq_g)
 
-        if jump == 0:   #if the laser is currently off, use a certain register
+        if self.powerState:   #if the laser is currently on
+            self.off()
             back = self._communicate(REG_Fcf1,freq_t,1)
             if(back == ITLA_NOERROR):
-                back = self._communicate(REG_Fcf2,freq_g,1)  #write the new wavelength to the REG_Fcf2 register
+                #write the new wavelength to the REG_Fcf2 register
+                back = self._communicate(REG_Fcf2,freq_g,1)  
             time_diff = time.time() - init_time
-            print(time_diff)
+            # print(time_diff)
+            self.on()
             return back
-        if jump == 1:   #if the laser is currently on, use a different register
-            back = self._communicate(REG_CjumpTHz,freq_t,1)
+        else:
+            back = self._communicate(REG_Fcf1,freq_t,1)
             if(back == ITLA_NOERROR):
-                back = self._communicate(REG_CjumpGHz,freq_g,1)  #write the new wavelength to the REG_CjumpGHz register
-            if(back == ITLA_NOERROR):
-                back == self._communicate(REG_Cjumpon,1,1)
+                #write the new wavelength to the REG_Fcf2 register
+                back = self._communicate(REG_Fcf2,freq_g,1)
             time_diff = time.time() - init_time
-            print(time_diff)
+            # print(time_diff)
             return back
     
 
     def on(self):
         """
         Turn on the laser
-
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
-
-        back = self._communicate(REG_Resena,8,1) #start communication by sending 8 to REG_Resena register
+        #start communication by sending 8 to REG_Resena register
+        back = self._communicate(REG_Resena,8,1) 
         for x in range(10):
-            back = self._communicate(REG_Nop,0,0)    #send 0 to REG_Nop register to wait for a "ready" response
+            #send 0 to REG_Nop register to wait for a "ready" response
+            back = self._communicate(REG_Nop,0,0)   
+        self.powerState = 1
         return back
     
 
     def off(self):
         """
         Turn off the laser
-
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
-
-        back = self._communicate(REG_Resena,0,1) #stop communication by sending 0 to REG_Resena register
+        #stop communication by sending 0 to REG_Resena register
+        back = self._communicate(REG_Resena,0,1) 
+        self.powerState = 0
         return back
 
 
     def _communicate(self,register,data,rw):
         """
-        Function that implements the commmunication with the laser. It will first send a message then recieve a response.
+        Function that implements the commmunication with the laser. It will 
+        first send a message then recieve a response.
 
         Parameters
         ----------
         register : byte
-            Register to which will be written. Each laser function has its own register.
+            Register to which will be written. Each laser function has its own 
+            register.
         data : byte
             User-specific data that will be sent to the laser
         rw : int
             Defines if the communication is read-write or only write
             0 : write only
             1 : write then read
-        
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
 
         lock = threading.Lock()
         lock.acquire()
@@ -410,7 +304,8 @@ class PPCL55x:
             recvmsg = self._recieve()    #recieve the response from the laser
             #print(recvmsg)
             datamsg = recvmsg[2]*256 + recvmsg[3]
-            if (recvmsg[0] & 0x03) == 0x02:     #if the message is larger than 4 bytes, read it using AEA method (not implemented)
+            #if the message is larger than 4 bytes, read it using AEA method (not implemented)
+            if (recvmsg[0] & 0x03) == 0x02:
                 extmsg = self.AEA(datamsg)  #not implemented
                 lock.acquire()
                 self.queue.pop(0)
@@ -428,7 +323,7 @@ class PPCL55x:
             msg[0] = msg[0] | int(self._checksum(msg))*16    #construct message and send
             self._send(msg)
             recvmsg = self._recieve()    #recieve message
-            print("recieved")
+            # print("recieved")
             lock.acquire()
             self.queue.pop(0)
             lock.release()
@@ -446,20 +341,11 @@ class PPCL55x:
         ----------
         msg : 4 x 1 bytes
             Message that will be sent to the laser
-        
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
 
         self.lasercom.flush()
-        print(f"Sent msg: {msg}")
-        sendBytes = array.array('B',msg).tobytes()  #construct the bytes from the inputed message
+        #construct the bytes from the inputed message
+        sendBytes = array.array('B',msg).tobytes()  
         self.lasercom.write(sendBytes)  #write the bytes on the serial connection
 
 
@@ -469,42 +355,35 @@ class PPCL55x:
         
         Raises
         ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
         PyroError(f"SerialCommunicationFailure queue[0] = {self.queue[0]}")
-            Error to signal that the laser did not respond or the response was not long enough.
+            Error to signal that the laser did not respond or the response was 
+            not long enough.
         PyroError("ChecksumError")
             Error to signal that the recieved message had an irregular checksum.
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
 
         reftime = time.time()
         while self.lasercom.inWaiting()<4:  #wait until 4 bytes are recieved
-            if(time.time() > reftime + 0.5):   #if it takes longer than 0.25 seconds break
+            if(time.time() > reftime + 0.5): #if it takes longer than 0.25 seconds break
                 self._error=ITLA_NRERROR
                 return(0xFF,0xFF,0xFF,0xFF)
             time.sleep(0.0001)
         try:
             num = self.lasercom.inWaiting() #get number of bytes for debugging purposes
-            print(num)
             msg = []
             bAll = self.lasercom.read(num)  #read the four bytes from serial
-            print(bAll)
             for b in bAll:
                 msg.append(b)   #construct array of bytes from the message
             msg = msg[0:4]
         except:
             raise PyroError(f"SerialCommunicationFailure queue[0] = {self.queue[0]}")
             msg = [0xFF,0xFF,0xFF,0xFF]
-        print(f"Recieved msg: {msg}")
-        if self._checksum(msg) == msg[0] >> 4:   #insure the checksum is correct
+        if self._checksum(msg) == msg[0] >> 4: # ensure the checksum is correct
             self._error = msg[0] & 0x03
             return(msg) #return the message recieved
         else:
-            raise PyroError("ChecksumError")     #if the checksum is wrong, log a CS error
+            #if the checksum is wrong, log a CS error
+            raise PyroError("ChecksumError")  
             self._error=ITLA_CSERROR
             return(msg)  
 
@@ -519,16 +398,7 @@ class PPCL55x:
         ----------
         msg : 4 x 1 bytes
             Four-byte message that will be used to produce a checksum
-        
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
 
         bip8=(msg[0] & 0x0f) ^ msg[1] ^ msg[2] ^ msg[3]
         bip4=((bip8 & 0xf0) >> 4) ^ (bip8 & 0x0f)
@@ -545,16 +415,7 @@ class PPCL55x:
         ----------
         wl : double
             Wavelength in nanometers
-        
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
 
         return C_SPEED/wl
     
@@ -562,16 +423,7 @@ class PPCL55x:
     def close(self):
         """
         Disconnect from the laser
-
-        Raises
-        ------
-        PyroError("DeviceLockedError")
-            Error to signal that the constuctor was not called and therefore the device is locked.
         """
-        try:
-            self._activated
-        except AttributeError:
-            raise PyroError("DeviceLockedError")
 
         self.lasercom.close()
         return 0
