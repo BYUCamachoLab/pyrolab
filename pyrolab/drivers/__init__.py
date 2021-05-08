@@ -18,7 +18,9 @@ log = logging.getLogger('pyrolab.drivers')
 
 
 class Instrument:
-    pass
+    @staticmethod
+    def autodetect():
+        raise NotImplementedError
 
 class CustomProxy:
     pass
