@@ -28,6 +28,7 @@ from thorlabs_kinesis import benchtop_piezo as bp
 
 from pyrolab.drivers.motion._kinesis import KinesisInstrument
 from pyrolab.api import expose
+from Pyro5.server import oneway
 
 
 MAX_C_SHORT = 32767
@@ -337,6 +338,7 @@ class BPC303(KinesisInstrument):
     #     """
     #     pass
 
+    @oneway
     def zero(self, channel: int=None, block: bool=True) -> None:
         """
         Zeroes a channel (or all). Automatically sets closed loop mode.
