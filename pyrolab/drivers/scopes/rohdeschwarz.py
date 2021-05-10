@@ -35,6 +35,13 @@ This manual describes the following R&S®RTO models with firmware version 3.70:
 If you don't have the NI VISA implementation installed on your computer, be 
 sure to install the separate dependency ``pyvisa-py``, which is not included
 with PyroLab.
+
+Common Issues
+=============
+1. Note that if a trigger is set and you try to acquire data but end up with
+a timeout warning, it's possible that the acquisition never began because the
+trigger level was never reached. The scope will still be waiting to begin
+acquisition, but you'll be left without data and with a bad connection.
 """
 
 import time
@@ -44,6 +51,7 @@ import pyvisa as visa
 
 from pyrolab import __version__
 from pyrolab.drivers.scopes import Scope, VISAResourceExtentions
+
 
 class RTO(Scope):
     """
