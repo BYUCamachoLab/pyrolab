@@ -98,7 +98,7 @@ class UC480:
         self.camera = camera
 
         #print("Trigger Mode: " + str(tc.SetTrigger(handle,tc.IS_SET_TRIGGER_SOFTWARE)))
-        print("Trigger Mode: " + str(tc.SetTrigger(handle,tc.IS_GET_EXTERNALTRIGGER)))
+        print("Trigger Mode: " + str(tc.SetTrigger(self.handle,tc.IS_GET_EXTERNALTRIGGER)))
    
         tc.SetDisplayMode(self.handle, c_int(32768))
 
@@ -114,8 +114,8 @@ class UC480:
         self.set_roi_pos(roi_pos)
         self.set_framerate(framerate)
         self.set_exposure(exposure)
-        self.initialize_memory(pixelbytes)     
-        self.port = port   
+        self.initialize_memory(pixelbytes)  
+        self.port = port
         print("initialized")
 
     def _get_image(self):
