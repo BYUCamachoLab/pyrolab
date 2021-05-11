@@ -27,6 +27,25 @@ EXPOSURE = 65   #the exposure that the camera uses, this actually changes the
                 #raw camera data by changing the exposure time of the sensor
 SER_NUMBER = 4103247225 #serial number of the Thorlabs camera
 COLOR = True   #should the camera transmit colored data or grayscale?
+MASK_ON = True
+mask = np.arange(0)
+
+def _generate_mask(roi,num_cir=4):
+    max_rx = roi[0]/4
+    max_ry = roi[1]/4
+    max_r = min(max_rx,max_ry)
+
+    x, y = np.indices((int(roi[0]/2), int(roi[1]/2)))
+    array = np.zeros((int(roi[0]/2), int(roi[1]/2)))
+
+    rads = (max_r/num_cir*np.arange(1,num_cir+1)).astype(int)
+
+    for r in rads:
+        array = np.logical_or(array,np.abs(np.hypot(max_rx - x, max_ry - y)-r) < 0.5)
+    array = np.logical_or(array,x == round(max_rx))
+    array = np.logical_or(array,y == round(max_ry))
+    
+    return array.astype(int)
 
 def bayer_convert(bayer):
     """
@@ -37,7 +56,12 @@ def bayer_convert(bayer):
     bayer : numpy array
         this is the raw data that is recieved from the camera    
     """
+    global mask
+
     if(COLOR):  #if the data is in color, put the numpy array into BGR form
+        if(not mask.any()):
+            mask = _generate_mask(bayer.shape,4)
+
         frame_height = bayer.shape[0]//2
         frame_width = bayer.shape[1]//2
 
@@ -54,13 +78,27 @@ def bayer_convert(bayer):
         bayer_G = np.array(G, dtype=np.uint8).reshape(frame_height, frame_width)
         bayer_B = np.array(B, dtype=np.uint8).reshape(frame_height, frame_width)
 
+        if(MASK_ON == True):
+            idx=(mask==1)
+            bayer_R[idx]=255
+            bayer_G[idx]=255
+            bayer_B[idx]=255
+
         dStack = np.clip(np.dstack((bayer_B*(BRIGHTNESS/5),bayer_G*(BRIGHTNESS/5),
                          bayer_R*(BRIGHTNESS/5))),0,PIXEL_MAX).astype('uint8')
     else:   #if the data is grayscale, put it into BGR form
+        if(not mask.any()):
+            mask = _generate_mask((int(bayer.shape[0]*2),int(bayer.shape[1]*2)))
+
         frame_height = bayer.shape[0]
         frame_width = bayer.shape[1]
         bayer_T = np.array(bayer, dtype=np.uint8).reshape(frame_height,
                            frame_width)
+
+        if(MASK_ON == True):
+            idx=(mask==1)
+            bayer_T[idx]=255
+
         dStack = np.clip((np.dstack(((bayer_T)*(BRIGHTNESS/5),
                          (bayer_T)*(BRIGHTNESS/5),(bayer_T)*(BRIGHTNESS/5)))),0,
                          PIXEL_MAX).astype('uint8')

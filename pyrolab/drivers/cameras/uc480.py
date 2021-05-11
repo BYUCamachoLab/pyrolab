@@ -118,8 +118,6 @@ class UC480:
         self.set_exposure(exposure)
         self.initialize_memory(pixelbytes)     
         self.port = port
-        self.mask_on = True
-        self._generate_mask(roi_shape)
         print("initialized")
 
     def _get_image(self):
@@ -146,10 +144,6 @@ class UC480:
 
             GRAY = R[:oh,:ow]//3 + B[:oh,:ow]//3 + (G0[:oh,:ow]//2 + G1[:oh,:ow]//2)//3
 
-            if(self.mask_on == True):
-                idx=(self.mask==1)
-                GRAY[idx]=255
-
             if(self.local == True):
                 return GRAY
             else:
@@ -157,16 +151,6 @@ class UC480:
                 msg = bytes(f'{len(msg):<{self.HEADERSIZE}}', "utf-8") + msg
                 return msg
         else:
-
-            if(self.mask_on == True):
-                large_mask = np.zeros((self.roi_shape[1],self.roi_shape[0]))
-                large_mask[0::2, 0::2]=self.mask
-                large_mask[1::2, 1::2]=self.mask
-                large_mask[0::2, 1::2]=self.mask
-                large_mask[1::2, 0::2]=self.mask
-                idx=(large_mask==1)
-                bayer[idx]=255
-
             if(self.local == True):
                 return bayer
             else:
@@ -203,24 +187,6 @@ class UC480:
                         break
             else:
                 break
-
-    def _generate_mask(self,roi):
-        max_rx = roi[0]/4
-        max_ry = roi[1]/4
-        max_r = min(max_rx,max_ry)
-
-        x, y = np.indices((int(roi[0]/2), int(roi[1]/2)))
-        array = np.zeros((int(roi[0]/2), int(roi[1]/2)))
-
-        rads = (max_r/4*np.arange(1,5)).astype(int)
-
-        for r in rads:
-            array = np.logical_or(array,np.abs(np.hypot(max_rx - x, max_ry - y)-r) < 0.5)
-        array = np.logical_or(array,x == round(max_rx))
-        array = np.logical_or(array,y == round(max_ry))
-        
-        self.mask = array.astype(int)
-
             
     def get_frame(self):
         """
