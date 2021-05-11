@@ -26,7 +26,7 @@ PIXEL_MAX = 255 #the maximum number that a pixel can hold (255 at bit depth 8)
 EXPOSURE = 65   #the exposure that the camera uses, this actually changes the
                 #raw camera data by changing the exposure time of the sensor
 SER_NUMBER = 4103247225 #serial number of the Thorlabs camera
-COLOR = False   #should the camera transmit colored data or grayscale?
+COLOR = True   #should the camera transmit colored data or grayscale?
 
 def bayer_convert(bayer):
     """
