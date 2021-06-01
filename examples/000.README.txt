@@ -1,0 +1,13 @@
+The examples are numbered as follows:
+
+100s: Introductory examples, learn Pyro5 features.
+200s: Introductory examples, mainly PyroLab features.
+300s: Advanced usage
+900s: Real examples for specific instruments.
+
+Within the 100-299 series, the examples are further broken down component:
+
+00s: Comprehensive examples
+10s: Nameserver use cases
+20s: Server configurations
+30s: Client usage
