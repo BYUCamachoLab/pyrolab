@@ -22,6 +22,10 @@ log = logging.getLogger("pyrolab.nameserver")
 
 # Inheriting from the Nameserver
 class NameServer(Pyro5.nameserver.NameServer):
+    """
+    PyroLab specific NameServer with custom functionality including the ability
+    to reject duplicate registration names.
+    """
     pass
 
 def start_ns_loop():

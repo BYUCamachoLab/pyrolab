@@ -5,14 +5,17 @@
 # (see pyrolab/__init__.py for details)
 
 from typing import Optional
-from pyrolab import SITE_CONFIG_DIR
+from pyrolab import SITE_CONFIG_DIR, SITE_DATA_DIR
 from pyrolab.utils.configure import Configuration
 from pyrolab.utils.profile import Profile
 
 
-NAMESERVER_DIR = SITE_CONFIG_DIR / "nameserver"
-NAMESERVER_DIR.mkdir(parents=True, exist_ok=True)
-STORAGE_FILE = NAMESERVER_DIR / "storage.sql"
+NAMESERVER_CONFIG_DIR = SITE_CONFIG_DIR / "nameserver" / "config"
+NAMESERVER_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+
+NAMESERVER_DATA_DIR = SITE_DATA_DIR / "nameserver" / "data"
+NAMESERVER_DATA_DIR.mkdir(parents=True, exist_ok=True)
+STORAGE_FILE = NAMESERVER_DATA_DIR / "storage.sql"
 
 
 class NameserverConfiguration(Configuration):
@@ -57,6 +60,6 @@ class NameserverConfiguration(Configuration):
             self.STORAGE = storage_type
 
 
-PROFILES_DIR = NAMESERVER_DIR / "profiles"
+PROFILES_DIR = NAMESERVER_CONFIG_DIR / "profiles"
 PROFILES_SUFFIX = ".profile"
 ns_profile = Profile(PROFILES_DIR, PROFILES_SUFFIX, NameserverConfiguration)
