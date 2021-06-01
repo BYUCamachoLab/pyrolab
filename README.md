@@ -41,6 +41,17 @@ PyroLab is pip installable:
 pip install pyrolab
 ```
 
+PyroLab declares several "extras", depending on which instruments you need
+to support:
+
+```
+pip install pyrolab[tsl550, oscope]
+```
+
+The full list of supported extras is:
+- tsl550
+- oscope
+
 You can also clone the repository, navigate to the toplevel, and install in 
 editable mode:
 
@@ -70,21 +81,18 @@ providing computer, and client are correct (with the proper keys and everything)
 Run a nameserver:
 
 ```python
-from pyrolab.api import config, start_ns_loop
-config.reset(cfile="/path/to/config.ini")
-
+from pyrolab.api import start_ns_loop
 start_ns_loop()
 ```
 
 Provide a service:
 
 ```python
-from pyrolab.api import config, Daemon, locate_ns
+from pyrolab.api import Daemon, locate_ns
 from pyrolab.drivers.sample import SampleService
-config.reset(cfile="/path/to/config.ini")
 
 daemon = Daemon()
-ns = locate_ns()
+ns = locate_ns(host="localhost")
 uri = daemon.register(SampleService)
 ns.register("test.SampleService", uri)
 
@@ -97,14 +105,14 @@ finally:
 Connect using a remote client:
 
 ```python
-from pyrolab.api import config, locate_ns, Proxy
-config.reset(cfile="/path/to/config.ini")
+from pyrolab.api import locate_ns, Proxy
 
-ns = locate_ns()
+ns = locate_ns(host="localhost")
 uri = ns.lookup("test.SampleService")
 
-with Proxy(uri) as p:
-    p.do_work()
+with Proxy(uri) as service:
+    resp = service.echo("Hello, server!")
+    print(type(resp), resp)
 ```
 
 ## FAQ's
