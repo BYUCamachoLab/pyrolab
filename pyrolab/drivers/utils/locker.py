@@ -6,18 +6,14 @@
 
 """
 Pyrolab Locker Class
------------------------------------------------
-Driver for the Santec TSL-550 Tunable Laser.
-Contributors
- * David Hill (https://github.com/hillda3141)
- * Sequoia Ploeg (https://github.com/sequoiap)
+--------------------
+
+Utility for allowing classes to be locked and used by only one connection
+at a time.
 """
 
 import os
-from os import path
-import time
 from Pyro5.api import expose
-import pyrolab.api
 import tempfile
 
 @expose
@@ -97,3 +93,80 @@ class Locker():
             return name
         else:
             return ""
+
+# def lockable(obj):
+#     """
+#     Dynamically instantiates a new object with type the class of the object
+#     appended by "Locker".
+
+#     Parameters
+#     ----------
+#     obj : object
+#         An instantiated object to be placed in a "Locker" class.
+
+#     Returns
+#     -------
+#     DynamicLockable
+#         An instantiated Locker object that contains the original object,
+#         controlling access.
+#     """
+#     # This solution inspired by this Stack Overflow:
+#     # https://stackoverflow.com/a/4723921/11530613
+
+#     def __init__(self) -> None:
+#         self._RESOURCE_LOCK = False
+#         self._obj = obj
+
+#     def __getattr__(self, attr):
+#         """
+#         Controls access to the locked object's attributes, intercepting them
+#         if the lock is engaged.
+#         """
+#         ret = getattr(self._obj, attr)
+#         if self._RESOURCE_LOCK:
+#             raise Exception("Lock is engaged.")
+#         return ret
+
+#     def lock(self, user=""):
+#         """
+#         Locks access to the object's attributes.
+
+#         Parameters
+#         ----------
+#         user : str, optional
+#             The user who has locked the device. Useful when a device is locked
+#             and another user wants to know who is using it.
+#         """
+#         self._RESOURCE_LOCK = True
+
+#     def release(self):
+#         """
+#         Releases the lock on the object.
+#         """
+#         self._RESOURCE_LOCK = False
+
+#     def islocked(self):
+#         """
+#         Returns the status of the lock.
+
+#         Returns
+#         -------
+#         bool
+#             True if the lock is engaged, False otherwise.
+#         """
+#         return self._RESOURCE_LOCK
+
+#     # Dynamically create a new class that encloses the object.
+#     DynamicLockable = type(
+#         obj.__class__.__name__ + "Locker",
+#         (object, ),
+#         {
+#             "__init__": __init__,
+#             "__getattr__": __getattr__,
+#             "lock": lock,
+#             "release": release,
+#             "islocked": islocked,
+#         }
+#     )
+#     DL = expose(DynamicLockable)
+#     return DL()
