@@ -4,16 +4,39 @@
 # Licensed under the terms of the GNU GPLv3+ License
 # (see pyrolab/__init__.py for details)
 
+"""
+Server Configuration
+--------------------
+
+Note the difference between the two ``servertypes``:
+
+1. Threaded server
+    Every proxy on a client that connects to the daemon will be assigned to a 
+    thread to handle the remote method calls. This way multiple calls can 
+    potentially be processed concurrently. This means your Pyro object may have 
+    to be made thread-safe! 
+
+2. Multiplexed server
+    This server uses a connection multiplexer to process all remote method 
+    calls sequentially. No threads are used in this server. It means only one 
+    method call is running at a time, so if it takes a while to complete, all 
+    other calls are waiting for their turn (even when they are from different 
+    proxies).
+"""
+
 from typing import Optional
 
-from pyrolab import SITE_CONFIG_DIR
+from pyrolab import SITE_CONFIG_DIR, SITE_DATA_DIR
 from pyrolab.utils.configure import Configuration
 from pyrolab.utils.profile import Profile
 from pyrolab.utils.network import get_ip
 
 
-SERVER_DIR = SITE_CONFIG_DIR / "server"
-SERVER_DIR.mkdir(parents=True, exist_ok=True)
+SERVER_CONFIG_DIR = SITE_CONFIG_DIR / "server" / "config"
+SERVER_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+
+SERVER_DATA_DIR = SITE_DATA_DIR / "server" / "data"
+SERVER_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 
 class ServerConfiguration(Configuration):
@@ -22,18 +45,17 @@ class ServerConfiguration(Configuration):
 
     Parameters
     ----------
-    host : str
-        The hostname of the nameserver.
-    ns_host
-    ns_autoclean : float
-        The interval in seconds to run the autocleaner to remove stale 
-        resources. If 0.0, autocleaner does not run (default).
-    storage : str
-        One of "memory" or "sql:sqlfile".
+    host : str, optional
+        The hostname of the local server (default "localhost").
+    ns_host : str, optional
+        The hostname of the nameserver (default "localhost").
+    ns_port : int, optional
+        The port of the nameserver (default 9090).
+    servertype : str, optional
+        Either ``thread`` or ``multiplex`` (default "thread").
     """
     _valid_attributes = [
-        'NS_HOST', 'NS_PORT', 'NS_BCPORT', 'NS_BCHOST', 'NS_AUTOCLEAN', 
-        'STORAGE',
+        'HOST', 'NS_HOST', 'NS_PORT', 'NS_BCPORT', 'NS_BCHOST', 'SERVERTYPE',
     ]
 
     def __init__(self,
@@ -41,7 +63,8 @@ class ServerConfiguration(Configuration):
                  ns_host: str="localhost",
                  ns_port: int=9090,
                  ns_bcport: int=9091,
-                 ns_bchost: Optional[bool]=None) -> None:
+                 ns_bchost: Optional[bool]=None,
+                 servertype: str="thread") -> None:
         super().__init__()
         # Be sure to use the ns_host as the host for the nameserver as well,
         # it's also a Pyro object.
@@ -50,15 +73,9 @@ class ServerConfiguration(Configuration):
         self.NS_PORT = ns_port
         self.NS_BCPORT = ns_bcport
         self.NS_BCHOST = ns_bchost
+        self.SERVERTYPE = servertype
 
 
-PROFILES_DIR = SERVER_DIR / "profiles"
+PROFILES_DIR = SERVER_CONFIG_DIR / "profiles"
 PROFILES_SUFFIX = ".profile"
-profile = Profile(PROFILES_DIR, PROFILES_SUFFIX, ServerConfiguration)
-
-def create_public_host():
-    name = 'auto'
-    cfg = ServerConfiguration(
-        host=get_ip()
-    )
-    
+srv_profile = Profile(PROFILES_DIR, PROFILES_SUFFIX, ServerConfiguration)
