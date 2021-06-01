@@ -8,7 +8,7 @@ import Pyro5
 
 class Configuration:
     """
-    Inheritable PyroLab onfiguration object.
+    Inheritable PyroLab configuration object.
 
     Configuration settings that overlap with Pyro5 are automatically updated
     in Pyro5 when set in PyroLab.

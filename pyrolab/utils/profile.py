@@ -14,8 +14,8 @@ from yaml import safe_load, dump
 
 class Profile:
     """
-    A nameserver profile, to be used as a singleton for easily managing 
-    different nameserver configurations.
+    A profile, to be used as a singleton for easily managing  different 
+    configurations.
     """
     __slots__ = [
         'name', 'configuration', '_base_dir', '_suffix'
@@ -50,16 +50,28 @@ class Profile:
         """
         return (self._base_dir / name).with_suffix(self._suffix)
 
-    def use(self, name):
+    def use(self, cfg: Union[str, Configuration]):
         """
         Switches current configuration to use a given profile.
+
+        Parameters
+        ----------
+        cfg : str or Configuration
+            The configuration to use. If a string, looks for the named 
+            configuration in the saved configuration directory. If a 
+            Configuration object, creates a "temp" configuration using the 
+            given Configuration.
         """
-        profile = self._get_profile_path(name)
-        if profile.exists():
-            with profile.open('r') as fin:
-                cfg = safe_load(fin)
-                self.name = name
-                self.configuration = self.configuration.from_dict(cfg)
+        if isinstance(cfg, Configuration):
+            self.name = 'temp'
+            self.configuration = cfg
+        elif type(cfg) is str:
+            profile = self._get_profile_path(cfg)
+            if profile.exists():
+                with profile.open('r') as fin:
+                    dictionary = safe_load(fin)
+                    self.name = cfg
+                    self.configuration = self.configuration.from_dict(dictionary)
 
     def add(self, name, configuration):
         """
