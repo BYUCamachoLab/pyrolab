@@ -8,12 +8,12 @@
 Autocleaning Nameserver
 -----------------------
 
-This namserver configuration is set to autoclean every 2.0 seconds.
+This namserver configuration is set to autoclean every 5.0 seconds.
 """
 
 from pyrolab.api import start_ns_loop, ns_profile, NameserverConfiguration
 
-cfg = NameserverConfiguration(ns_autoclean=1.0)
+cfg = NameserverConfiguration(ns_autoclean=5.0)
 ns_profile.use(cfg)
 
 start_ns_loop()

@@ -37,6 +37,12 @@ class Configuration:
         if key in Pyro5.config.__slots__:
             setattr(Pyro5.config, key, value)
 
+    def __setitem__(self, key, value):
+        """
+        Allows attributes to be set similar to a dictionary.
+        """
+        self.__setattr__(key, value)
+
     @classmethod
     def from_dict(cls, dictionary):
         """
