@@ -75,8 +75,26 @@ These folders can be safely deleted after uninstallation.
 
 ## Example
 
-First, make sure all your configuration files on the nameserver computer, service
-providing computer, and client are correct (with the proper keys and everything).
+### Local Instruments
+
+Locally available instruments just import drivers without using any of the 
+other features of PyroLab.
+
+```
+from pyrolab.drivers.lasers.tsl550 import TSL550
+
+laser = TSL550("COM4")
+laser.on()
+laser.power_dBm(12)
+laser.open_shutter()
+laser.sweep_set_mode(continuous=True, twoway=True, trigger=False, const_freq_step=False)
+```
+
+### Remote Instruments
+
+First, make sure all configurations on the nameserver computer, instrument 
+server computer, and client are correct (with the proper keys, if configured, 
+etc.).
 
 Run a nameserver:
 
@@ -114,6 +132,18 @@ with Proxy(uri) as service:
     resp = service.echo("Hello, server!")
     print(type(resp), resp)
 ```
+
+## Instrument Server Configuration
+
+PyroLab stores information about instruments and servers when it closes. This
+means that once PyroLab has been configured once, each time it is restarted,
+it will remember and reload the previous configuration. Hence, once a server
+is set up, unless the available instruments, nameserver, or other 
+configurations change, PyroLab will automatically work when started, every 
+time!
+
+For an example of how a new PyroLab instrument server should be configured,
+see ``examples/302.resource-manager/prep.py``.
 
 ## FAQ's
 1. **Another instrument library? What about all the others?**  
