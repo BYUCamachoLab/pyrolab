@@ -142,8 +142,8 @@ is set up, unless the available instruments, nameserver, or other
 configurations change, PyroLab will automatically work when started, every 
 time!
 
-For an example of how a new PyroLab instrument server should be configured,
-see ``examples/302.resource-manager/prep.py``.
+For an example of how a new PyroLab instrument server should be configured the
+first time it's run, see ``examples/302.resource-manager/prep.py``.
 
 ## FAQ's
 1. **Another instrument library? What about all the others?**  
