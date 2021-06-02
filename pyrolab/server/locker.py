@@ -12,7 +12,17 @@ Utility for allowing classes to be locked and used by only one connection
 at a time.
 """
 
+from __future__ import annotations
+import logging
+from typing import TYPE_CHECKING
+
 from pyrolab.server import expose
+
+if TYPE_CHECKING:
+    from pyrolab.drivers import Instrument
+
+
+log = logging.getLogger("pyrolab.server.locker")
 
 
 @expose
@@ -22,12 +32,13 @@ class Lockable:
     at the Daemon level, instead of at the object level which formerly checked
     for the existence of a "lock" file.
     """
-    _RESOURCE_LOCK = False
+    _RESOURCE_LOCK: bool = False
 
-    def __init__(self):
-        self._RESOURCE_LOCK = False
+    def __init__(self) -> None:
+        self._RESOURCE_LOCK: bool = False
+        self.user: str = ""
 
-    def lock(self, user=""):
+    def lock(self, user: str="") -> None:
         """
         Locks access to the object's attributes.
 
@@ -38,14 +49,16 @@ class Lockable:
             and another user wants to know who is using it.
         """
         self._RESOURCE_LOCK = True
+        self.user = user
 
-    def release(self):
+    def release(self) -> None:
         """
         Releases the lock on the object.
         """
         self._RESOURCE_LOCK = False
+        self.user = ""
 
-    def islocked(self):
+    def islocked(self) -> bool:
         """
         Returns the status of the lock.
 
@@ -56,7 +69,7 @@ class Lockable:
         """
         return self._RESOURCE_LOCK
 
-def create_lockable(cls):
+def create_lockable(cls) -> Instrument:
     """
     Dynamically create a new class that is also based on Lockable.
 

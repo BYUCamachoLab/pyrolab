@@ -28,17 +28,28 @@ This behavior can be altered by setting the flag TODO in PyroLab's
 configuration settings.
 """
 
+from __future__ import annotations
 import atexit
 import importlib
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Set, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, Generator, Set, Type, Union
 from pprint import PrettyPrinter
+import logging
 
 from yaml import safe_load, dump
 
 from pyrolab.server import SERVER_DATA_DIR
 from pyrolab.server.locker import create_lockable
-from pyrolab.drivers import Instrument
+
+if TYPE_CHECKING:
+    from pyrolab.drivers import Instrument
+
+
+log = logging.getLogger("pyrolab.server.registry")
+
+
+# TODO: Make this some sort of PyroLab configuration parameter.
+REGISTRY_AUTOSAVE = True
 
 
 class InstrumentInfo:
@@ -84,7 +95,7 @@ class InstrumentInfo:
         return self.module + "." + self.class_name
 
     @classmethod
-    def from_dict(cls, dictionary: Dict[str, Any]) -> "InstrumentInfo":
+    def from_dict(cls, dictionary: Dict[str, Any]) -> InstrumentInfo:
         """
         Builds a InstrumentInfo class from a dictionary.
 
@@ -132,6 +143,7 @@ class InstrumentInfo:
         return obj
 
 
+# TODO: Make this some sort of PyroLab configuration parameter.
 INSTRUMENT_REGISTY_FILE = SERVER_DATA_DIR / "instrument_registry.yaml"
 
 class InstrumentRegistry:
@@ -164,6 +176,9 @@ class InstrumentRegistry:
         Empties the instrument registry.
         """
         self.instruments = {}
+
+    def get(self, name) -> InstrumentInfo:
+        return self.instruments[name]
 
     def register(self, info: InstrumentInfo):
         """
@@ -275,4 +290,5 @@ registry.load()
 
 @atexit.register
 def save_registry_on_exit():
-    registry.save()
+    if REGISTRY_AUTOSAVE:
+        registry.save()
