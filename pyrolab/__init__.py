@@ -28,9 +28,9 @@ import pathlib
 import platform
 import sys
 
-if sys.version_info < (3, 6, 0):
+if sys.version_info < (3, 7, 0):
     raise Exception(
-        "PyroLab requires Python 3 (version "
+        "PyroLab requires Python 3.7+ (version "
         + platform.python_version()
         + " detected)."
     )
