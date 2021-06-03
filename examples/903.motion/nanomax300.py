@@ -1,11 +1,35 @@
 import os
 os.add_dll_directory("C:\\Program Files\\Thorlabs\\Kinesis")
-
 from pyrolab.drivers.motion.nanomax300 import NanoMax300
-nm = NanoMax300("71874833", closed_loop=True)
+import time
 
+SER_NUM = 71874833
+
+print(f"connecting to {SER_NUM}...")
+nm = NanoMax300(str(SER_NUM), closed_loop=True)
+print("connected")
+print("zeroing all channels...")
 nm.zero()
+print("zeroed")
 x, y, z, = nm.get_position()
-nm.jog(1, 0.1)
-
+print(f"position of x: {x}")
+print(f"position of y: {y}")
+print(f"position of z: {z}")
+print("Input Jogging Parameters:")
+while(True):
+    channel = int(input("Input channel:"))
+    distance = float(input("Input jog distance:"))
+    print(f"jogging channel {channel} a distance of {distance}...")
+    nm.jog(channel,distance)
+    time.sleep(1)
+    print("jog complete")
+    x, y, z, = nm.get_position()
+    print(f"new position of x: {x}")
+    print(f"new position of y: {y}")
+    print(f"new position of z: {z}")
+    cond = input("Break?")
+    if((cond == "y") | (cond == "yes")):
+        break
+print("closing nanomax...")
 nm.close()
+print("closed")

@@ -507,6 +507,7 @@ class KDC101(KinesisInstrument):
         check_error(status)
         self.wait_for_completion(id="moved")
     
+    @oneway
     def move_by(self, displacement):
         """
         Move the motor by a relative amount.

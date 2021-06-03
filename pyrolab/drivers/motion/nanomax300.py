@@ -183,7 +183,7 @@ class NanoMax300(Motion, BPC303):
 
     def jog(self, channel: int, step: float) -> None:
         """
-        Jog a channel's position by some step value in nanometers.
+        Jog a channel's position by some step value in micrometers.
 
         Parameters
         ----------
