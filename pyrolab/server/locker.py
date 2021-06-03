@@ -28,9 +28,8 @@ log = logging.getLogger("pyrolab.server.locker")
 @expose
 class Lockable:
     """
-    New implementation of the Lockable instrument. Rejects new connections
-    at the Daemon level, instead of at the object level which formerly checked
-    for the existence of a "lock" file.
+    The Lockable instrument. Rejects new connections at the Daemon level when
+    locked. Stores the user who locked the device for reference.
     """
     _RESOURCE_LOCK: bool = False
 
