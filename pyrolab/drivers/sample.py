@@ -15,13 +15,14 @@ is working properly.
 import time
 from typing import Union
 
-import pyrolab.api
+from pyrolab.api import expose
+from pyrolab.drivers import Instrument
 
 
 Number = Union[int, float]
 
     
-@pyrolab.api.expose
+@expose
 class SampleService:
     def __init__(self):
         pass
@@ -104,3 +105,22 @@ class SampleService:
         Divides the first argument by the second.
         """
         return num / den
+
+
+@expose
+class SampleAutoconnectInstrument(Instrument):
+    def __init__(self) -> None:
+        self.connected = False
+
+    def connect(self, address="localhost", port=9090):
+        if address != "0.0.0.0":
+            raise Exception("This test method requires address to be '0.0.0.0'.")
+        if port == 9090:
+            raise Exception("This test method requires the port to not be the default of 9090.")
+        self.connected = True
+        return True
+
+    def do_something(self):
+        if not self.connected:
+            raise Exception("This object cannot do work until connection is made.")
+        return True

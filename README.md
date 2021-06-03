@@ -33,29 +33,84 @@ one-stop-shop for laboratory instruments!
 OS-specific. For example, ThorLabs DLL's only work on Windows. However, you could
 use PyroLab to connect to those devices from any operating system.
 
+## Installation
+
+PyroLab is pip installable:
+
+```
+pip install pyrolab
+```
+
+PyroLab declares several "extras", depending on which instruments you need
+to support:
+
+```
+pip install pyrolab[tsl550, oscope]
+```
+
+The full list of supported extras is:
+- tsl550
+- oscope
+
+You can also clone the repository, navigate to the toplevel, and install in 
+editable mode:
+
+```
+pip install -e .
+```
+
+## Uninstallation
+
+PyroLab creates data and configuration directories that aren't deleted when
+pip uninstalled. You can find their locations by running (before 
+uninstallation):
+
+```
+import pyrolab
+print(pyrolab.SITE_DATA_DIR)
+print(pyrolab.SITE_CONFIG_DIR)
+```
+
+These folders can be safely deleted after uninstallation.
+
 ## Example
 
-First, make sure all your configuration files on the nameserver computer, service
-providing computer, and client are correct (with the proper keys and everything).
+### Local Instruments
+
+Locally available instruments just import drivers without using any of the 
+other features of PyroLab.
+
+```
+from pyrolab.drivers.lasers.tsl550 import TSL550
+
+laser = TSL550("COM4")
+laser.on()
+laser.power_dBm(12)
+laser.open_shutter()
+laser.sweep_set_mode(continuous=True, twoway=True, trigger=False, const_freq_step=False)
+```
+
+### Remote Instruments
+
+First, make sure all configurations on the nameserver computer, instrument 
+server computer, and client are correct (with the proper keys, if configured, 
+etc.).
 
 Run a nameserver:
 
 ```python
-from pyrolab.api import config, start_ns_loop
-config.reset(cfile="/path/to/config.ini")
-
+from pyrolab.api import start_ns_loop
 start_ns_loop()
 ```
 
 Provide a service:
 
 ```python
-from pyrolab.api import config, Daemon, locate_ns
+from pyrolab.api import Daemon, locate_ns
 from pyrolab.drivers.sample import SampleService
-config.reset(cfile="/path/to/config.ini")
 
 daemon = Daemon()
-ns = locate_ns()
+ns = locate_ns(host="localhost")
 uri = daemon.register(SampleService)
 ns.register("test.SampleService", uri)
 
@@ -68,15 +123,27 @@ finally:
 Connect using a remote client:
 
 ```python
-from pyrolab.api import config, locate_ns, Proxy
-config.reset(cfile="/path/to/config.ini")
+from pyrolab.api import locate_ns, Proxy
 
-ns = locate_ns()
+ns = locate_ns(host="localhost")
 uri = ns.lookup("test.SampleService")
 
-with Proxy(uri) as p:
-    p.do_work()
+with Proxy(uri) as service:
+    resp = service.echo("Hello, server!")
+    print(type(resp), resp)
 ```
+
+## Instrument Server Configuration
+
+PyroLab stores information about instruments and servers when it closes. This
+means that once PyroLab has been configured once, each time it is restarted,
+it will remember and reload the previous configuration. Hence, once a server
+is set up, unless the available instruments, nameserver, or other 
+configurations change, PyroLab will automatically work when started, every 
+time!
+
+For an example of how a new PyroLab instrument server should be configured the
+first time it's run, see ``examples/302.resource-manager/prep.py``.
 
 ## FAQ's
 1. **Another instrument library? What about all the others?**  

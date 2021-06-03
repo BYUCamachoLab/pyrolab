@@ -41,7 +41,7 @@ setup_args = dict(
     version="0.1.1",
     author="Sequoia Ploeg",
     maintainer="Sequoia Ploeg",
-    maintainer_email="sequoia.ploeg@ieee.org",
+    maintainer_email="sequoia.ploeg@byu.edu",
     url="https://github.com/BYUCamachoLab/pyrolab",
     description="A framework for using remote lab instruments as local resources built on Pyro5",
     long_description=LONG_DESCRIPTION,
@@ -69,7 +69,7 @@ setup_args = dict(
         "Intended Audience :: Developers",
         "Topic :: Scientific/Engineering",
     ],
-    python_requires=">=3.6",
+    python_requires=">=3.7",
 )
 
 install_requires = [
@@ -77,6 +77,7 @@ install_requires = [
     "deprecation",
     "numpy",
     "scipy",
+    "appdirs",
 ]
 
 extras_require = {
