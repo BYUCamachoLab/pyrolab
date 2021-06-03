@@ -1,11 +1,12 @@
+# Example of how to use the linear stage (Z825B) with software limits locally
+
+# import the Kinesis Library and make sure the path is correct
 import os
 os.add_dll_directory("C:\\Program Files\\Thorlabs\\Kinesis")
 
-from ctypes import c_int, c_double, byref, pointer
-import time
-
 from pyrolab.drivers.motion.z825b import Z825B
-linear = Z825B("27003497", home=True)
+# Look at the connected KCube for correct serial num
+linear = Z825B("27504851", home=True)
 
 #Set and read a few of the parameters pertaining to jogging
 print(f"Jog mode: {linear.jog_mode}")
