@@ -173,6 +173,8 @@ while(comp == False):
     # print(ret)
     # print(pTargetReached)
     comp = pTargetReached.value
+    epm.VCS_GetPositionIs(keyhandle, NodeID, byref(pPositionIs), byref(pErrorCode))
+    print(du_to_wl(pPositionIs.value))
     time.sleep(0.1)
 
 print("end time:")
