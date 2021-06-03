@@ -5,13 +5,13 @@
 # (see pyrolab/__init__.py for details)
 
 """
-Oscilloscopes
--------------
+Firmata
+-------
 
-Submodule containing drivers for each supported scope type.
+Submodule containing drivers for each supported arduino type.
 """
 
 from pyrolab.drivers import Instrument
 
-class Scope(Instrument):
+class Firmata(Instrument):
     pass
