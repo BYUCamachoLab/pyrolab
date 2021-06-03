@@ -10,10 +10,11 @@ Santec Tunable Semiconductor Laser 550 (TSL550)
 
 Driver for the Santec TSL-550 Tunable Laser.
 
-Author: Wesley Cassidy (https://github.com/wecassidy).
-Repo: https://github.com/wecassidy/TSL550
+Contributors
+ * Wesley Cassidy (https://github.com/wecassidy)
+ * Sequoia Ploeg (https://github.com/sequoiap)
 
-Modifications and function documentation by Sequoia Ploeg.
+Original repo: https://github.com/wecassidy/TSL550
 
 Note
 ----
@@ -33,11 +34,11 @@ import time
 import struct
 
 import serial
-
+from Pyro5.api import expose
 import pyrolab.api
 
 
-@pyrolab.api.expose
+@expose
 class TSL550:
     """ A Santec TSL-550 laser.
 
@@ -89,7 +90,10 @@ class TSL550:
     MINIMUM_WAVELENGTH = 1500
     MAXIMUM_WAVELENGTH = 1630
 
+    activated = False
+
     def __init__(self, address, baudrate=9600, terminator="\r", timeout=100, query_delay=0.05):
+        self.activated = True
         self.device = serial.Serial(address, baudrate=baudrate, timeout=timeout)
         self.device.flushInput()
         self.device.flushOutput()
@@ -100,7 +104,7 @@ class TSL550:
 
         # Make sure the shutter is on
         #self.is_on = True
-        print(self.query("SU"))
+        self.query("SU")
         shutter = self.close_shutter()
 
         # Set power management to auto
@@ -114,6 +118,10 @@ class TSL550:
         """
         Closes the serial connection to the laser.
         """
+
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         self.device.close()
 
     def write(self, command):
@@ -126,6 +134,10 @@ class TSL550:
             The command to be written as a string. This function automatically
             encodes it using the ASCII standard.
         """
+
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         # Convert to bytes (Python 3)
         command = command.encode("ASCII")
 
@@ -141,10 +153,13 @@ class TSL550:
         str
             The response from the laser as a string.
         """
+
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         # Read response
         response = ""
         in_byte = self.device.read()
-
         while in_byte != self.terminator:
             response += in_byte.decode("ASCII")
             in_byte = self.device.read()
@@ -164,8 +179,12 @@ class TSL550:
             defaults to ``self.query_delay`` (can be set in ``__init__``). 
             Default is None.
         """
+
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         self.write(command)
-        time.sleep(query_delay)
+        time.sleep(query_delay if query_delay is not None else self.query_delay)
         response = self.read()
 
         return response
@@ -175,6 +194,9 @@ class TSL550:
         Generic function to set a floating-point variable on the
         laser, or return the current value.
         """
+
+        if(self.activated == False):
+            raise Exception("Device is locked")
 
         if val is not None:
             command = ("{}{:."+str(precision)+"f}").format(name, val)
@@ -201,12 +223,18 @@ class TSL550:
         'SANTEC,TSL-550,06020001,0001.0000'
         """
 
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         return self.query('*IDN?')
 
     def on(self):
         """
         Turns on the laser diode.
         """
+
+        if(self.activated == False):
+            raise Exception("Device is locked")
 
         self.is_on = True
         self.query("LO")
@@ -216,13 +244,16 @@ class TSL550:
         Turns off the laser diode.
         """
 
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         self.is_on = False
         self.query("LF")
 
     def wavelength(self, val=None):
         """
-        Sets the output wavelength. If a value is not specified, returns the 
-        currently set wavelength.
+        Sets the output wavelength, and returns nothing. If a value is not 
+        specified, returns the currently set wavelength.
 
         Parameters
         ----------
@@ -245,15 +276,20 @@ class TSL550:
         The following sets the output wavelength to 1560.123 nanometers.
 
         >>> laser.wavelength(1560.123)
-        1630.0 # Bug returns the last set wavelength
         """
+        if(self.activated == False):
+            raise Exception("Device is locked")
 
-        return self._set_var("WA", 4, val)
+        if val is not None:
+            self._set_var("WA", 4, val)
+            return
+        else:
+            return self._set_var("WA", 4, val)
 
     def frequency(self, val=None):
         """
-        Tune the laser to a new frequency. If a value is not
-        specified, returns the currently set frequency.
+        Tune the laser to a new frequency, and will not return a value. 
+        If a value is not specified, returns the currently set frequency.
 
         Parameters
         ----------
@@ -271,10 +307,15 @@ class TSL550:
         >>> laser.frequency()
         183.92175
         >>> laser.frequency(192.0000)
-        183.92175 # Bug returns the last set frequency
         """
+        if(self.activated == False):
+            raise Exception("Device is locked")
 
-        return self._set_var("FQ", 5, val)
+        if val is not None:
+            self._set_var("FQ", 5, val)
+            return
+        else:
+            return self._set_var("FQ", 5, val)
 
     def power_mW(self, val=None):
         """
@@ -300,6 +341,9 @@ class TSL550:
         >>> laser.power_mW(10)
         2e-05 # Bug returns the last set power
         """
+
+        if(self.activated == False):
+            raise Exception("Device is locked")
 
         return self._set_var("LP", 2, val)
 
@@ -334,12 +378,55 @@ class TSL550:
         -040.000 # Bug returns the last set power
         """
 
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         return self._set_var("OP", 2, val)
+
+    def power_att(self, val=None):
+        """
+
+        Parameters
+        ----------
+        val : float, optional
+            The power to be set on the laser in decibels.
+            Range: 0 to +30 (dB)
+            Minimum step: 0.01 (dB)
+
+        Returns
+        -------
+        float
+            The currently set power in decibel-milliwatts.
+
+        Examples
+        --------
+        You can get the current power by calling without arguments.
+        The below code indicates the currently output power is -40 dBm.
+
+        >>> laser.power_dBm()
+        -040.000
+
+        The following sets the output optical power to +3 dBm.
+
+        >>> laser.power_dBm(3)
+        -040.000 # Bug returns the last set power
+        """
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
+        return self._set_var("AT", 2, val)
 
     def power_auto(self):
         """
         Turn on automatic power control.
+
+        Warning
+        -------
+        Shutter must be open to switch power modes.
         """
+
+        if(self.activated == False):
+            raise Exception("Device is locked")
 
         self.power_control = "auto"
         self.query("AF")
@@ -347,10 +434,17 @@ class TSL550:
     def power_manual(self):
         """
         Turn on manual power control.
+        
+        Warning
+        -------
+        Shutter must be open to switch power modes.
         """
 
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         self.power_control = "manual"
-        self.query("AO")
+        return self.query("AO")
 
     def sweep_wavelength(self, start, stop, duration, number=1,
                          delay=0, continuous=True, step_size=1,
@@ -405,6 +499,9 @@ class TSL550:
               /  ___/                       /    \___/    \
                  <-> delay                        <-> delay
         """
+
+        if(self.activated == False):
+            raise Exception("Device is locked")
 
         # Set start and end wavelengths
         self.sweep_start_wavelength(start)
@@ -484,6 +581,9 @@ class TSL550:
                  <-> delay                        <-> delay
         """
 
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         # Set start and end frequencies
         self.sweep_start_frequency(start)
         self.sweep_end_frequency(stop)
@@ -521,6 +621,9 @@ class TSL550:
             The number of times to perform the sweep (default is 1).
         """
 
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         self.query("SZ{:d}".format(num)) # Set number of sweeps
         self.query("SG") # Start sweeping
 
@@ -530,12 +633,18 @@ class TSL550:
         not function. Use `sweep_resume()` to resume.
         """
 
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         self.query("SP")
 
     def sweep_resume(self):
         """
         Resume a paused sweep.
         """
+
+        if(self.activated == False):
+            raise Exception("Device is locked")
 
         self.query("SR")
 
@@ -550,6 +659,9 @@ class TSL550:
             sweep is continuous, the sweep will stop once it reaches
             the end wavelength of its current sweep (the default is `True`).
         """
+
+        if(self.activated == False):
+            raise Exception("Device is locked")
 
         if immediate:
             self.sweep_pause()
@@ -584,6 +696,9 @@ class TSL550:
         True
         """
 
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         return int(self.query("SK"))
 
     def sweep_set_mode(self, continuous=True, twoway=True, trigger=False, const_freq_step=False):
@@ -613,6 +728,9 @@ class TSL550:
             If the sweep configuration is invalid.
         """
 
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         try:
             mode = TSL550.SWEEP_MODE_MAP[(continuous, twoway, trigger, const_freq_step)]
         except KeyError:
@@ -636,6 +754,9 @@ class TSL550:
         >>> laser.sweep_get_mode()
         {'continuous': True, 'twoway': True, 'trigger': False, 'const_freq_step': False}
         """
+
+        if(self.activated == False):
+            raise Exception("Device is locked")
 
         mode_num = int(self.query("SM"))
         mode_settings = TSL550.SWEEP_MODE_MAP_REV[mode_num]
@@ -672,6 +793,9 @@ class TSL550:
         25.0
         """
 
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         return self._set_var("SN", 1, val)
 
     def sweep_step_wavelength(self, val=None):
@@ -698,6 +822,9 @@ class TSL550:
         >>> laser.sweep_step_wavelength(2.2)
         2.2
         """
+
+        if(self.activated == False):
+            raise Exception("Device is locked")
 
         return self._set_var("WW", 4, val)
 
@@ -727,6 +854,9 @@ class TSL550:
         0.24
         """
 
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         return self._set_var("WF", 5, val)
 
     def sweep_step_time(self, val=None):
@@ -754,6 +884,9 @@ class TSL550:
         0.8
         """
 
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         return self._set_var("SB", 1, val)
 
     def sweep_delay(self, val=None):
@@ -780,6 +913,9 @@ class TSL550:
         >>> laser.sweep_delay(1.5)
         1.5
         """
+
+        if(self.activated == False):
+            raise Exception("Device is locked")
 
         return self._set_var("SA", 1, val)
 
@@ -809,6 +945,9 @@ class TSL550:
         1545.0
         """
 
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         return self._set_var("SS", 4, val)
 
     def sweep_start_frequency(self, val=None):
@@ -836,6 +975,9 @@ class TSL550:
         >>> laser.sweep_start_frequency(196)
         195.99999
         """
+
+        if(self.activated == False):
+            raise Exception("Device is locked")
 
         return self._set_var("FS", 5, val)
 
@@ -865,6 +1007,9 @@ class TSL550:
         1618.0
         """
 
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         return self._set_var("SE", 4, val)
 
     def sweep_end_frequency(self, val=None):
@@ -893,12 +1038,18 @@ class TSL550:
         185.5447
         """
 
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         return self._set_var("FF", 5, val)
 
     def open_shutter(self):
         """
         Opens the laser's shutter.
         """
+
+        if(self.activated == False):
+            raise Exception("Device is locked")
 
         return self.query("SO")
 
@@ -907,6 +1058,9 @@ class TSL550:
         Closes the laser's shutter.
         """
 
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         return self.query("SC")
 
     def trigger_enable_output(self):
@@ -914,12 +1068,18 @@ class TSL550:
         Enables the external trigger signal input.
         """
 
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         self.query("TRE")
 
     def trigger_disable_output(self):
         """
         Disables the external trigger signal input.
         """
+
+        if(self.activated == False):
+            raise Exception("Device is locked")
 
         self.query("TRD")
 
@@ -938,6 +1098,10 @@ class TSL550:
             2: "Start"
             3: "Step"
         """
+
+        if(self.activated == False):
+            raise Exception("Device is locked")
+        
         current_state = self.query("TM")
         if current_state == 0:
             return "None"
@@ -962,6 +1126,10 @@ class TSL550:
         str
             The final mode. "Stop", "Start", or "Step"
         """
+
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         mode = 0
         if val == "None" or val == None:
             mode = 0
@@ -1002,6 +1170,10 @@ class TSL550:
         >>> laser.trigger_set_step()
         0.012
         """
+
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         return self._set_var("TW", 4, val=step)
 
 
@@ -1020,6 +1192,10 @@ class TSL550:
         >>> laser.wavelength_logging_number()
         5001
         """
+
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         return int(self.query("TN"))
 
     def wavelength_logging(self):
@@ -1046,6 +1222,10 @@ class TSL550:
         >>> wl[0]
         1675.0276
         """
+
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         # stop laser from outputting
         self.query("SU")
 
@@ -1127,9 +1307,47 @@ class TSL550:
         >>> laser.print_status()
         '-011000'
         """
+
+        if(self.activated == False):
+            raise Exception("Device is locked")
+
         status = self.query("SU")
 
         # Check if LD is on
         self.is_on = True if int(status) < 0 else False
 
-        return status
+        code = {    '-' : "'-': ON\n",
+                    ' ' : "none: OFF\n"
+        }
+        digit_6 = { '0' : "Coherence control: OFF\n",
+                    '1' : "Coherence control: ON\n"
+        }
+        digit_5 = { '0' : "Fine-tuning: OFF\n",
+                    '1' : "Fine-tuning: ON\n"
+        }
+        digit_4 = { '0' : "Power Control: Auto\nAttenuator Control: Hold\nPower Monitor Range Control: Auto\n",
+                    '1' : "Power Control: Manual\nAttenuator Control: Hold (Manual)\nPower Monitor Range Control: Auto\n",
+                    '2' : "Power Control: Auto\nAttenuator Control: Auto\nPower Monitor Range Control: Auto\n",
+                    '3' : "4th digit is not specified for a value of 3\n",
+                    '4' : "Power Control: Auto\nAttenuator Control: Hold\nPower Monitor Range Control: Hold\n",
+                    '5' : "Power Control: Manual\nAttenuator Control: Hold (Manual)\nPower Monitor Range Control: Hold\n",
+        }
+        digit_3 = { '0' : "Laser diode temperature error: No error\n",
+                    '1' : "Laser diode temperature error: Error occurred\n",
+        }
+        digit_2 = { '0' : "Laser diode current limit error: No error\n",
+                    '1' : "Laser diode current limit error: Error occurred\n"
+        }
+        digit_1 = { '0' : "Operation status: Operation is completed\n",
+                    '1' : "Operation status: Wavelength is tuning\n",
+                    '2' : "Operation status: Laser diode current is setting (LD is on state and power control is Auto)\n",
+                    '3' : "Operation status: Wavelength is tuning and LD current is setting\n",
+                    '4' : "Operation status: Attenuator is setting\n",
+                    '5' : "Operation status: Wavelength is setting and attenuator is setting\n",
+                    '6' : "Operation status: LD current is setting and attenuator is setting\n",
+                    '7' : "Operation status: Wavelength is tuning, LD current is setting, and attenuator is setting\n"
+        }
+        output = status + code[status[0]] + digit_6[status[1]] \
+            + digit_5[status[2]] + digit_4[status[3]] + digit_3[status[4]] \
+            + digit_2[status[5]] + digit_1[status[6]]
+        return output

@@ -9,7 +9,7 @@ them as shown in this example.
 
 
 For a typical setup:
-    1. Some publicly visible server will host "namespace.py". 
+    1. Some publicly visible server will host "nameserver.py". 
     2. The instrument connected to a computer will run "server.py".
     3. Your local computer will connect to remote resources as
        demonstrated in "client.py".

@@ -11,9 +11,8 @@
 ...
 """
 
-from pyrolab.api import config, Daemon, locate_ns
+from pyrolab.api import Daemon, locate_ns
 from pyrolab.drivers.sample import SampleService
-config.reset()
 
 daemon = Daemon()
 ns = locate_ns(host="localhost")
