@@ -1,3 +1,5 @@
+# TODO: DEPRECATED! REMOVE AFTER TESTING COMPATABILITY OF NEW LOCKER.
+
 import os
 from os import path
 import pyfirmata

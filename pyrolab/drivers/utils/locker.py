@@ -1,3 +1,5 @@
+# TODO: DEPRECATED! REMOVE AFTER TESTING COMPATABILITY OF NEW LOCKER.
+
 # -*- coding: utf-8 -*-
 #
 # Copyright © PyroLab Project Contributors
