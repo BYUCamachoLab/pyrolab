@@ -5,15 +5,14 @@
 # (see pyrolab/__init__.py for details)
 
 """
-Nanomax300
-------
+NanoMax 300
+-----------
 
 Submodule containing drivers for the ThorLabs NanoMax 300 piezo controlled
 motion stage.
 
-Contributors
- * David Hill (https://github.com/hillda3141)  
- * Sequoia Ploeg (https://github.com/sequoiap)
+Supported OS:
+- Windows
 """
 
 from numpy import interp
