@@ -34,13 +34,17 @@ import time
 import struct
 
 import serial
+from serial.tools import list_ports
 from Pyro5.api import expose
 import pyrolab.api
 
-#This is a test...
+from typing import Any, Dict, List
+
+from pyrolab.drivers.lasers import Laser
+
 
 @expose
-class TSL550:
+class TSL550(Laser):
     """ A Santec TSL-550 laser.
 
     Lasers can only be accessed by their serial port address.
@@ -93,7 +97,30 @@ class TSL550:
 
     activated = False
 
-    def __init__(self, address, baudrate=9600, terminator="\r", timeout=100, query_delay=0.05):
+    @staticmethod
+    def detect_devices(self) -> List[Dict[str, Any]]:
+        
+        #while loop
+            #if the returned info is what we want
+            #maye something like
+            #if port.manufacturer == santec tsl550
+        #create dictionary "tsl550" : port.name
+        #the information we want is either port.name or port.device
+        #also test what the location returns (like port.location on loop below); 
+        device_info = []
+        for port in list_ports.comports():
+            #print(port) use to test
+            if port.manufacturer == "TSL-550":
+                location = port.location
+            
+        #Do we need to be able to create the list, like if we have many lasers?
+                device_info.append({"address": location})
+
+        return device_info
+        #pass
+
+
+    def connect(self, address="", baudrate=9600, terminator="\r", timeout=100, query_delay=0.05) -> bool:
         self.activated = True
         self.device = serial.Serial(address, baudrate=baudrate, timeout=timeout)
         self.device.flushInput()
@@ -115,11 +142,12 @@ class TSL550:
         # Set sweep mode to continuous, two-way, trigger off
         self.sweep_set_mode()
 
+        return self.device.is_open
+
     def close(self):
         """
         Closes the serial connection to the laser.
         """
-
         if(self.activated == False):
             raise Exception("Device is locked")
 
