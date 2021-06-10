@@ -34,7 +34,7 @@ This manual describes the following R&S®RTO models with firmware version 3.70:
 
 If you don't have the NI VISA implementation installed on your computer, be 
 sure to install the separate dependency ``pyvisa-py``, which is not included
-with PyroLab.
+with PyroLab. NI VISA is available for Mac, Windows, and Linux.
 
 Common Issues
 =============
@@ -46,7 +46,7 @@ acquisition, but you'll be left without data and with a bad connection.
 
 import time
 
-import deprecation
+import deprecation #should we take this out too?
 import pyvisa as visa
 
 from pyrolab import __version__
@@ -71,14 +71,15 @@ class RTO(Scope):
         The device response timeout in milliseconds (default 1 second).
         Pass `None` for infinite timeout.
     """
-    def __init__(self, address, interface="TCPIP", protocol="hislip", timeout=1e3):
+    def connect(self, address, interface="TCPIP", protocol="hislip", timeout=1e3) -> bool:
         rm = visa.ResourceManager()
         self.device = rm.open_resource("{}::{}::{}".format(interface, address, protocol))
         self.device.timeout = timeout
         self.write_termination = ''
         self.device.ext_clear_status()
         
-        # print("Connected: {}".format(self.device.query('*IDN?')))
+        #print("Connected: {}".format(self.device.query('*IDN?')))
+            #does this line still need to be here? looks like it was probably used for testing purposes
         self.write('*RST;*CLS')
         self.write('SYST:DISP:UPD ON')
         self.device.ext_error_checking()
@@ -139,31 +140,7 @@ class RTO(Scope):
         self.wait_for_device()
         self.device.ext_error_checking()
 
-    @deprecation.deprecated(deprecated_in="0.1.0", removed_in="0.2.0",
-                current_version=__version__,
-                details="Use 'write_block()' instead.")
-    def __send_command(self, command):
-        """
-        Writes a message to the scope, waits for it to complete, and checks for errors.
-
-        Warning
-        -------
-        .. deprecated:: 0.1.0
-           :py:func:`__send_command` will be removed in 0.2.0, it is replaced by
-           :py:func:`write_block` beginning in 0.1.0.
-
-        Parameters
-        ----------
-        command : str
-            The message to send.
-
-        Notes
-        -----
-        This function is blocking.
-        """
-        self.device.write(command)
-        self.wait_for_device()
-        self.device.ext_error_checking()
+    #Removed depricated function; I think it was supposed to be removed
 
     def wait_for_device(self):
         """
@@ -239,22 +216,7 @@ class RTO(Scope):
         )
         self.write_block(cmd)
 
-    @deprecation.deprecated(deprecated_in="0.1.0", removed_in="0.2.0",
-                current_version=__version__,
-                details="Use 'set_channel()' instead.")
-    def add_channel(self, channel_num, range, position = 0, offset = 0, coupling = "DCL"):
-        """Add a channel.
-        
-        Warning
-        -------
-        .. deprecated:: 0.1.0
-           :py:func:`add_channel` will be removed in 0.2.0, it is replaced by
-           :py:func:`set_channel` beginning in 0.1.0.
-        """
-        short_command = 'CHAN{}:RANG {};POS {};OFFS {};COUP {};STAT ON'.format(
-            channel_num, range, position, offset, coupling
-        )
-        self.__send_command(short_command)
+    #Removed depricated function; I think it was supposed to be removed
 
     def __add_trigger(self,
         type,
@@ -329,36 +291,7 @@ class RTO(Scope):
         if timeout != -1:
             self.timeout = default_timeout
 
-    @deprecation.deprecated(deprecated_in="0.1.0", removed_in="0.2.0",
-                current_version=__version__,
-                details="Use 'acquire()' instead.")
-    def start_acquisition(self, timeout: int, type: str='SING') -> None:
-        """
-        Asynchronous command that starts acquisition.
-
-        Warning
-        -------
-        .. deprecated:: 0.1.0
-           :py:func:`start_acquisition` will be removed in 0.2.0, it is replaced by
-           :py:func:`acquire` beginning in 0.1.0.
-
-        Parameters
-        ----------
-        timeout : int
-            The timeout in seconds for all I/O operations.
-        run : str
-            Specifies the type of run. Allowable values are ``continuous`` 
-            (starts the continuous acquisition), ``single`` (starts a defined
-            number of acquisition cycles as set by ``acquisition_settings()``),
-            or ``stop`` (stops a running acquisition). Default is ``single``.
-        """        
-        # Translate seconds to ms.
-        self.device.timeout = timeout * 1000
-        if type not in ["SING", "RUN", "STOP"]:
-            raise ValueError("%s is not a valid argument" % type)            
-        
-        self.write(type)
-
+    #Removed depricated function; I think it was supposed to be removed
     def set_timescale(self, time: float) -> None:
         """
         Sets the horizontal scale--the time per division on the x-axis--for all 
@@ -458,39 +391,9 @@ class RTO(Scope):
         else:
             return self.query(cmd)
 
-    @deprecation.deprecated(deprecated_in="0.1.0", removed_in="0.2.0",
-                current_version=__version__,
-                details="Use 'get_data()' instead.")
-    def get_data_ascii(self, channel):
-        """
-        Get the data in ascii encoding.
+    #Removed depricated function; I think it was supposed to be removed
 
-        Warning
-        -------
-        .. deprecated:: 0.1.0
-           :py:func:`get_data_ascii` will be removed in 0.2.0, it is replaced by
-           :py:func:`get_data` beginning in 0.1.0.
-        """
-        dataQuery = 'FORM ASC;:CHAN{}:DATA?'.format(channel)
-        waveform = self.device.query_ascii_values(dataQuery)
-        return waveform
-
-    @deprecation.deprecated(deprecated_in="0.1.0", removed_in="0.2.0",
-                current_version=__version__,
-                details="Use 'get_data()' instead.")
-    def get_data_binary(self, channel):
-        """
-        Get the data in binary encoding.
-
-        Warning
-        -------
-        .. deprecated:: 0.1.0
-           :py:func:`get_data_binary` will be removed in 0.2.0, it is replaced by
-           :py:func:`get_data` beginning in 0.1.0.
-        """
-        dataQuery = 'FORM REAL;:CHAN{}:DATA?'.format(channel)
-        waveform = self.device.query_binary_values(dataQuery)
-        return waveform
+    #Removed depricated function; I think it was supposed to be removed
 
     def screenshot(self, path):
         """
@@ -516,38 +419,7 @@ class RTO(Scope):
         )
         self.device.ext_error_checking()
 
-    @deprecation.deprecated(deprecated_in="0.1.0", removed_in="0.2.0",
-                current_version=__version__,
-                details="Use 'screenshot()' instead.")
-    def take_screenshot(self, path):
-        """
-        Takes a screenshot of the scope and saves it to the specified path.
-
-        Image format is PNG.
-
-        Warning
-        -------
-        .. deprecated:: 0.1.0
-           :py:func:`take_screenshot` will be removed in 0.2.0, it is replaced by
-           :py:func:`screenshot` beginning in 0.1.0.
-
-        Parameters
-        ----------
-        path : str
-            The local path, including filename and extension, of where
-            to save the file.
-        """
-        instrument_save_path = '\'C:\\temp\\Last_Screenshot.png\''
-        self.device.write('HCOP:DEV:LANG PNG')
-        self.device.write('MMEM:NAME {}'.format(instrument_save_path))
-        self.device.write('HCOP:IMM')
-        self.wait_for_device()
-        self.device.ext_error_checking()
-        self.device.ext_query_bin_data_to_file(
-            'MMEM:DATA? {}'.format(instrument_save_path),
-            str(path)
-        )
-        self.device.ext_error_checking()
+    #Removed depricated function; I think it was supposed to be removed
 
 class RemoteDisplay:
     def __init__(self, scope: RTO):
