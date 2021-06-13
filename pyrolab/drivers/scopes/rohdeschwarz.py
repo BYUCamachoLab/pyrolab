@@ -78,11 +78,16 @@ class RTO(Scope):
         self.write_termination = ''
         self.device.ext_clear_status()
         
-        #print("Connected: {}".format(self.device.query('*IDN?')))
-            #does this line still need to be here? looks like it was probably used for testing purposes
         self.write('*RST;*CLS')
         self.write('SYST:DISP:UPD ON')
         self.device.ext_error_checking()
+
+        return True
+
+    #not entirely sure if this is what should be happening
+    def close():
+        self.device.before_close()
+        self.device.close()
 
     @property
     def timeout(self):
