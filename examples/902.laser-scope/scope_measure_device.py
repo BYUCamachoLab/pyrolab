@@ -120,6 +120,12 @@ for channel in active_channels:
 print("Adding Edge Trigger @ {} Volt(s).".format(trigger_level))
 scope.edge_trigger(trigger_channel, trigger_level)
 
+scope.write("CHAN2:DIGF:STAT ON")
+scope.write("CHAN3:DIGF:STAT ON")
+scope.write("CHAN4:DIGF:STAT ON")
+scope.write("CHAN2:DIGF:CUT 100E+3")
+scope.write("CHAN4:DIGF:CUT 100E+3")
+
 # ---------------------------------------------------------------------------- #
 # Collect Data
 # ---------------------------------------------------------------------------- #
