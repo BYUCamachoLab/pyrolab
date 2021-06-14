@@ -6,10 +6,10 @@ lambda_start    = 1500
 lambda_stop     = 1600
 duration        = 15
 trigger_step    = 0.01
-power_dBm       = 12
+power_dBm       = 12.5
 #Data Collection
 sample_rate     = 10e09
-buffer          = 2 #Additional time around duration to prevent timeout.
+buffer          = 4 #Additional time around duration to prevent timeout.
 
 #Save Data
 #The first argument passed will be used as the file name.
@@ -28,9 +28,9 @@ trigger_level   = 1 #Voltage threshold for postitive slope edge trigger.
 channel_setting = {
     #Additional settings to pass to each channel if used.
     1: {"range": 10, "position": 2}, 
-    2: {"range": 5, "position": -4},
-    3: {"range": 5, "position": -2},
-    4: {"range": 5, "position": 0.5}
+    2: {"range": 2, "position": -4},
+    3: {"range": 2, "position": -2},
+    4: {"range": 2, "position": 0.5}
 }
 
 # ---------------------------------------------------------------------------- #
@@ -45,6 +45,7 @@ from datetime import datetime
 from pyrolab.drivers.lasers.tsl550 import TSL550
 from pyrolab.drivers.scopes.rohdeschwarz import RTO
 from pyrolab.analysis import WavelengthAnalyzer
+import numpy as np
 # VisualizeData
 
 # ---------------------------------------------------------------------------- #
@@ -82,7 +83,8 @@ try:
     # Remote Computer via PyroLab
     from pyrolab.api import locate_ns, Proxy
     ns = locate_ns(host="camacholab.ee.byu.edu")
-    laser = Proxy(ns.lookup("lasers.TSL550"))
+    laser = Proxy(ns.lookup("TSL550"))
+    laser.start()
 except:
     # Local Computer
     laser = TSL550("COM4")
@@ -105,11 +107,15 @@ print("Set for {:.2E} Samples @ {:.2E} Sa/s.".format(numSamples, sample_rate))
 #Oscilloscope Settings
 print("Initializing Oscilloscope")
 scope = RTO(scope_IP)
+print(f"Connected: {scope.query('*IDN?')}")
 scope.acquisition_settings(sample_rate, acquire_time)
 for channel in active_channels:
     channelMode = "Trigger" if (channel == trigger_channel) else "Data"
     print("Adding Channel {} - {}".format(channel, channelMode))
-    scope.set_channel(channel, **channel_setting[channel])
+    try:
+        scope.set_channel(channel, **channel_setting[channel])
+    except:
+        pass # hotfix for weird timeout error
 #Add trigger.
 print("Adding Edge Trigger @ {} Volt(s).".format(trigger_level))
 scope.edge_trigger(trigger_channel, trigger_level)
@@ -165,13 +171,16 @@ data[1:] = [
     analysis.process_data(rawData[channel]) for channel in active_channels
 ]
 
+for i in range(len(active_channels)):
+    np.savez(Path(folderPath, f"Channel{i+1}.npz"), wavelength=np.array(data[i]["wavelengths"]), power=np.array(data[i]["data"]))
+
 print("Raw Datasets: {}".format(len(rawData)))
 print("Datasets Returned: {}".format((len(data))))
 
-# ---------------------------------------------------------------------------- #
-# Generate Visuals & Save Data
-# ---------------------------------------------------------------------------- #
-for channel in active_channels:
-    if (channel != trigger_channel):
-        print("Displaying data for channel " + str(channel))
-        VisualizeData(folderName + filename, channel, **(data[channel]))
+# # ---------------------------------------------------------------------------- #
+# # Generate Visuals & Save Data
+# # ---------------------------------------------------------------------------- #
+# for channel in active_channels:
+#     if (channel != trigger_channel):
+#         print("Displaying data for channel " + str(channel))
+#         VisualizeData(folderName + filename, channel, **(data[channel]))
