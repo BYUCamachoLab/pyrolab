@@ -49,17 +49,6 @@ class TSL550(Laser):
 
     Lasers can only be accessed by their serial port address.
 
-    Parameters
-    ----------
-    address : str, optional
-        Address is the serial port the laser is connected to (default "COM4").
-    baudrate : int, optional
-        Baudrate can be set on the device (default 9600).
-    terminator : str, optional
-        The string that marks the end of a command (default "\\\\r").
-    timeout : int, optional
-        The number of seconds to timeout after no response (default 100).
-
     Attributes
     ----------
     MINIMUM_WAVELENGTH : int
@@ -99,28 +88,46 @@ class TSL550(Laser):
 
     @staticmethod
     def detect_devices(self) -> List[Dict[str, Any]]:
-        
-        #while loop
-            #if the returned info is what we want
-            #maye something like
-            #if port.manufacturer == santec tsl550
-        #create dictionary "tsl550" : port.name
-        #the information we want is either port.name or port.device
-        #also test what the location returns (like port.location on loop below); 
+        """
+        Finds and returns all information needed to connect to the device.
+
+        Returns
+        -------
+        List[Dict[str, Any]]
+            Each item in the list contains a dictionary for a unique laser.
+            A dictionary from the list can be passed to ``connect()`` to
+            connect to the laser. If no device is detected, an empty list 
+            is returned.
+        """
         device_info = []
         for port in list_ports.comports():
-            #print(port) use to test
-            if port.manufacturer == "TSL-550":
-                location = port.location
-            
-        #Do we need to be able to create the list, like if we have many lasers?
+            if port.manufacturer == "Santec Corp.":
+                location = port.device
                 device_info.append({"address": location})
 
         return device_info
-        #pass
 
 
     def connect(self, address="", baudrate=9600, terminator="\r", timeout=100, query_delay=0.05) -> bool:
+        """
+        Connects to and initializes the laser. All parameters are keyword arguments.
+
+        Parameters
+        ----------
+        address : str
+            Address is the serial port the laser is connected to (default "").
+        baudrate : int, optional
+            Baudrate can be set on the device (default 9600).
+        terminator : str, optional
+            The string that marks the end of a command (default "\\\\r").
+        timeout : int, optional
+            The number of seconds to timeout after no response (default 100).
+
+        Returns
+        -------
+        bool
+            True if the device has been successfuly connected to. False otherwise.
+        """
         self.activated = True
         self.device = serial.Serial(address, baudrate=baudrate, timeout=timeout)
         self.device.flushInput()
