@@ -2,6 +2,7 @@ import os
 import time
 import math
 import keyboard
+import pyfirmata
 
 from ctypes import *
 
@@ -104,6 +105,10 @@ pProfileVelocity=c_dword()
 pProfileAcceleration=c_dword()
 pProfileDeceleration=c_dword()
 
+port = "COM4"
+pin = 13
+board = pyfirmata.Arduino(port)       
+
 print("what is the low wavelength (nm)?")
 wl_low = float(input())
 
@@ -153,7 +158,13 @@ while(sweep_done == False):
         if(time.time() - init_time > 1):
             init_time = time.time()
             epm.VCS_GetPositionIs(keyhandle, NodeID, byref(pPositionIs), byref(pErrorCode))
-            print(f"Position: {du_to_wl(pPositionIs.value)}")
+            pos = du_to_wl(pPositionIs.value)
+            print(f"Position: {pos}")
+            if(pos > target_value - 0.2 & pos < target_value + 0.2):
+                board.digital[pin].write(1)
+            else:
+                board.digital[pin].write(0)
+            
 
     if(sweep_done):
         continue
@@ -172,10 +183,17 @@ while(sweep_done == False):
             init_time = time.time()
             epm.VCS_GetPositionIs(keyhandle, NodeID, byref(pPositionIs), byref(pErrorCode))
             print(f"Position: {du_to_wl(pPositionIs.value)}")
+            pos = du_to_wl(pPositionIs.value)
+            print(f"Position: {pos}")
+            if(pos > target_value - 0.2 & pos < target_value + 0.2):
+                board.digital[pin].write(1)
+            else:
+                board.digital[pin].write(0)
     
 epm.VCS_GetPositionIs(keyhandle, NodeID, byref(pPositionIs), byref(pErrorCode))
 print(f"Position: {du_to_wl(pPositionIs.value)}")
 
 ret=epm.VCS_SetState(keyhandle, NodeID, ST_DISABLED, byref(pErrorCode))
 ret=epm.VCS_CloseAllDevices(byref(pErrorCode))
+board.exit()
 print("laser closed")
