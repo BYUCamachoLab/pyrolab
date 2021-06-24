@@ -1,12 +1,14 @@
 # ---------------------------------------------------------------------------- #
 # Parameters
 # ---------------------------------------------------------------------------- #
+add_trigger = True
+
 #Laser Sweep
 lambda_start    = 1500
 lambda_stop     = 1600
 duration        = 15
 trigger_step    = 0.01
-power_dBm       = 12.5
+power_dBm       = 13.0
 #Data Collection
 sample_rate     = 10e09
 buffer          = 4 #Additional time around duration to prevent timeout.
@@ -23,15 +25,26 @@ save_raw_data   = True #Save raw data collected from devices.
 scope_IP        = "10.32.112.162" #Oscilloscope IP Address
 take_screenshot = True
 active_channels = [1,2,3,4] #Channels to activate and use.
-trigger_channel = 1 #Channel for trigger signal.
+trigger_channel = 1 if add_trigger else 0 #Channel for trigger signal.
 trigger_level   = 1 #Voltage threshold for postitive slope edge trigger.
-channel_setting = {
-    #Additional settings to pass to each channel if used.
-    1: {"range": 10, "position": 2}, 
-    2: {"range": 2, "position": -4},
-    3: {"range": 2, "position": -2},
-    4: {"range": 2, "position": 0.5}
-}
+if add_trigger:
+    channel_setting = {
+        #Additional settings to pass to each channel if used.
+        1: {"range": 10, "position": 2}, 
+        # 1: {"range": 1.000, "position": -4}, 
+        2: {"range": 1.300, "position": -4},
+        3: {"range": 1.300, "position": -4},
+        4: {"range": 1.300, "position": -4}
+    } 
+else:
+    channel_setting = {
+        #Additional settings to pass to each channel if used.
+        # 1: {"range": 10, "position": 2}, 
+        1: {"range": 1.000, "position": -4}, 
+        2: {"range": 1.000, "position": -4},
+        3: {"range": 1.000, "position": -4},
+        4: {"range": 1.000, "position": -4}
+    }
 
 # ---------------------------------------------------------------------------- #
 # Libraries
@@ -118,7 +131,10 @@ for channel in active_channels:
         pass # hotfix for weird timeout error
 #Add trigger.
 print("Adding Edge Trigger @ {} Volt(s).".format(trigger_level))
-scope.edge_trigger(trigger_channel, trigger_level)
+if add_trigger:
+    scope.edge_trigger(trigger_channel, trigger_level)
+else:
+    scope.write("CHAN1:DIGF:STAT ON")
 
 scope.write("CHAN2:DIGF:STAT ON")
 scope.write("CHAN3:DIGF:STAT ON")
@@ -159,29 +175,30 @@ if save_raw_data:
 # ---------------------------------------------------------------------------- #
 # Process Data
 # ---------------------------------------------------------------------------- #
-print("Processing Data")
-analysis = WavelengthAnalyzer(
-    sample_rate = sample_rate,
-    wavelength_log = wavelengthLog,
-    trigger_data = rawData[trigger_channel]
-)
+if add_trigger:
+    print("Processing Data")
+    analysis = WavelengthAnalyzer(
+        sample_rate = sample_rate,
+        wavelength_log = wavelengthLog,
+        trigger_data = rawData[trigger_channel]
+    )
 
-print('=' * 30)
-print("Expected number of wavelength points: " + str(int(wavelengthLogSize)))
-print("Measured number of wavelength points: " + str(analysis.num_peaks()))
-print('=' * 30)
+    print('=' * 30)
+    print("Expected number of wavelength points: " + str(int(wavelengthLogSize)))
+    print("Measured number of wavelength points: " + str(analysis.num_peaks()))
+    print('=' * 30)
 
-data = [None] #Really ugly hack to make index numbers line up.
-data[1:] = [
-    #List comprehension to put all the datasets in this one array.
-    analysis.process_data(rawData[channel]) for channel in active_channels
-]
+    data = [None] #Really ugly hack to make index numbers line up.
+    data[1:] = [
+        #List comprehension to put all the datasets in this one array.
+        analysis.process_data(rawData[channel]) for channel in active_channels
+    ]
 
-for i in range(len(active_channels)):
-    np.savez(Path(folderPath, f"Channel{i+1}.npz"), wavelength=np.array(data[i]["wavelengths"]), power=np.array(data[i]["data"]))
+    for i in range(3):
+        np.savez(Path(folderPath, f"Channel{i+2}.npz"), wavelength=np.array(data[i+2]["wavelengths"]), power=np.array(data[i+2]["data"]))
 
-print("Raw Datasets: {}".format(len(rawData)))
-print("Datasets Returned: {}".format((len(data))))
+    print("Raw Datasets: {}".format(len(rawData)))
+    print("Datasets Returned: {}".format((len(data))))
 
 # # ---------------------------------------------------------------------------- #
 # # Generate Visuals & Save Data
