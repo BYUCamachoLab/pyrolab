@@ -14,6 +14,7 @@ Contributors
  * Sequoia Ploeg (https://github.com/sequoiap)
  * Benjamin Arnesen (https://github.com/BenA8)  
  * Christian Carver (https://github.com/cjcarver)
+ * Matthew McKinney (https://github.com/realblankname1)
 
 
 Kinesis controllers are only available on Windows machines. Proxies from
@@ -470,6 +471,34 @@ class KDC101(KinesisInstrument):
                 byref(message_type), 
                 byref(message_id), 
                 byref(message_data))
+    
+    def check_for_completion(self, id="homed") -> bool:
+        """
+        A non-blocking function to ensure a task has been finished.
+
+        Used to for the following functions: 
+
+        Parameters
+        ----------
+        id : string
+            must be either "homed", "moved", "stopped", or "limit_updated"
+            default is "homed"
+        """
+
+        message_type = c_word()
+        message_id = c_word()
+        message_data = c_dword()
+        
+        conditions = ["homed", "moved", "stopped", "limit_updated"]
+        cond = conditions.index(id)
+
+        queue_size = kcdc.CC_MessageQueueSize(
+            self._serialno)
+
+        if queue_size > 0:
+            return int(message_type.value) == 2 or int(message_id.value) == cond
+
+        return False
 
     def identify(self):
         """
@@ -490,7 +519,7 @@ class KDC101(KinesisInstrument):
         self.homed = True
         self.wait_for_completion()
 
-    def move_to(self, pos):
+    def move_to(self, pos, wait: bool = True):
         """
         Move the device to the specified position (index).
 
@@ -505,7 +534,8 @@ class KDC101(KinesisInstrument):
             self._serialno, 
             c_int(self._real_value_to_du(pos, 0)))
         check_error(status)
-        self.wait_for_completion(id="moved")
+        if wait:
+            self.wait_for_completion(id="moved")
     
     @oneway
     def move_by(self, displacement):
@@ -553,7 +583,7 @@ class KDC101(KinesisInstrument):
         check_error(status)
 
     @oneway
-    def jog(self, direction):
+    def jog(self, direction, wait: bool=True):
         """
         Jogs the motor using either stepped or continuous, 
         depending on what the jog mode is set to.
@@ -582,7 +612,8 @@ class KDC101(KinesisInstrument):
         status = kcdc.CC_MoveJog(self._serialno, c_dir)
         check_error(status)
         if (self.jog_mode == "stepped"):
-            self.wait_for_completion("moved")
+            if wait:
+                self.wait_for_completion("moved")
 
     @oneway
     def stop(self, immediate=False):
