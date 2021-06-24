@@ -39,6 +39,7 @@ from ctypes import (
     cast,
 )
 from ctypes.wintypes import DWORD, WORD
+from typing import Any, Dict, List
 
 from thorlabs_kinesis import kcube_dcservo as kcdc
 from thorlabs_kinesis._utils import c_word, c_dword
@@ -122,8 +123,11 @@ class KDC101(KinesisInstrument):
     jog_acceleration : float
         The jog acceleration in real units. It is always a positive number.
     """
-    def __init__(self, serialno: str, polling=200, home=False):
-        self.home=home
+    def connect(self, serialno: str="", polling=200, home=False):
+        # TODO: Build an exception for this.
+        if not serialno:
+            raise ValueError("No serial number provided.")
+        # self.home = home # This isn't used anywhere else...
         self.serialno = serialno
         self._serialno = c_char_p(bytes(str(serialno), "utf-8"))
         check_error(kcdc.CC_Open(self._serialno))       
@@ -154,6 +158,10 @@ class KDC101(KinesisInstrument):
                 self.go_home()
         else:
             self.homed = False
+
+    @staticmethod
+    def detect_devices() -> List[Dict[str, Any]]:
+        return []
 
     def _du_to_real_value(self, du, unit_type):
         """
@@ -449,10 +457,11 @@ class KDC101(KinesisInstrument):
 
         Parameters
         ----------
-        id : string
+        id : str, optional
             must be either "homed", "moved", "stopped", or "limit_updated"
-            default is "homed"
+            (default is "homed").
         """
+        # TODO: "id" is a reserved keyword in Python. Change this!
         message_type = c_word()
         message_id = c_word()
         message_data = c_dword()
@@ -519,7 +528,7 @@ class KDC101(KinesisInstrument):
         self.homed = True
         self.wait_for_completion()
 
-    def move_to(self, pos, wait: bool = True):
+    def move_to(self, pos, block: bool=True):
         """
         Move the device to the specified position (index).
 
@@ -529,12 +538,14 @@ class KDC101(KinesisInstrument):
         ----------
         index : int
             The position in device units.
+        block : bool, optional
+            Blocks code until move is completed (default True).
         """
         status = kcdc.CC_MoveToPosition(
             self._serialno, 
             c_int(self._real_value_to_du(pos, 0)))
         check_error(status)
-        if wait:
+        if block:
             self.wait_for_completion(id="moved")
     
     @oneway
@@ -583,7 +594,7 @@ class KDC101(KinesisInstrument):
         check_error(status)
 
     @oneway
-    def jog(self, direction, wait: bool=True):
+    def jog(self, direction, block: bool=True):
         """
         Jogs the motor using either stepped or continuous, 
         depending on what the jog mode is set to.
@@ -600,6 +611,8 @@ class KDC101(KinesisInstrument):
             The direction to move the motor. Acceptable values are ``forward``
             and ``backward``. Sense can be reversed by calling 
             :py:func:``reverse``.
+        block : bool, optional
+            Blocks code until move is completed (default True).
         """
         c_dir = kcdc.MOT_TravelDirection
         if direction == "forward":
@@ -612,7 +625,7 @@ class KDC101(KinesisInstrument):
         status = kcdc.CC_MoveJog(self._serialno, c_dir)
         check_error(status)
         if (self.jog_mode == "stepped"):
-            if wait:
+            if block:
                 self.wait_for_completion("moved")
 
     @oneway
