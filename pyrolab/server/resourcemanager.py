@@ -73,7 +73,6 @@ class ResourceManager:
 
     def checkup(self) -> bool:
         log.debug("Checking up on all child processes.")
-        print("checkup:", self.AUTORELAUNCH, f"{self}")
         if self.AUTORELAUNCH:
             self._timer = threading.Timer(RM_AUTORELAUNCH, self.checkup)
             self._timer.setDaemon(True)
