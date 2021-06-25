@@ -66,15 +66,12 @@ class ResourceInfo:
     def __init__(self, registered_name: str="", 
                  srv_cfg: ServerConfiguration=ServerConfiguration(),
                  daemon_module: str="", daemon_class: str="", 
-                 instance_mode: str="single", ns_host: str=None, 
-                 ns_port: int=None, active: bool=True) -> None:
+                 instance_mode: str="single", active: bool=True) -> None:
         self.registered_name = registered_name
         self.srv_cfg = srv_cfg
         self.daemon_module = daemon_module
         self.daemon_class = daemon_class
         self.instance_mode = instance_mode
-        self.ns_host = ns_host
-        self.ns_port = ns_port
         self.active = active
 
     @classmethod
@@ -238,7 +235,7 @@ class ResourceRunner(multiprocessing.Process):
 
         daemon, uri = self.setup_daemon()
 
-        ns = locate_ns(self.info.ns_host, self.info.ns_port)
+        ns = locate_ns(self.info.srv_cfg.NS_HOST, self.info.srv_cfg.NS_PORT)
         ns.register(instr_info.registered_name, uri, metadata=instr_info.metadata)
         daemon.requestLoop(loopCondition=self.kill_listener)
         ns.remove(instr_info.registered_name)
