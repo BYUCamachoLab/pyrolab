@@ -189,7 +189,7 @@ class ResourceRunner(multiprocessing.Process):
         daemon, uri
             The Daemon object and the URI for the hosted object, to be 
             registered with the nameserver.
-        """
+        """        
         instr_info = self.info.get_instr_info()
         cls = instr_info.get_class()
         # SS = behavior(SS, instance_mode="single")
@@ -200,6 +200,8 @@ class ResourceRunner(multiprocessing.Process):
             uri = daemon.register(cls, connect_params=instr_info.connect_params)
         else:
             uri = daemon.register(cls)
+        
+        print(uri)
 
         return daemon, uri
 
@@ -233,10 +235,14 @@ class ResourceRunner(multiprocessing.Process):
         instr_info = self.info.get_instr_info()
         print(f"Starting '{name}'")
 
+        from pyrolab.server.configure import srv_profile
+        srv_profile.use(self.info.srv_cfg)
+
         daemon, uri = self.setup_daemon()
 
         ns = locate_ns(self.info.srv_cfg.NS_HOST, self.info.srv_cfg.NS_PORT)
         ns.register(instr_info.registered_name, uri, metadata=instr_info.metadata)
+
         daemon.requestLoop(loopCondition=self.kill_listener)
         print(f"Shutting down '{name}'")
         ns.remove(instr_info.registered_name)
