@@ -89,10 +89,3 @@ def create_lockable(cls) -> Instrument:
         {}
     )
     return DynamicLockable
-
-
-# if __name__ == "__main__":
-#     from pyrolab.drivers.sample import SampleService
-
-#     ss = create_lockable(SampleService)
-#     l = ss()

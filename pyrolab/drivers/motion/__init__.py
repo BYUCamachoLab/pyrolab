@@ -5,10 +5,10 @@
 # (see pyrolab/__init__.py for details)
 
 """
-Lasers
+Motion
 ------
 
-Submodule containing drivers for each supported laser type.
+Submodule containing drivers for each supported motor type.
 """
 
 from pyrolab.drivers import Instrument
