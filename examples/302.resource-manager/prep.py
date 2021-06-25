@@ -31,7 +31,7 @@ r1 = ResourceInfo("test.SampleService", srv_cfg=srv_cfg, daemon_module="pyrolab.
 r2 = ResourceInfo("test.SampleAutoconnectInstrument", srv_cfg=srv_cfg, daemon_module="pyrolab.server", daemon_class="AutoconnectLockableDaemon")
 
 # We'll use our own ResourceManager to create the manager info file.
-rm = ResourceManager()
+rm = ResourceManager.instance()
 rm.add(r1)
 rm.add(r2)
 
@@ -39,6 +39,5 @@ rm.add(r2)
 MAN_FILE = "./manager.yaml"
 rm.save(MAN_FILE)
 
-from pyrolab.server.resourcemanager import manager
-manager.load(MAN_FILE)
-manager.save()
+rm.load(MAN_FILE)
+rm.save()
