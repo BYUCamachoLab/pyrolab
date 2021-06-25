@@ -64,7 +64,7 @@ class Profile:
         """
         if isinstance(cfg, Configuration):
             self.name = 'temp'
-            self.configuration = cfg
+            self.configuration = self.configuration.from_dict(cfg.to_dict())
         elif type(cfg) is str:
             profile = self._get_profile_path(cfg)
             if profile.exists():
