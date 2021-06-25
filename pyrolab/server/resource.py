@@ -238,4 +238,5 @@ class ResourceRunner(multiprocessing.Process):
         ns = locate_ns(self.info.srv_cfg.NS_HOST, self.info.srv_cfg.NS_PORT)
         ns.register(instr_info.registered_name, uri, metadata=instr_info.metadata)
         daemon.requestLoop(loopCondition=self.kill_listener)
+        print(f"Shutting down '{name}'")
         ns.remove(instr_info.registered_name)

@@ -55,6 +55,7 @@ def check_error(status):
     if status != 0:
         raise RuntimeError(ERROR_CODES[status])
 
+kcdc.TLI_BuildDeviceList()
 # if kcdc.TLI_BuildDeviceList() == 0:
 #     size = kcdc.TLI_GetDeviceListSize()
 #     if size > 0:

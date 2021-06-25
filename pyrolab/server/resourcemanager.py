@@ -17,6 +17,7 @@ Python ``multiprocessing`` module.
 
 import atexit
 import multiprocessing
+from multiprocessing import current_process
 from multiprocessing.queues import Queue
 import threading
 import logging
@@ -41,12 +42,23 @@ RESOURCE_INFO_FILE = SERVER_DATA_DIR / "resource_manager_info.yaml"
 RM_AUTORELAUNCH = 15.0
 
 class ResourceManager:
+    _instance = None
+
     def __init__(self) -> None:
-        self.infos: Dict[str, ResourceInfo] = {}
-        self.processes: Dict[str, ResourceRunner] = {}
-        self.messengers: Dict[str, Queue] = {}
-        self.AUTORELAUNCH: bool = True
-        self.checkup()
+        raise RuntimeError("Call ``instance()`` instead.")
+
+    @classmethod
+    def instance(cls):
+        if cls._instance is None:
+            inst = cls.__new__(cls)
+            inst.infos: Dict[str, ResourceInfo] = {}
+            inst.processes: Dict[str, ResourceRunner] = {}
+            inst.messengers: Dict[str, Queue] = {}
+            inst.AUTORELAUNCH: bool = True
+            inst.load()
+            inst.checkup()
+            cls._instance = inst
+        return cls._instance
 
     def update_host(self, host: str="localhost") -> None:
         for info in self.infos.values():
@@ -59,8 +71,9 @@ class ResourceManager:
             info.srv_cfg['NS_PORT'] = ns_port
         self.save()
 
-    def checkup(self) -> None:
+    def checkup(self) -> bool:
         log.debug("Checking up on all child processes.")
+        print("checkup:", self.AUTORELAUNCH, f"{self}")
         if self.AUTORELAUNCH:
             self._timer = threading.Timer(RM_AUTORELAUNCH, self.checkup)
             self._timer.setDaemon(True)
@@ -73,7 +86,6 @@ class ResourceManager:
             if not runner.is_alive():
                 log.info(f"Process '{name}' died, relaunching.")
                 self.launch(name)
-        return True
 
     def launch(self, name: str) -> None:
         """
@@ -92,6 +104,8 @@ class ResourceManager:
     def launch_all(self) -> bool:
         """
         Launch all resources known to the resource manager.
+
+        This automatically turns on ``AUTORELAUNCH``.
         """
         for name, info in self.infos.items():
             if info.active:
@@ -106,6 +120,11 @@ class ResourceManager:
         del self.messengers[name]
 
     def shutdown_all(self) -> None:
+        """
+        Sends a shutdown command to all child processes.
+
+        This automatically turns off ``AUTORELAUNCH``.
+        """
         self.AUTORELAUNCH = False
         names = list(self.processes.keys())
         for name in names:
@@ -179,10 +198,9 @@ class ResourceManager:
             raise NotImplementedError
 
 
-manager = ResourceManager()
-manager.load()
-
 @atexit.register
 def save_registry_on_exit():
-    if RESOURCE_MANAGER_AUTOSAVE:
-        manager.save()
+    if current_process().name == 'MainProcess':
+        if RESOURCE_MANAGER_AUTOSAVE:
+            manager = ResourceManager.instance()
+            manager.save()

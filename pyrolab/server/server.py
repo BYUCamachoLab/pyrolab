@@ -13,11 +13,12 @@ Wrapped server functions that references PyroLab configuration settings.
 
 import atexit
 import logging
+from multiprocessing import current_process
 
 import Pyro5
 
 from pyrolab.server.locker import Lockable
-from pyrolab.server.resourcemanager import manager
+from pyrolab.server.resourcemanager import ResourceManager
 from pyrolab.utils.network import get_ip
 
 
@@ -118,6 +119,7 @@ def start_default_public_server(ns_host: str, ns_port: int) -> None:
     ns_port : int
         The port of the nameserver.
     """
+    manager = ResourceManager.instance()
     manager.update_host(get_ip())
     manager.update_ns(ns_host=ns_host, ns_port=ns_port)
     manager.launch_all()
@@ -134,11 +136,14 @@ def start_default_local_server(ns_host: str="localhost", ns_port: int=9090) -> N
     ns_port : int, optional
         The port of the nameserver (default 9090).
     """
+    manager = ResourceManager.instance()
     manager.update_host("localhost")
     manager.update_ns(ns_host=ns_host, ns_port=ns_port)
     manager.launch_all()
 
 @atexit.register
 def shutdown_on_exit():
-    log.info("Shutting down all processes in ResourceManager.")
-    manager.shutdown_all()
+    if current_process().name == 'MainProcess':
+        log.info("Shutting down all processes in ResourceManager.")
+        manager = ResourceManager.instance()
+        manager.shutdown_all()
