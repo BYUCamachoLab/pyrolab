@@ -19,7 +19,7 @@ from pyrolab.drivers.motion._kinesis.kdc101 import KDC101, HomingMixin
 from pyrolab.api import expose
 
 @expose
-class Z825B(Motion, KDC101, HomingMixin):
+class Z825B(KDC101, HomingMixin):
     """
     A Z825B motorized linear actuator controlled by a KCube DC Servo motor. 
 

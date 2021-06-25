@@ -20,7 +20,7 @@ from pyrolab.drivers.motion._kinesis.kdc101 import KDC101, HomingMixin
 from pyrolab.api import expose
 
 @expose
-class PRM1Z8(Motion, KDC101, HomingMixin):
+class PRM1Z8(KDC101, HomingMixin):
     """
     A PRM1Z8 precision motorized rotation stage controlled by a KCube DC Servo 
     motor.
