@@ -200,8 +200,6 @@ class ResourceRunner(multiprocessing.Process):
             uri = daemon.register(cls, connect_params=instr_info.connect_params)
         else:
             uri = daemon.register(cls)
-        
-        print(uri)
 
         return daemon, uri
 
