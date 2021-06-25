@@ -76,6 +76,9 @@ class ResourceManager:
         return True
 
     def launch(self, name: str) -> None:
+        """
+        Launch an individual resource known to the resource manager by name.
+        """
         info = self.infos[name]
         if info.active:
             messenger = multiprocessing.Queue()
@@ -87,6 +90,9 @@ class ResourceManager:
             log.info(f"Resource '{info.registered_name}' is deactivaed, not launching.")
 
     def launch_all(self) -> bool:
+        """
+        Launch all resources known to the resource manager.
+        """
         for name, info in self.infos.items():
             if info.active:
                 self.launch(name)
