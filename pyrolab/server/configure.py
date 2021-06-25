@@ -41,12 +41,16 @@ SERVER_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 class ServerConfiguration(Configuration):
     """
-    Nameserver configuration object.
+    Server configuration object.
+
+    Note that for the ``host`` attribute, the string "public" will always be
+    reevaluated to the computer's public IP address.
 
     Parameters
     ----------
     host : str, optional
-        The hostname of the local server (default "localhost").
+        The hostname of the local server, or the string "public", which 
+        is converted to the host's public IP address (default "localhost").
     ns_host : str, optional
         The hostname of the nameserver (default "localhost").
     ns_port : int, optional
@@ -74,6 +78,16 @@ class ServerConfiguration(Configuration):
         self.NS_BCPORT = ns_bcport
         self.NS_BCHOST = ns_bchost
         self.SERVERTYPE = servertype
+
+    def __setattr__(self, key, value):
+        """
+        Only known attributes are stored. Attributes shared with the Pyro5 
+        config object are also set.
+        """
+        if key == "HOST" and value == "public":
+            self.HOST = get_ip()
+        else:
+            super().__setattr__(key, value)
 
 
 PROFILES_DIR = SERVER_CONFIG_DIR / "profiles"

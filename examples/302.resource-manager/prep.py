@@ -1,3 +1,4 @@
+from pyrolab.server.configure import ServerConfiguration
 from pyrolab.server.registry import InstrumentInfo, InstrumentRegistry
 from pyrolab.server.resource import ResourceInfo
 from pyrolab.server.resourcemanager import ResourceManager
@@ -22,8 +23,12 @@ registry.save()
 
 # We'll now define the daemons that will host our known instruments. Be sure
 # to use the same identifying string!
-r1 = ResourceInfo("test.SampleService", daemon_module="pyrolab.server", daemon_class="LockableDaemon", ns_host="localhost", ns_port=9090)
-r2 = ResourceInfo("test.SampleAutoconnectInstrument", daemon_module="pyrolab.server", daemon_class="AutoconnectLockableDaemon", ns_host="localhost", ns_port=9090)
+srv_cfg = ServerConfiguration(
+    host="public",
+    ns_host = "camacholab.ee.byu.edu",
+)
+r1 = ResourceInfo("test.SampleService", srv_cfg=srv_cfg, daemon_module="pyrolab.server", daemon_class="LockableDaemon")
+r2 = ResourceInfo("test.SampleAutoconnectInstrument", srv_cfg=srv_cfg, daemon_module="pyrolab.server", daemon_class="AutoconnectLockableDaemon")
 
 # We'll use our own ResourceManager to create the manager info file.
 rm = ResourceManager()
