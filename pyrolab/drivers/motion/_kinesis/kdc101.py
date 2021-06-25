@@ -21,6 +21,12 @@ Kinesis controllers are only available on Windows machines. Proxies from
 other operating systems can however call Pyro services freely.
 
 ThorLabs Kinesis should be installed, see ThorLabs' website to download.
+
+.. note::
+   If you are using the remote functionalities of PyroLab, you may see the
+   error ``RuntimeError: FT_DeviceNotFound`` when calling functions on objects
+   inheriting from KDC101. This sometimes occus when you forget to call
+   ``autoconnect()`` before trying to use the device.
 """
 
 import time
