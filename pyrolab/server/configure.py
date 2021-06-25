@@ -85,7 +85,7 @@ class ServerConfiguration(Configuration):
         config object are also set.
         """
         if key == "HOST" and value == "public":
-            self.HOST = get_ip()
+            super().__setattr__(key, get_ip())
         else:
             super().__setattr__(key, value)
 
