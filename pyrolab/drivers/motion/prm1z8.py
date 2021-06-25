@@ -34,8 +34,8 @@ class PRM1Z8(Motion, KDC101, HomingMixin):
     home : bool
         True tells the device to home when initializing
     """
-    def __init__(self, serialno: str, polling=200, home=False):
-        super().__init__(serialno, polling, home)
+    # def __init__(self, serialno: str, polling=200, home=False):
+    #     super().__init__(serialno, polling, home)
 
 
     

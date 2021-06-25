@@ -30,5 +30,5 @@ class Z825B(Motion, KDC101, HomingMixin):
     polling : int
         The polling rate in milliseconds.
     """
-    def __init__(self, serialno, polling=200, home=False):
-        super().__init__(serialno, polling, home)
+    # def __init__(self, serialno, polling=200, home=False):
+    #     super().__init__(serialno, polling, home)
