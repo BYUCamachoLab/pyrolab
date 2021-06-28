@@ -19,6 +19,7 @@ import atexit
 import multiprocessing
 from multiprocessing import current_process
 from multiprocessing.queues import Queue
+from time import sleep
 import threading
 import logging
 from typing import Dict, Union
@@ -109,6 +110,7 @@ class ResourceManager:
         for name, info in self.infos.items():
             if info.active:
                 self.launch(name)
+                sleep(5)
         log.info("AUTORELAUNCH activated")
         self.AUTORELAUNCH = True
         return True
