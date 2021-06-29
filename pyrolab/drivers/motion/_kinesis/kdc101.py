@@ -540,7 +540,7 @@ class KDC101(KinesisInstrument):
         self.homed = True
         self.wait_for_completion()
 
-    def move_to(self, pos, block: bool = True):
+    def move_to(self, pos):
         """
         Move the device to the specified position (index).
 
@@ -557,8 +557,23 @@ class KDC101(KinesisInstrument):
             self._serialno,
             c_int(self._real_value_to_du(pos, 0)))
         check_error(status)
-        if block:
-            self.wait_for_completion(id="moved")
+        self.wait_for_completion(id="moved")
+
+    def move_to_unblocked(self, pos):
+        """
+        Move the device to the specified position (index).
+
+        The motor may need to be homed before a position can be set.
+
+        Parameters
+        ----------
+        index : int
+            The position in device units.
+        """
+        status = kcdc.CC_MoveToPosition(
+            self._serialno,
+            c_int(self._real_value_to_du(pos, 0)))
+        check_error(status)
 
     @oneway
     def move_by(self, displacement):
