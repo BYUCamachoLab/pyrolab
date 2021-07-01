@@ -496,32 +496,32 @@ class KDC101(KinesisInstrument):
                 byref(message_id),
                 byref(message_data))
 
-    def check_for_completion(self, id="homed") -> bool:
-        """
-        A non-blocking function to ensure a task has been finished.
+    # def check_for_completion(self, id="homed") -> bool:
+    #     """
+    #     A non-blocking function to ensure a task has been finished.
 
-        Used to for the following functions: 
+    #     Used to for the following functions:
 
-        Parameters
-        ----------
-        id : string
-            must be either "homed", "moved", "stopped", or "limit_updated"
-            default is "homed"
-        """
+    #     Parameters
+    #     ----------
+    #     id : string
+    #         must be either "homed", "moved", "stopped", or "limit_updated"
+    #         default is "homed"
+    #     """
 
-        message_type = c_word()
-        message_id = c_word()
-        message_data = c_dword()
+    #     message_type = c_word()
+    #     message_id = c_word()
+    #     message_data = c_dword()
 
-        cond = self.CONDITIONS.index(id)
+    #     cond = self.CONDITIONS.index(id)
 
-        queue_size = kcdc.CC_MessageQueueSize(
-            self._serialno)
+    #     queue_size = kcdc.CC_MessageQueueSize(
+    #         self._serialno)
 
-        if queue_size > 0:
-            return int(message_type.value) == 2 and int(message_id.value) == cond
+    #     if queue_size > 0:
+    #         return int(message_type.value) == 2 and int(message_id.value) == cond
 
-        return True
+    #     return True
 
     def identify(self):
         """
@@ -561,21 +561,21 @@ class KDC101(KinesisInstrument):
         check_error(status)
         self.wait_for_completion(id="moved")
 
-    def move_to_unblocked(self, pos):
-        """
-        Move the device to the specified position (index).
+    # def move_to_unblocked(self, pos):
+    #     """
+    #     Move the device to the specified position (index).
 
-        The motor may need to be homed before a position can be set.
+    #     The motor may need to be homed before a position can be set.
 
-        Parameters
-        ----------
-        index : int
-            The position in device units.
-        """
-        status = kcdc.CC_MoveToPosition(
-            self._serialno,
-            c_int(self._real_value_to_du(pos, 0)))
-        check_error(status)
+    #     Parameters
+    #     ----------
+    #     index : int
+    #         The position in device units.
+    #     """
+    #     status = kcdc.CC_MoveToPosition(
+    #         self._serialno,
+    #         c_int(self._real_value_to_du(pos, 0)))
+    #     check_error(status)
 
     @oneway
     def move_by(self, displacement):
