@@ -481,6 +481,7 @@ class KDC101(KinesisInstrument):
         message_data = c_dword()
 
         cond = self.CONDITIONS.index(id)
+        print("Condition index: " + str(cond))
 
         kcdc.CC_WaitForMessage(
             self._serialno,
@@ -488,6 +489,7 @@ class KDC101(KinesisInstrument):
             byref(message_id),
             byref(message_data))
         while int(message_type.value) != 2 or int(message_id.value) != cond:
+            print(str(message_type.value) + " " + str(message_id.value))
             kcdc.CC_WaitForMessage(
                 self._serialno,
                 byref(message_type),
