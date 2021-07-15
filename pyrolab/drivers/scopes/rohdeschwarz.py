@@ -467,18 +467,19 @@ class RTO(Scope):
 
     #what does 1..4 mean?
     def set_filter(self, channel, cutoff_freq):
-        self.write(f"CHANnel{channel}:DIGFilter:STATe ON")
+        #descrbe
+        self.write(f"CHAN{channel}:DIGF:STAT ON")
         if cutoff_freq > 1e4 and cutoff_freq < 1e9:
-            self.write(f"CHANnel{channel}:DIGFilter:CUToff {cutoff_freq}")
+            self.write(f"CHAN{channel}:DIGFilter:CUT {cutoff_freq}")
         else:
             pass #riase an error or something?
 
     def deact_filter(self, channel):
-        self.write(f"CHANnel{channel}:DIGFilter:STATe OFF")
+        self.write(f"CHAN{channel}:DIGF:STAT OFF")
     
     def set_cutoff_freq(self, channel, cutoff_freq):
         if cutoff_freq > 1e4 and cutoff_freq < 4e9:
-            self.write(f"TRIGger{channel}:RFReject {cutoff_freq}")
+            self.write(f"CHAN{channel}:DIGF:CUT {cutoff_freq}")
         else:
             pass #riase an error or something?
 
