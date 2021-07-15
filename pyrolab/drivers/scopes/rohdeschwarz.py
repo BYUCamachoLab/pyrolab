@@ -57,21 +57,56 @@ class RTO(Scope):
     """
     Simple network controller class for R&S RTO oscilloscopes.
 
-    Parameters
-    ----------
-    address : str
-        The IP address of the instrument.
-    interface : str, optional
-        The interface to use to connect to the instrument. May be one
-        of "TCPIP", "GPIB", "ASRL", etc. Default is "TCPIP".
-    protocol : str, optional
-        The protocol to use for the LAN connection. Can be "INSTR"
-        or "hislip". Default is "hislip".
-    timeout : int, optional
-        The device response timeout in milliseconds (default 1 second).
-        Pass `None` for infinite timeout.
+
     """
-    def connect(self, address, interface="TCPIP", protocol="hislip", timeout=1e3) -> bool:
+    
+    @staticmethod #How is this function supposed to be implemented? How are we supposed to know what the addresses are?
+    def detect_devices(addresses):
+        """
+        Takes a list of IP addreses and returns them in the formate required
+        to connect to the device.
+
+        Parameters
+        ----------
+        addresses : list of str
+            Any IP addresses to the scopes to be connected to
+
+        Returns
+        -------
+        List[Dict[str, Any]]
+            Each item in the list contains a dictionary for a unique laser.
+            A dictionary from the list can be passed to ``connect()`` to
+            connect to the laser. If no device is detected, an empty list 
+            is returned.
+        """
+        device_info = []
+        for address in addresses:
+            device_info.append({"address": address})
+        
+        return device_info
+
+        
+    
+    def connect(self, address="", interface="TCPIP", protocol="hislip", timeout=1e3) -> bool:
+        """
+        Connects to and initializes the R&S RTO oscilloscope.
+        All parameters are keyword arguments.
+
+        Parameters
+        ----------
+        address : str, optional
+            The IP address of the instrument. Default is "".
+        interface : str, optional
+            The interface to use to connect to the instrument. May be one
+            of "TCPIP", "GPIB", "ASRL", etc. Default is "TCPIP".
+        protocol : str, optional
+            The protocol to use for the LAN connection. Can be "INSTR"
+            or "hislip". Default is "hislip".
+        timeout : int, optional
+            The device response timeout in milliseconds. 
+            Default is 1 millisecond. Pass `None` for infinite timeout.
+        """
+        
         rm = visa.ResourceManager()
         self.device = rm.open_resource("{}::{}::{}".format(interface, address, protocol))
         self.device.timeout = timeout
@@ -84,8 +119,12 @@ class RTO(Scope):
 
         return True
 
-    #not entirely sure if this is what should be happening
-    def close():
+    #not entirely sure if this is what should be happening. Should this function just do nothing?
+    def close(self):
+        #should only need to call this on two channels, becuase the filter applies to two channels at a time
+        for channel in range(1,5):
+            self.deact_filter(channel)
+        
         self.device.before_close()
         self.device.close()
 
@@ -425,6 +464,28 @@ class RTO(Scope):
         self.device.ext_error_checking()
 
     #Removed depricated function; I think it was supposed to be removed
+
+    #what does 1..4 mean?
+    def set_filter(self, channel, cutoff_freq):
+        self.write(f"CHANnel{channel}:DIGFilter:STATe ON")
+        if cutoff_freq > 1e4 and cutoff_freq < 1e9:
+            self.write(f"CHANnel{channel}:DIGFilter:CUToff {cutoff_freq}")
+        else:
+            pass #riase an error or something?
+
+    def deact_filter(self, channel):
+        self.write(f"CHANnel{channel}:DIGFilter:STATe OFF")
+    
+    def set_cutoff_freq(self, channel, cutoff_freq):
+        if cutoff_freq > 1e4 and cutoff_freq < 4e9:
+            self.write(f"TRIGger{channel}:RFReject {cutoff_freq}")
+        else:
+            pass #riase an error or something?
+
+
+
+
+        
 
 class RemoteDisplay:
     def __init__(self, scope: RTO):
