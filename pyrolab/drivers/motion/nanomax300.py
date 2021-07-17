@@ -19,12 +19,13 @@ from numpy import interp
 
 from pyrolab.drivers.motion import Motion
 from pyrolab.drivers.motion._kinesis.bpc303 import BPC303
-from pyrolab.api import expose
+from pyrolab.api import expose, behavior
 
 
 SHORT_MAX = 32767
 
 
+@behavior(instance_mode="single")
 @expose
 class NanoMax300(Motion, BPC303):
     """

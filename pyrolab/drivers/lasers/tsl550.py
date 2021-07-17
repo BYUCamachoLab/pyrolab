@@ -35,14 +35,14 @@ import struct
 
 import serial
 from serial.tools import list_ports
-from Pyro5.api import expose
-import pyrolab.api
+from pyrolab.api import expose, behavior
 
 from typing import Any, Dict, List
 
 from pyrolab.drivers.lasers import Laser
 
 
+@behavior(instance_mode="single")
 @expose
 class TSL550(Laser):
     """ A Santec TSL-550 laser.
