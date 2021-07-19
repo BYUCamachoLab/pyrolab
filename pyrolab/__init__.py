@@ -54,7 +54,7 @@ warnings.filterwarnings("default", category=DeprecationWarning)
 # from pyrolab.configure import global_config as config
 
 from appdirs import AppDirs
-_dirs = AppDirs(__name__, __author__, version=__version__)
+_dirs = AppDirs(__name__, __author__)
 SITE_DATA_DIR = pathlib.Path(_dirs.site_data_dir)
 SITE_CONFIG_DIR = pathlib.Path(_dirs.site_config_dir)
 SITE_DATA_DIR.mkdir(parents=True, exist_ok=True)
