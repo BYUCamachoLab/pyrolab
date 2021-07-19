@@ -678,6 +678,7 @@ class KDC101(KinesisInstrument):
 
     def close(self):
         """
-        Closes the motor.
+        Closes the motor if the object has been instantiated.
         """
-        kcdc.CC_Close(self._serialno)
+        if hasattr(self, "_serialno"):
+            kcdc.CC_Close(self._serialno)
