@@ -194,7 +194,7 @@ class DaemonGroup:
         self.registered_names = registered_names
 
     @staticmethod
-    def available() -> List[str]:
+    def list() -> List[str]:
         groups = DAEMON_GROUP_DIR.glob('*.yaml')
         valid = [str(x.name)[:-5] for x in groups if x.is_file()]
         return valid
