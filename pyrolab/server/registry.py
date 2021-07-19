@@ -38,7 +38,7 @@ import uuid
 
 from yaml import safe_load, dump
 
-from pyrolab.server import SERVER_DATA_DIR
+from pyrolab.server.configure import SERVER_DATA_DIR
 from pyrolab.server.locker import create_lockable
 
 if TYPE_CHECKING:

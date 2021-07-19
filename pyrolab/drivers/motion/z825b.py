@@ -21,7 +21,7 @@ from pyrolab.api import expose, behavior
 
 @behavior(instance_mode="single")
 @expose
-class Z825B(Motion, KDC101, HomingMixin):
+class Z825B(KDC101, HomingMixin):
     """
     A Z825B motorized linear actuator controlled by a KCube DC Servo motor. 
 
@@ -32,5 +32,5 @@ class Z825B(Motion, KDC101, HomingMixin):
     polling : int
         The polling rate in milliseconds.
     """
-    def __init__(self, serialno, polling=200, home=False):
-        super().__init__(serialno, polling, home)
+    # def __init__(self, serialno, polling=200, home=False):
+    #     super().__init__(serialno, polling, home)

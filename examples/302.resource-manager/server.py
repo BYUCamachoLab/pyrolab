@@ -25,12 +25,13 @@ manager.shutdown_all()
 ```
 """
 
-from pyrolab.server.resourcemanager import manager
+from pyrolab.server.resourcemanager import ResourceManager
 
 MAN_FILE = "./manager.yaml"
 
 # For Windows machines, all process creation must be guarded in
 # __name__ == "__main__"
 if __name__ == "__main__":
+    manager = ResourceManager.instance()
     manager.load(MAN_FILE)
     manager.launch_all()

@@ -13,11 +13,11 @@ Wrapped server functions that references PyroLab configuration settings.
 
 from __future__ import annotations
 import logging
+
 from pathlib import Path
 from pyrolab.server.configure import SERVER_DATA_DIR
 from pyrolab.server.registry import create_unique_resource
 from typing import Dict, List, TYPE_CHECKING, Union
-
 import Pyro5
 from Pyro5.core import URI
 from Pyro5.api import expose

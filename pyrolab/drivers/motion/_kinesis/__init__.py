@@ -16,10 +16,11 @@ Hidden submodule that ensures ThorLabs Kinesis software is available.
 # If found, save their location to the configuration settings.
 # Otherwise, ask the user to do something to locate them, perhaps some command line dealio.
 
+from pyrolab.drivers.motion import Motion
 import thorlabs_kinesis as tlk
 
 
-class KinesisInstrument:
+class KinesisInstrument(Motion):
     pass
 
 
