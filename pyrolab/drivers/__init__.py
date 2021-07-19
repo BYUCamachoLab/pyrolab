@@ -26,7 +26,8 @@ class Instrument:
     PyroLab features.
     """
     def __init__(self) -> None:
-        self._autoconnect_params: Dict[str, Any] = {}
+        if not hasattr(self, "_autoconnect_params"):
+            self._autoconnect_params: Dict[str, Any] = {}
 
     def __del__(self) -> None:
         """
