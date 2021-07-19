@@ -292,6 +292,10 @@ class DaemonGroup:
         if update_file:
             raise NotImplementedError
 
+    def delete(self, name):
+        # TODO
+        pass
+
     def get_daemon(self):
         pass
 
