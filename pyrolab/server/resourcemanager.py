@@ -195,8 +195,8 @@ class ResourceManager:
         with path.open('w') as fout:
             fout.write(dump(items))
         
-        if update_file:
-            raise NotImplementedError
+#         if update_file:
+#             raise NotImplementedError
 
 
 @atexit.register
