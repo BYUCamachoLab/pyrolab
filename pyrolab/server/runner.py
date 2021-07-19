@@ -33,8 +33,9 @@ def setup_daemon_group(dg: DaemonGroup):
         print("registering", dg.registered_names[instr_name], "at", uri)
         ns.register(dg.registered_names[instr_name], uri, metadata={instr_info.description})
 
-    # TODO: Register the DaemonGroup itself with the name server for lock/release
-    # functionality.
+    # Register the DaemonGroup itself with the name server for lock/release
+    uri = daemon.register(daemon)
+    ns.register(dg.name, uri)
     
     return daemon
 
