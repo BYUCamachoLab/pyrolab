@@ -512,7 +512,6 @@ class KDC101(KinesisInstrument):
         )
         log.debug("Entering wait loop")
         while int(message_type.value) != 2 or int(message_id.value) != cond:
-            print(str(message_type.value) + " " + str(message_id.value))
             kcdc.CC_WaitForMessage(
                 self._serialno,
                 byref(message_type),
@@ -703,7 +702,9 @@ class KDC101(KinesisInstrument):
         else:
             status = kcdc.CC_StopProfiled(self._serialno)
         check_error(status)
-        # self.wait_for_completion(id="stopped")
+        self.wait_for_completion(id="stopped")
+        stop_type = 'immediate' if immediate else 'profiled'
+        log.debug(f"Stopping with stop type {stop_type} (KDC101 {self.serialno}")
 
     def close(self):
         """
