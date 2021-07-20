@@ -30,6 +30,7 @@ ThorLabs Kinesis should be installed, see ThorLabs' website to download.
 """
 
 import time
+import logging
 from ctypes import (
     c_bool,
     c_short,
@@ -55,6 +56,9 @@ from pyrolab.api import expose
 from Pyro5.server import oneway
 
 
+log = logging.getLogger("pyrolab.drivers.motion._kinesis.kdc101")
+
+
 KCube_DC_Servo_Device_ID = 27
 
 
@@ -63,6 +67,7 @@ def check_error(status):
         raise RuntimeError(ERROR_CODES[status])
 
 
+log.info("Building ThorLabs device list (requires ThorLabs Kinesis DLL)")
 kcdc.TLI_BuildDeviceList()
 # if kcdc.TLI_BuildDeviceList() == 0:
 #     size = kcdc.TLI_GetDeviceListSize()
@@ -137,7 +142,12 @@ class KDC101(KinesisInstrument):
     """
     CONDITIONS = ["homed", "moved", "stopped", "limit_updated"]
 
+    def __init__(self) -> None:
+        log.debug("KDC101 created")
+        super().__init__()
+
     def connect(self, serialno: str = "", polling=200, home=False):
+        log.debug("Entering `connect()`")
         # TODO: Build an exception for this.
         if not serialno:
             raise ValueError("No serial number provided.")
@@ -173,8 +183,11 @@ class KDC101(KinesisInstrument):
         else:
             self.homed = False
 
+        log.debug("Exiting `connect()`")
+
     @staticmethod
     def detect_devices() -> List[Dict[str, Any]]:
+        log.debug("Entering `detect_devices()`")
         return []
 
     def _du_to_real_value(self, du, unit_type):
@@ -200,6 +213,7 @@ class KDC101(KinesisInstrument):
             The type of unit being converted; ``0`` for distance, ``1`` for 
             velocity, or ``2`` for acceleration.
         """
+        log.debug("Entering `_du_to_real_value()`")
         real_unit = c_double()
         status = kcdc.CC_GetRealValueFromDeviceUnit(
             self._serialno,
@@ -221,6 +235,7 @@ class KDC101(KinesisInstrument):
             The type of unit being converted; ``0`` for distance, ``1`` for 
             velocity, or ``2`` for acceleration.
         """
+        log.debug("Entering `_real_value_to_du()`")
         device_unit = c_int()
         status = kcdc.CC_GetDeviceUnitFromRealValue(
             self._serialno,
@@ -232,6 +247,7 @@ class KDC101(KinesisInstrument):
 
     @property
     def backlash(self):
+        log.debug("Entering `backlash()`")
         backlash = kcdc.CC_GetBacklash(self._serialno)
 
         return self._du_to_real_value(backlash, 0)
@@ -253,6 +269,7 @@ class KDC101(KinesisInstrument):
 
     @property
     def jog_mode(self):
+        log.debug("Entering `jog_mode()`")
         jog_mode = kcdc.MOT_JogModes()
         stop_mode = kcdc.MOT_StopModes()
         status = kcdc.CC_GetJogMode(
@@ -269,6 +286,7 @@ class KDC101(KinesisInstrument):
 
     @jog_mode.setter
     def jog_mode(self, jog_mode):
+        log.debug("Setting `jog_mode()`")
         c_jog_mode = kcdc.MOT_JogModeUndefined
         c_stop_mode = kcdc.MOT_StopModeUndefined
         stop_mode = self.stop_mode
@@ -286,6 +304,7 @@ class KDC101(KinesisInstrument):
 
     @property
     def jog_step_size(self):
+        log.debug("Entering `jog_step_size(self)`")
         return self._du_to_real_value(kcdc.CC_GetJogStepSize(self._serialno), 0)
 
     @jog_step_size.setter
@@ -458,6 +477,7 @@ class KDC101(KinesisInstrument):
         """
         Gets the current position of the stage in real units.
         """
+        log.debug("Entering `get_position()`")
         current_pos_du = kcdc.CC_GetPosition(self._serialno)
         return self._du_to_real_value(current_pos_du, 0)
 
@@ -475,19 +495,22 @@ class KDC101(KinesisInstrument):
             must be either "homed", "moved", "stopped", or "limit_updated"
             (default is "homed").
         """
+        log.debug("Entering `wait_for_completion()`")
         # TODO: "id" is a reserved keyword in Python. Change this!
         message_type = c_word()
         message_id = c_word()
         message_data = c_dword()
 
         cond = self.CONDITIONS.index(id)
-        print("Condition index: " + str(cond))
+        log.debug(f"Condition index: {cond} - {str(cond)} ")
 
         kcdc.CC_WaitForMessage(
             self._serialno,
             byref(message_type),
             byref(message_id),
-            byref(message_data))
+            byref(message_data)
+        )
+        log.debug("Entering wait loop")
         while int(message_type.value) != 2 or int(message_id.value) != cond:
             print(str(message_type.value) + " " + str(message_id.value))
             kcdc.CC_WaitForMessage(
@@ -495,6 +518,7 @@ class KDC101(KinesisInstrument):
                 byref(message_type),
                 byref(message_id),
                 byref(message_data))
+        log.debug("Exiting `wait_for_completion()`")
 
     # def check_for_completion(self, id="homed") -> bool:
     #     """
@@ -527,9 +551,10 @@ class KDC101(KinesisInstrument):
         """
         Sends a command to the device to make it identify iteself.
         """
+        log.debug("Entering `identify()`")
         kcdc.CC_Identify(self._serialno)
 
-    @oneway
+    # @oneway
     def go_home(self):
         """
         Takes the device home and sets self.homed to true
@@ -537,6 +562,7 @@ class KDC101(KinesisInstrument):
         go_home() will always ignore the software limits from soft_limits_mode 
         and min_pos and max_pos.
         """
+        log.debug(f"Homing KDC101 device '{self.serialno}'")
         status = kcdc.CC_Home(self._serialno)
         check_error(status)
         self.homed = True
@@ -555,11 +581,14 @@ class KDC101(KinesisInstrument):
         block : bool, optional
             Blocks code until move is completed (default True).
         """
+        log.debug(f"Moving to position '{pos}' (KDC101 {self.serialno})")
         status = kcdc.CC_MoveToPosition(
             self._serialno,
             c_int(self._real_value_to_du(pos, 0)))
         check_error(status)
+        log.debug(f"Awaiting move completion (KDC101 {self.serialno})")
         self.wait_for_completion(id="moved")
+        log.debug(f"Move completed (KDC101 {self.serialno})")
 
     # def move_to_unblocked(self, pos):
     #     """
@@ -577,7 +606,7 @@ class KDC101(KinesisInstrument):
     #         c_int(self._real_value_to_du(pos, 0)))
     #     check_error(status)
 
-    @oneway
+    # @oneway
     def move_by(self, displacement):
         """
         Move the motor by a relative amount.
@@ -593,7 +622,7 @@ class KDC101(KinesisInstrument):
         check_error(status)
         self.wait_for_completion(id="moved")
 
-    @oneway
+    # @oneway
     def move_continuous(self, direction="forward"):
         """
         Moves the motor at a constant velocity in the specified direction.
@@ -622,7 +651,7 @@ class KDC101(KinesisInstrument):
         status = kcdc.CC_MoveAtVelocity(self._serialno, direction)
         check_error(status)
 
-    @oneway
+    # @oneway
     def jog(self, direction, block: bool = True):
         """
         Jogs the motor using either stepped or continuous, 
@@ -657,7 +686,7 @@ class KDC101(KinesisInstrument):
             if block:
                 self.wait_for_completion("moved")
 
-    @oneway
+    # @oneway
     def stop(self, immediate=False):
         """
         Stops moving the motor either immediately or profiled.

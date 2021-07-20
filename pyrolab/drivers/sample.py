@@ -13,10 +13,15 @@ is working properly.
 """
 
 import time
+import logging
 from typing import Union
 
 from pyrolab.api import expose, behavior
 from pyrolab.drivers import Instrument
+
+
+log = logging.getLogger("pyrolab.drivers.sample")
+log.debug("Sample module loaded")
 
 
 Number = Union[int, float]
@@ -25,9 +30,11 @@ Number = Union[int, float]
 @expose
 class SampleService:
     def __init__(self):
+        log.info("SampleService created")
         pass
 
     def close(self):
+        log.info("SampleService closed")
         pass
 
     def echo(self, message: str) -> str:

@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from Pyro5.socketutil import SocketConnection
 
 
-log = logging.getLogger("pyrolab.server")
+log = logging.getLogger("pyrolab.server.server")
 
 
 class Daemon(Pyro5.server.Daemon):
