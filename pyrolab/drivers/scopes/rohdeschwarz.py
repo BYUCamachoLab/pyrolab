@@ -549,6 +549,9 @@ class RTO(Scope):
         )
         self.device.ext_error_checking()
 
+    def close(self):
+        pass
+
 class RemoteDisplay:
     def __init__(self, scope: RTO):
         self.scope = scope
