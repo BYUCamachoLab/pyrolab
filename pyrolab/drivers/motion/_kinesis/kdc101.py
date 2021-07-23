@@ -504,13 +504,26 @@ class KDC101(KinesisInstrument):
         current_pos_du = kcdc.CC_GetPosition(self._serialno)
         return self._du_to_real_value(current_pos_du, 0)
 
-    def get_status_bits(self):
+    def get_status_bits(self) -> int:
         """
+        Returns the status bits of the motor. See the ThorLabs Kinesis 
+        documentation for bitmasks to access various status values.
+
+        Returns
+        -------
+        status_bits : int
+            The status bits of the motor.
         """
         return kcdc.CC_GetStatusBits(self._serialno)
 
-    def is_moving(self):
+    def is_moving(self) -> bool:
         """
+        Returns whether the motor is moving (clockwise or counterclockwise).
+
+        Returns
+        -------
+        is_moving : bool
+            Whether the motor is moving.
         """
         bits = self.get_status_bits()
         if (bits & 0x10) or (bits & 0x20):
@@ -518,7 +531,7 @@ class KDC101(KinesisInstrument):
         else:
             return False
 
-    def wait_for_completion(self, id="homed"):
+    def wait_for_completion(self, id="homed", MAX_WAIT_TIME=5):
         """
         A blocking function to ensure a task has been finished.
 
@@ -531,6 +544,14 @@ class KDC101(KinesisInstrument):
         id : str, optional
             must be either "homed", "moved", "stopped", or "limit_updated"
             (default is "homed").
+        MAX_WAIT_TIME : int, optional
+            The maximum time to wait for the task to complete. Defaults to 5 
+            seconds.
+
+        Raises
+        ------
+        RuntimeError
+            If the task is not finished after MAX_WAIT_TIME seconds.
         """
         log.debug("Entering `wait_for_completion()`")
         # TODO: "id" is a reserved keyword in Python. Change this!
@@ -541,6 +562,8 @@ class KDC101(KinesisInstrument):
         cond = self.CONDITIONS.index(id)
         log.debug(f"Condition index: {cond} - {id} ")
 
+        # If the motor is already stopped, perhaps because it reached a limit,
+        # it will wait forever for a message! So just return.
         if id == "stopped":
             if not self.is_moving():
                 log.debug("Exiting `wait_for_completion()`")
@@ -555,16 +578,15 @@ class KDC101(KinesisInstrument):
             byref(message_id),
             byref(message_data)
         )
+
         log.debug("Entering wait loop")
         start = time.time()
         while int(message_type.value) != 2 or int(message_id.value) != cond:
             end = time.time()
-            if end - start > 5:
+            if end - start > MAX_WAIT_TIME:
                 log.debug(f"Message queue size: {kcdc.CC_MessageQueueSize()}")
-                log.debug(f"Message type: {message_type.value}")
-                log.debug(f"Message ID: {message_id.value}")
                 raise RuntimeError(
-                    f"Waited for 5 seconds for {id} to complete. "
+                    f"Waited for {MAX_WAIT_TIME} seconds for {id} to complete. "
                     f"Message type: {message_type.value}, Message ID: {message_id.value}")
             if kcdc.CC_MessageQueueSize(self._serialno) <= 0:
                 log.debug(f"Waiting for message (KDC101 '{self.serialno}')")
