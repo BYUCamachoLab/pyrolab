@@ -66,3 +66,7 @@ logging.basicConfig(level=logging.DEBUG,
                     filename=str(logfile),
                     filemode='a')
 logging.debug("PyroLab started (logger configured).")
+
+# Include remote traceback in local tracebacks
+import Pyro5
+Pyro5.errors.excepthook()
