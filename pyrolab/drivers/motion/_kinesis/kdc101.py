@@ -562,6 +562,7 @@ class KDC101(KinesisInstrument):
         check_error(status)
         self.homed = True
         self.wait_for_completion()
+        log.debug(f"Homed: KDC101 device '{self.serialno}'")
 
     def move_to(self, pos):
         """
@@ -611,6 +612,7 @@ class KDC101(KinesisInstrument):
         displacement : int
             The (signed) displacement in real units.
         """
+        log.debug(f"Moving by {displacement} (KDC101 '{self.serialno}')")
         status = kcdc.CC_MoveRelative(
             self._serialno,
             c_int(self._real_value_to_du(displacement, 0)))
@@ -636,6 +638,7 @@ class KDC101(KinesisInstrument):
             (default) and ``backward``. Sense can be reversed by calling 
             :py:func:``reverse``.
         """
+        log.debug(f"Move continuous in direction '{direction}' (KDC101 '{self.serialno}')")
         if direction == "forward":
             direction = kcdc.MOT_Forwards
         elif direction == "backward":
@@ -667,7 +670,7 @@ class KDC101(KinesisInstrument):
         block : bool, optional
             Blocks code until move is completed (default True).
         """
-        log.debug(f"Entering jog() (direction: {direction}, block: {block})")
+        log.debug(f"Jogging in direction '{direction}', blocking '{block}'(KDC101 '{self.serialno}')")
         c_dir = kcdc.MOT_TravelDirection
         if direction == "forward":
             c_dir = kcdc.MOT_Forwards
@@ -708,5 +711,6 @@ class KDC101(KinesisInstrument):
         """
         Closes the motor if the object has been instantiated.
         """
+        log.info("KDC101 '{self.serialno}' closed.")
         if hasattr(self, "_serialno"):
             kcdc.CC_Close(self._serialno)
