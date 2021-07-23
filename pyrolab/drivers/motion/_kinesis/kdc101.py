@@ -41,13 +41,17 @@ from ctypes import (
 from ctypes.wintypes import DWORD, WORD
 from typing import Any, Dict, List
 
+from Pyro5.server import oneway
 from thorlabs_kinesis import kcube_dcservo as kcdc
 from thorlabs_kinesis._utils import c_word, c_dword
 
 from pyrolab.drivers.motion._kinesis import KinesisInstrument, ERROR_CODES
 from pyrolab.api import expose
-from Pyro5.server import oneway
-
+from pyrolab.drivers.motion._kinesis.exceptions import (
+    KinesisCommunicationError,
+    KinesisDLLError,
+    KinesisMotorError,
+)
 
 log = logging.getLogger("pyrolab.drivers.motion._kinesis.kdc101")
 
@@ -57,6 +61,12 @@ KCube_DC_Servo_Device_ID = 27
 
 def check_error(status):
     if status != 0:
+        if status > 0 and status <= 21:
+            raise KinesisCommunicationError(ERROR_CODES[status], errcode=status)
+        elif (status >= 32 and status <= 36) or (status >= 41 and status <= 43):
+            raise KinesisDLLError(ERROR_CODES[status], errcode=status)
+        elif( status >= 37 and status <= 39) or (status >= 44 and status <= 47):
+            raise KinesisMotorError(ERROR_CODES[status], errcode=status)
         raise RuntimeError(ERROR_CODES[status])
 
 
@@ -648,7 +658,13 @@ class KDC101(KinesisInstrument):
             raise ValueError("direction '{}' unrecognized".format(direction))
 
         status = kcdc.CC_MoveAtVelocity(self._serialno, direction)
-        check_error(status)
+        try:
+            check_error(status)
+        except KinesisMotorError as e:
+            if e.errcode == 38:
+                pass
+            else:
+                raise e
 
     # @oneway
     def jog(self, direction, block: bool = True):
