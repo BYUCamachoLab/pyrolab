@@ -159,6 +159,7 @@ class KDC101(KinesisInstrument):
         # using the kinesis software before loading the setting here as it could
         # load settings that are vital to converting between du and real units
         kcdc.CC_LoadSettings(self._serialno)
+        kcdc.CC_SetLimitsSoftwareApproachPolicy(self._serialno, c_short(1))
 
         # Open communication with the device
         kcdc.CC_StartPolling(self._serialno, c_int(polling))
@@ -711,6 +712,6 @@ class KDC101(KinesisInstrument):
         """
         Closes the motor if the object has been instantiated.
         """
-        log.info("KDC101 '{self.serialno}' closed.")
+        log.info(f"KDC101 '{self.serialno}' closed.")
         if hasattr(self, "_serialno"):
             kcdc.CC_Close(self._serialno)
