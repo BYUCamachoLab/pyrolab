@@ -10,13 +10,6 @@ KDC101
 
 Submodule that implements the basic functionality of the KCube DC Servo.
 
-Contributors
- * Sequoia Ploeg (https://github.com/sequoiap)
- * Benjamin Arnesen (https://github.com/BenA8)  
- * Christian Carver (https://github.com/cjcarver)
- * Matthew McKinney (https://github.com/realblankname1)
-
-
 Kinesis controllers are only available on Windows machines. Proxies from
 other operating systems can however call Pyro services freely.
 
@@ -68,22 +61,24 @@ def check_error(status):
 
 
 log.info("Building ThorLabs device list (requires ThorLabs Kinesis DLL)")
-kcdc.TLI_BuildDeviceList()
-# if kcdc.TLI_BuildDeviceList() == 0:
-#     size = kcdc.TLI_GetDeviceListSize()
-#     if size > 0:
-#         serialnos = create_string_buffer(10 * size)
-#         status = kcdc.TLI_GetDeviceListByTypeExt(serialnos, 10 * size, KCube_DC_Servo_Device_ID)
-#         check_error(status)
+try:
+    kcdc.TLI_BuildDeviceList()
+except:
+    log.warn("Building ThorLabs device list failed; unable to connect to any instruments")
 
 
 class HomingMixin:
     def home(self, block=True):
-        kcdc.CC_Home(self._serialno)
+        log.debug(f"Homing KDC101 device '{self.serialno}'")
+        status = kcdc.CC_Home(self._serialno)
+        check_error(status)
         if block:
             self.wait_for_completion()
 
 # TODO: Are requests necessary when polling is active?
+# TODO: One potential way of implementing non-blocking functions is by always 
+# clearing all message queues before starting any of the requests. Then, 
+# message from previous non-blocking calls don't get consumed by new requestors.
 
 
 @expose
@@ -247,6 +242,9 @@ class KDC101(KinesisInstrument):
 
     @property
     def backlash(self):
+        """
+        Get the backlash distance setting (used to control hysteresis). 
+        """
         log.debug("Entering `backlash()`")
         backlash = kcdc.CC_GetBacklash(self._serialno)
 
@@ -254,16 +252,25 @@ class KDC101(KinesisInstrument):
 
     @backlash.setter
     def backlash(self, val):
+        """
+        FIXME: backlash returns in real values, but this takes in device units?
+        """
         status = kcdc.CC_SetBacklash(self._serialno, c_long(val))
         check_error(status)
 
     @property
     def homing_velocity(self):
+        """
+        Gets the homing velocity.
+        """
         velocity = kcdc.CC_GetHomingVelocity(self._serialno)
         return velocity
 
     @homing_velocity.setter
     def homing_velocity(self, velocity):
+        """
+        Sets the homing velocity.
+        """
         status = kcdc.CC_SetHomingVelocity(self._serialno, c_uint(velocity))
         check_error(status)
 
@@ -476,6 +483,11 @@ class KDC101(KinesisInstrument):
     def get_position(self):
         """
         Gets the current position of the stage in real units.
+
+        Returns
+        -------
+        pos : float
+            The current position of the stage in real units.
         """
         log.debug("Entering `get_position()`")
         current_pos_du = kcdc.CC_GetPosition(self._serialno)
@@ -511,40 +523,22 @@ class KDC101(KinesisInstrument):
             byref(message_data)
         )
         log.debug("Entering wait loop")
+        start = time.time()
         while int(message_type.value) != 2 or int(message_id.value) != cond:
+            end = time.time()
+            if end - start > 5:
+                log.debug(f"Message queue size: {kcdc.CC_MessageQueueSize()}")
+                log.debug(f"Message type: {message_type.value}")
+                log.debug(f"Message ID: {message_id.value}")
+                raise RuntimeError(
+                    f"Waited for {self.MAX_WAIT_TIME} seconds for {id} to complete. "
+                    f"Message type: {message_type.value}, Message ID: {message_id.value}")
             kcdc.CC_WaitForMessage(
                 self._serialno,
                 byref(message_type),
                 byref(message_id),
                 byref(message_data))
         log.debug("Exiting `wait_for_completion()`")
-
-    # def check_for_completion(self, id="homed") -> bool:
-    #     """
-    #     A non-blocking function to ensure a task has been finished.
-
-    #     Used to for the following functions:
-
-    #     Parameters
-    #     ----------
-    #     id : string
-    #         must be either "homed", "moved", "stopped", or "limit_updated"
-    #         default is "homed"
-    #     """
-
-    #     message_type = c_word()
-    #     message_id = c_word()
-    #     message_data = c_dword()
-
-    #     cond = self.CONDITIONS.index(id)
-
-    #     queue_size = kcdc.CC_MessageQueueSize(
-    #         self._serialno)
-
-    #     if queue_size > 0:
-    #         return int(message_type.value) == 2 and int(message_id.value) == cond
-
-    #     return True
 
     def identify(self):
         """
@@ -560,6 +554,8 @@ class KDC101(KinesisInstrument):
 
         go_home() will always ignore the software limits from soft_limits_mode 
         and min_pos and max_pos.
+
+        FIXME: This function shouldn't exist; it's provided by HomingMixin
         """
         log.debug(f"Homing KDC101 device '{self.serialno}'")
         status = kcdc.CC_Home(self._serialno)
@@ -671,6 +667,7 @@ class KDC101(KinesisInstrument):
         block : bool, optional
             Blocks code until move is completed (default True).
         """
+        log.debug(f"Entering jog() (direction: {direction}, block: {block})")
         c_dir = kcdc.MOT_TravelDirection
         if direction == "forward":
             c_dir = kcdc.MOT_Forwards
@@ -697,14 +694,15 @@ class KDC101(KinesisInstrument):
             When ``False`` (default) the motor uses a profiled stop.
             When ``True`` the motor uses an immediate stop.
         """
+        stop_type = 'immediate' if immediate else 'profiled'
+        log.debug(f"Stopping with stop type {stop_type} (KDC101 {self.serialno})")
         if immediate:
             status = kcdc.CC_StopImmediate(self._serialno)
         else:
             status = kcdc.CC_StopProfiled(self._serialno)
         check_error(status)
         self.wait_for_completion(id="stopped")
-        stop_type = 'immediate' if immediate else 'profiled'
-        log.debug(f"Stopping with stop type {stop_type} (KDC101 {self.serialno}")
+        log.debug(f"Stopped (KDC101 {self.serialno}")
 
     def close(self):
         """
