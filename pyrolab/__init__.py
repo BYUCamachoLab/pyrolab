@@ -69,4 +69,4 @@ logging.debug("PyroLab started (logger configured).")
 
 # Include remote traceback in local tracebacks
 import Pyro5
-Pyro5.errors.excepthook()
+sys.excepthook = Pyro5.errors.excepthook
