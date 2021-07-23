@@ -547,6 +547,10 @@ class KDC101(KinesisInstrument):
                 raise RuntimeError(
                     f"Waited for 5 seconds for {id} to complete. "
                     f"Message type: {message_type.value}, Message ID: {message_id.value}")
+            if kcdc.CC_MessageQueueSize(self._serialno) <= 0:
+                log.debug(f"Waiting for message (KDC101 '{self.serialno}')")
+                time.sleep(0.5)
+                continue
             kcdc.CC_WaitForMessage(
                 self._serialno,
                 byref(message_type),
