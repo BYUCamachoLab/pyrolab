@@ -519,6 +519,8 @@ class KDC101(KinesisInstrument):
     def is_moving(self) -> bool:
         """
         Returns whether the motor is moving (clockwise or counterclockwise).
+        Does not return True if the motor is moving by jogging or if movement
+        is due to homing.
 
         Returns
         -------
