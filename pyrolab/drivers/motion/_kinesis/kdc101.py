@@ -541,6 +541,9 @@ class KDC101(KinesisInstrument):
         updating limits. The id parameter must be specificed for the correct 
         operation ("homed", "moved", "stopped", or "limit_updated").
 
+        If the task is not finished after MAX_WAIT_TIME, a RuntimeError is
+        raised. If the id is "homed", MAX_WAIT_TIME is ignored.
+
         Parameters
         ----------
         id : str, optional
@@ -548,7 +551,7 @@ class KDC101(KinesisInstrument):
             (default is "homed").
         MAX_WAIT_TIME : int, optional
             The maximum time to wait for the task to complete. Defaults to 5 
-            seconds.
+            seconds. Ignored if id is "homed".
 
         Raises
         ------
@@ -570,10 +573,13 @@ class KDC101(KinesisInstrument):
             if not self.is_moving():
                 log.debug("Exiting `wait_for_completion()`")
                 return
+        elif id == "homed":
+            # Homing might take a while.
+            MAX_WAIT_TIME = 0
 
         while kcdc.CC_MessageQueueSize(self._serialno) <= 0:
             log.debug(f"Waiting for message (KDC101 '{self.serialno}')")
-            time.sleep(0.5)
+            time.sleep(0.2)
         kcdc.CC_WaitForMessage(
             self._serialno,
             byref(message_type),
@@ -585,14 +591,15 @@ class KDC101(KinesisInstrument):
         start = time.time()
         while int(message_type.value) != 2 or int(message_id.value) != cond:
             end = time.time()
-            if end - start > MAX_WAIT_TIME:
+            if (end - start > MAX_WAIT_TIME) and (MAX_WAIT_TIME != 0):
                 log.debug(f"Message queue size: {kcdc.CC_MessageQueueSize()}")
                 raise RuntimeError(
                     f"Waited for {MAX_WAIT_TIME} seconds for {id} to complete. "
                     f"Message type: {message_type.value}, Message ID: {message_id.value}")
+
             if kcdc.CC_MessageQueueSize(self._serialno) <= 0:
                 log.debug(f"Waiting for message (KDC101 '{self.serialno}')")
-                time.sleep(0.5)
+                time.sleep(0.2)
                 continue
             kcdc.CC_WaitForMessage(
                 self._serialno,
