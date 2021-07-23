@@ -527,6 +527,9 @@ class KDC101(KinesisInstrument):
         cond = self.CONDITIONS.index(id)
         log.debug(f"Condition index: {cond} - {str(cond)} ")
 
+        while kcdc.CC_MessageQueueSize(self._serialno) <= 0:
+            log.debug(f"Waiting for message (KDC101 '{self.serialno}')")
+            time.sleep(0.5)
         kcdc.CC_WaitForMessage(
             self._serialno,
             byref(message_type),
@@ -542,7 +545,7 @@ class KDC101(KinesisInstrument):
                 log.debug(f"Message type: {message_type.value}")
                 log.debug(f"Message ID: {message_id.value}")
                 raise RuntimeError(
-                    f"Waited for {self.MAX_WAIT_TIME} seconds for {id} to complete. "
+                    f"Waited for 5 seconds for {id} to complete. "
                     f"Message type: {message_type.value}, Message ID: {message_id.value}")
             kcdc.CC_WaitForMessage(
                 self._serialno,
@@ -661,6 +664,7 @@ class KDC101(KinesisInstrument):
         try:
             check_error(status)
         except KinesisMotorError as e:
+            # If it's just an invalid position error, we can ignore it
             if e.errcode == 38:
                 pass
             else:
@@ -722,7 +726,7 @@ class KDC101(KinesisInstrument):
             status = kcdc.CC_StopProfiled(self._serialno)
         check_error(status)
         self.wait_for_completion(id="stopped")
-        log.debug(f"Stopped (KDC101 {self.serialno}")
+        log.debug(f"Stopped (KDC101 {self.serialno})")
 
     def close(self):
         """
