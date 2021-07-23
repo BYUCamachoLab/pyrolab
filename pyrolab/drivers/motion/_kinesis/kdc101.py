@@ -504,6 +504,20 @@ class KDC101(KinesisInstrument):
         current_pos_du = kcdc.CC_GetPosition(self._serialno)
         return self._du_to_real_value(current_pos_du, 0)
 
+    def get_status_bits(self):
+        """
+        """
+        return kcdc.CC_GetStatusBits(self._serialno)
+
+    def is_moving(self):
+        """
+        """
+        bits = self.get_status_bits()
+        if (bits & 0x10) or (bits & 0x20):
+            return True
+        else:
+            return False
+
     def wait_for_completion(self, id="homed"):
         """
         A blocking function to ensure a task has been finished.
@@ -525,7 +539,12 @@ class KDC101(KinesisInstrument):
         message_data = c_dword()
 
         cond = self.CONDITIONS.index(id)
-        log.debug(f"Condition index: {cond} - {str(cond)} ")
+        log.debug(f"Condition index: {cond} - {id} ")
+
+        if id == "stopped":
+            if not self.is_moving():
+                log.debug("Exiting `wait_for_completion()`")
+                return
 
         while kcdc.CC_MessageQueueSize(self._serialno) <= 0:
             log.debug(f"Waiting for message (KDC101 '{self.serialno}')")
