@@ -592,7 +592,7 @@ class KDC101(KinesisInstrument):
         while int(message_type.value) != 2 or int(message_id.value) != cond:
             end = time.time()
             if (end - start > MAX_WAIT_TIME) and (MAX_WAIT_TIME != 0):
-                log.debug(f"Message queue size: {kcdc.CC_MessageQueueSize()}")
+                log.debug(f"Message queue size: {kcdc.CC_MessageQueueSize(self._serialno)}")
                 raise RuntimeError(
                     f"Waited for {MAX_WAIT_TIME} seconds for {id} to complete. "
                     f"Message type: {message_type.value}, Message ID: {message_id.value}")
