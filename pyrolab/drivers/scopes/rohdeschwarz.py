@@ -187,13 +187,14 @@ class RTO(Scope):
         Parameters
         ----------
         sample_rate : float
-            Sample rate of device.
+            Sample rate of device in Sa/s. Range is 2 to 20e+12 in increments
+            of 1.
         duration : float
             Length of acquisition in seconds.
         force_realtime : bool, optional
             Defaults to False.
         """
-        short_command = 'ACQ:POIN:AUTO RES;:TIM:RANG {}'.format(duration)
+        short_command = 'ACQ:POIN:AUTO RES;:TIM:RANG {};ACQ:SRAT {}'.format(duration, sample_rate)
         if force_realtime:
             self.write_block('ACQ:MODE RTIM')
         self.write_block(short_command)
