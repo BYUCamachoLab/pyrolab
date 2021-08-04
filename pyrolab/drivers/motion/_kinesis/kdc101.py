@@ -551,7 +551,7 @@ class KDC101(KinesisInstrument):
             (default is "homed").
         MAX_WAIT_TIME : int, optional
             The maximum time to wait for the task to complete. Defaults to 5 
-            seconds. Ignored if id is "homed".
+            seconds. Ignored if id is "homed" or if value is 0.
 
         Raises
         ------
@@ -651,7 +651,9 @@ class KDC101(KinesisInstrument):
             c_int(self._real_value_to_du(pos, 0)))
         check_error(status)
         log.debug(f"Awaiting move completion (KDC101 {self.serialno})")
-        self.wait_for_completion(id="moved")
+        # No move should ever take more than 15 seconds. At least we'll still
+        # get an error.
+        self.wait_for_completion(id="moved", MAX_WAIT_TIME=15)
         log.debug(f"Move completed (KDC101 {self.serialno})")
 
     # def move_to_unblocked(self, pos):
