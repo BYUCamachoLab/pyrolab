@@ -194,7 +194,7 @@ class RTO(Scope):
         force_realtime : bool, optional
             Defaults to False.
         """
-        short_command = 'ACQ:POIN:AUTO RES;:TIM:RANG {};ACQ:SRAT {}'.format(duration, sample_rate)
+        short_command = 'ACQ:POIN:AUTO RES;:TIM:RANG {};:ACQ:SRAT {}'.format(duration, sample_rate)
         if force_realtime:
             self.write_block('ACQ:MODE RTIM')
         self.write_block(short_command)
