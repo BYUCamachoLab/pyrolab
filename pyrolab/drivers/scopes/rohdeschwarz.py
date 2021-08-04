@@ -423,7 +423,9 @@ class RTO(Scope):
     def get_data(self, channel, form="ascii"):
         """
         Retrieves waveform data from the specified channel in the specified 
-        data type.
+        data type. Note that data like this can be transferred in two ways: 
+        in ASCII form (slow, but human readable) and binary (fast, but more 
+        difficult to debug).
 
         Parameters
         ----------
@@ -452,6 +454,9 @@ class RTO(Scope):
 
         cmd = 'FORM {};:CHAN{}:DATA?'.format(fmt, channel)
         
+        # Consider skipping the intermediate "list" step and having pyvisa
+        # automatically convert to a numpy array (see
+        # https://pyvisa.readthedocs.io/en/latest/introduction/rvalues.html#reading-ascii-values)
         if form == "ascii":
             return self.device.query_ascii_values(cmd)
         elif form == "real":
