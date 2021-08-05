@@ -46,7 +46,6 @@ acquisition, but you'll be left without data and with a bad connection.
 
 import time
 
-import deprecation #should we take this out too?
 import pyvisa as visa
 
 from pyrolab import __version__
@@ -60,34 +59,17 @@ class RTO(Scope):
 
     """
     
-    @staticmethod #How is this function supposed to be implemented? How are we supposed to know what the addresses are?
-    def detect_devices(addresses):
+    @staticmethod
+    def detect_devices():
         """
-        Takes a list of IP addreses and returns them in the formate required
-        to connect to the device.
-
-        Parameters
-        ----------
-        addresses : list of str
-            Any IP addresses to the scopes to be connected to
-
-        Returns
-        -------
-        List[Dict[str, Any]]
-            Each item in the list contains a dictionary for a unique laser.
-            A dictionary from the list can be passed to ``connect()`` to
-            connect to the laser. If no device is detected, an empty list 
-            is returned.
+        Becuase R&S oscilloscopes are connected to using the IP address,
+        this function does not detect them and instead returns an empty list.
         """
         device_info = []
-        for address in addresses:
-            device_info.append({"address": address})
         
         return device_info
 
-        
-    
-    def connect(self, address="", interface="TCPIP", protocol="hislip", timeout=1e3) -> bool:
+    def connect(self, address="", interface="TCPIP", protocol="hislip0", timeout=1e3) -> bool:
         """
         Connects to and initializes the R&S RTO oscilloscope.
         All parameters are keyword arguments.
@@ -101,7 +83,7 @@ class RTO(Scope):
             of "TCPIP", "GPIB", "ASRL", etc. Default is "TCPIP".
         protocol : str, optional
             The protocol to use for the LAN connection. Can be "INSTR"
-            or "hislip". Default is "hislip".
+            or "hislip0" or "hislip". Default is "hislip0".
         timeout : int, optional
             The device response timeout in milliseconds. 
             Default is 1 millisecond. Pass `None` for infinite timeout.
@@ -119,14 +101,8 @@ class RTO(Scope):
 
         return True
 
-    #not entirely sure if this is what should be happening. Should this function just do nothing?
     def close(self):
-        #should only need to call this on two channels, becuase the filter applies to two channels at a time
-        for channel in range(1,5):
-            self.deact_filter(channel)
-        
-        self.device.before_close()
-        self.device.close()
+        pass
 
     @property
     def timeout(self):
@@ -184,8 +160,6 @@ class RTO(Scope):
         self.wait_for_device()
         self.device.ext_error_checking()
 
-    #Removed depricated function; I think it was supposed to be removed
-
     def wait_for_device(self):
         """
         Waits for the device until last action is complete.
@@ -198,7 +172,7 @@ class RTO(Scope):
         time.sleep(0.1)
         return res
 
-    def acquisition_settings(self, sample_rate, duration, force_realtime=False):
+    def acquisition_settings(self, duration, force_realtime=False):
         """
         Sets the scope acquisition settings.
 
@@ -207,8 +181,6 @@ class RTO(Scope):
 
         Parameters
         ----------
-        sample_rate : float
-            Sample rate of device.
         duration : float
             Length of acquisition in seconds.
         force_realtime : bool, optional
@@ -260,8 +232,6 @@ class RTO(Scope):
         )
         self.write_block(cmd)
 
-    #Removed depricated function; I think it was supposed to be removed
-
     def __add_trigger(self,
         type,
         source,
@@ -269,11 +239,9 @@ class RTO(Scope):
         level,
         trigger_num = 1,
         mode = "NORM",
-        settings: str = ""
-    ):
+        settings: str = ""):
         short_command = 'TRIG{}:MODE {};SOUR {};TYPE {};LEV{} {};'.format(
-        trigger_num, mode, source, type, source_num, level
-    )
+        trigger_num, mode, source, type, source_num, level)
         #Add a trigger.
         self.write_block(short_command + settings)
 
@@ -335,7 +303,6 @@ class RTO(Scope):
         if timeout != -1:
             self.timeout = default_timeout
 
-    #Removed depricated function; I think it was supposed to be removed
     def set_timescale(self, time: float) -> None:
         """
         Sets the horizontal scale--the time per division on the x-axis--for all 
@@ -361,7 +328,7 @@ class RTO(Scope):
         ----------
         measurement : int
             The oscope supports storing up to 8 measurements. Default is 1.
-        channel : str
+        source : str
             The source to setup the measurement on. See page 1377 of the User
             Manual for valid sources. Common ones are of the format "C<m>W<n>",
             where <m> is the channel and <n> is the waveform (e.g., "C1W1", 
@@ -384,8 +351,6 @@ class RTO(Scope):
 
         Parameters
         ----------
-        channel : int
-            The channel to take a single measurement on.
         measurement : int
             The measurement to take. Default is 1.
 
@@ -434,11 +399,7 @@ class RTO(Scope):
             return self.device.query_binary_values(cmd)
         else:
             return self.query(cmd)
-
-    #Removed depricated function; I think it was supposed to be removed
-
-    #Removed depricated function; I think it was supposed to be removed
-
+    
     def screenshot(self, path):
         """
         Takes a screenshot of the scope and saves it to the specified path.
@@ -463,25 +424,52 @@ class RTO(Scope):
         )
         self.device.ext_error_checking()
 
-    #Removed depricated function; I think it was supposed to be removed
+    def act_filter(self, channel):
+        """
+        Activates the lowpass filter for a channel. 
 
-    #what does 1..4 mean?
-    def set_filter(self, channel, cutoff_freq):
-        #descrbe
+        Parameters
+        ----------
+        channel : int
+            The channel (1-4) on which to activate the filter.
+        """
         self.write(f"CHAN{channel}:DIGF:STAT ON")
-        if cutoff_freq > 1e4 and cutoff_freq < 1e9:
-            self.write(f"CHAN{channel}:DIGFilter:CUT {cutoff_freq}")
-        else:
-            pass #riase an error or something?
 
     def deact_filter(self, channel):
+        """
+        Deactivates the lowpass filter on a given channel.
+
+        Parameters
+        ----------
+        channel : int
+            The channel (1-4) where the new cutoff frequency is applied.
+        """
         self.write(f"CHAN{channel}:DIGF:STAT OFF")
     
     def set_cutoff_freq(self, channel, cutoff_freq):
-        if cutoff_freq > 1e4 and cutoff_freq < 4e9:
+        """
+        Sets the cutoff frequency of one of the two filters: either the filter 
+        for channels 1 and 2 or the filter for channels 3 and 4. 
+        Cutoff frequencies are set only for either channels 1 and 2 or 
+        channels 3 and 4, but you can activate the filter for each channel 
+        separately.
+
+        Parameters
+        ----------
+        channel : int
+            Specifies which filter's cutoff frequency will be changed. A value 
+            of 1 or 2 will set the cutoff frequency for both channels, and a 
+            value of 3 or 4 will do the same for both channels 3 and 4.
+        cutoff_freq : int
+            The cutoff frequency enabled on the channel. Must be between 100 
+            kHz and 1 GHz or 2 GHz (depending on the scope). The scope only supports certain discrete cutoff 
+            frequencies. Any other frequency will be rounded to the closest 
+            frequency the scope supports.
+        """
+        if cutoff_freq >= 1e5 and cutoff_freq <= 2e9:
             self.write(f"CHAN{channel}:DIGF:CUT {cutoff_freq}")
         else:
-            pass #riase an error or something?
+            raise ValueError("Cutoff frequency must be between 1e5 and 2e9 Hz")
 
 
 
