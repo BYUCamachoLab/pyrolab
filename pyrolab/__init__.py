@@ -38,7 +38,7 @@ if sys.version_info < (3, 7, 0):
 __name__ = "PyroLab"
 __author__ = "CamachoLab"
 __copyright__ = "Copyright 2020, The PyroLab Project"
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 __license__ = "GPLv3+"
 __maintainer__ = "Sequoia Ploeg"
 __maintainer_email__ = "sequoia.ploeg@byu.edu"
@@ -51,11 +51,22 @@ __website_url__ = "https://camacholab.byu.edu/"
 import warnings
 warnings.filterwarnings("default", category=DeprecationWarning)
 
-# from pyrolab.configure import global_config as config
-
 from appdirs import AppDirs
-_dirs = AppDirs(__name__, __author__, version=__version__)
+_dirs = AppDirs(__name__, __author__)
 SITE_DATA_DIR = pathlib.Path(_dirs.site_data_dir)
 SITE_CONFIG_DIR = pathlib.Path(_dirs.site_config_dir)
 SITE_DATA_DIR.mkdir(parents=True, exist_ok=True)
 SITE_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+
+# Set up logging to file
+import logging
+logfile = SITE_DATA_DIR / "logfile.txt"
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                    filename=str(logfile),
+                    filemode='a')
+logging.debug("PyroLab started (logger configured).")
+
+# Include remote traceback in local tracebacks
+import Pyro5.errors
+sys.excepthook = Pyro5.errors.excepthook

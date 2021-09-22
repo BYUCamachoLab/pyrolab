@@ -172,7 +172,7 @@ class RTO(Scope):
         time.sleep(0.1)
         return res
 
-    def acquisition_settings(self, duration, force_realtime=False):
+    def acquisition_settings(self, sample_rate, duration, force_realtime=False):
         """
         Sets the scope acquisition settings.
 
@@ -181,12 +181,15 @@ class RTO(Scope):
 
         Parameters
         ----------
+        sample_rate : float
+            Sample rate of device in Sa/s. Range is 2 to 20e+12 in increments
+            of 1.
         duration : float
             Length of acquisition in seconds.
         force_realtime : bool, optional
             Defaults to False.
         """
-        short_command = 'ACQ:POIN:AUTO RES;:TIM:RANG {}'.format(duration)
+        short_command = 'ACQ:POIN:AUTO RES;:TIM:RANG {};:ACQ:SRAT {}'.format(duration, sample_rate)
         if force_realtime:
             self.write_block('ACQ:MODE RTIM')
         self.write_block(short_command)
@@ -364,7 +367,9 @@ class RTO(Scope):
     def get_data(self, channel, form="ascii"):
         """
         Retrieves waveform data from the specified channel in the specified 
-        data type.
+        data type. Note that data like this can be transferred in two ways: 
+        in ASCII form (slow, but human readable) and binary (fast, but more 
+        difficult to debug).
 
         Parameters
         ----------
@@ -393,6 +398,9 @@ class RTO(Scope):
 
         cmd = 'FORM {};:CHAN{}:DATA?'.format(fmt, channel)
         
+        # Consider skipping the intermediate "list" step and having pyvisa
+        # automatically convert to a numpy array (see
+        # https://pyvisa.readthedocs.io/en/latest/introduction/rvalues.html#reading-ascii-values)
         if form == "ascii":
             return self.device.query_ascii_values(cmd)
         elif form == "real":
@@ -475,6 +483,9 @@ class RTO(Scope):
 
 
         
+
+    def close(self):
+        pass
 
 class RemoteDisplay:
     def __init__(self, scope: RTO):
