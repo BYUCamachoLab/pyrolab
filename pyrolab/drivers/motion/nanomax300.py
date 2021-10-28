@@ -18,7 +18,7 @@ Supported OS:
 from numpy import interp
 
 from pyrolab.drivers.motion import Motion
-from pyrolab.drivers.motion._kinesis.bpc303 import BPC303
+from pyrolab.drivers.motion.kinesis.bpc303 import BPC303
 from pyrolab.api import expose, behavior
 
 
@@ -73,7 +73,7 @@ class NanoMax300(Motion, BPC303):
 
     Notes
     -----
-    This class inherits from :py:class:`pyrolab.drivers.motion._kinesis.bpc303.BPC303`. 
+    This class inherits from :py:class:`pyrolab.drivers.motion.kinesis.bpc303.BPC303`. 
     Therefore, all public methods available to that class are available
     here. Note that the functions `position` and `voltage` should not be used,
     but rather `move` from this class.

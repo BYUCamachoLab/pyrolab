@@ -45,15 +45,15 @@ from Pyro5.server import oneway
 from thorlabs_kinesis import kcube_dcservo as kcdc
 from thorlabs_kinesis._utils import c_word, c_dword
 
-from pyrolab.drivers.motion._kinesis import KinesisInstrument, ERROR_CODES
+from pyrolab.drivers.motion.kinesis import KinesisInstrument, ERROR_CODES
 from pyrolab.api import expose
-from pyrolab.drivers.motion._kinesis.exceptions import (
+from pyrolab.drivers.motion.kinesis.exceptions import (
     KinesisCommunicationError,
     KinesisDLLError,
     KinesisMotorError,
 )
 
-log = logging.getLogger("pyrolab.drivers.motion._kinesis.kdc101")
+log = logging.getLogger("pyrolab.drivers.motion.kinesis.kdc101")
 
 
 KCube_DC_Servo_Device_ID = 27

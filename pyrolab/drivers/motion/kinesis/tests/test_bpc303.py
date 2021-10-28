@@ -5,11 +5,12 @@
 # (see pyrolab/__init__.py for details)
 
 import os
+import sys
 
 import numpy as np
 import pytest
 
-from pyrolab.drivers.motion._kinesis import bpc303 as bp
+from pyrolab.drivers.motion.kinesis import bpc303 as bp
 
 
 if sys.version_info < (3, 8, 0):

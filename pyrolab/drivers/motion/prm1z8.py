@@ -16,7 +16,7 @@ Contributors
 """
 
 from pyrolab.drivers.motion import Motion
-from pyrolab.drivers.motion._kinesis.kdc101 import KDC101, HomingMixin
+from pyrolab.drivers.motion.kinesis.kdc101 import KDC101, HomingMixin
 from pyrolab.api import expose, behavior
 
 

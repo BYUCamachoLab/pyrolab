@@ -26,7 +26,7 @@ from ctypes import c_short, c_char_p, c_int
 
 from thorlabs_kinesis import benchtop_piezo as bp
 
-from pyrolab.drivers.motion._kinesis import KinesisInstrument
+from pyrolab.drivers.motion.kinesis import KinesisInstrument
 from pyrolab.api import expose
 from Pyro5.server import oneway
 
