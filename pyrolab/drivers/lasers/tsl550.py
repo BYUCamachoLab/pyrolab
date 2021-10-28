@@ -42,7 +42,7 @@ from pyrolab.api import expose, behavior
 from pyrolab.drivers.lasers import Laser
 
 
-log = logging.getLogger("pyrolab.drivers.motion._kinesis.kdc101")
+log = logging.getLogger("pyrolab.drivers.lasers.tsl550")
 
 
 @behavior(instance_mode="single")
