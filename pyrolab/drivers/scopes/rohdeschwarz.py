@@ -44,6 +44,12 @@ trigger level was never reached. The scope will still be waiting to begin
 acquisition, but you'll be left without data and with a bad connection.
 """
 
+# Current Work
+# Check out manual, chapter 19.5.2.3
+# https://www.rohde-schwarz.com/us/applications/fast-remote-instrument-control-with-hislip-application-note_56280-30881.html
+# https://www.google.com/search?channel=tus5&client=firefox-b-1-d&q=pyvisa+hislip
+# https://github.com/pyvisa/pyvisa-py/issues/58
+
 import time
 
 import pyvisa as visa
@@ -56,7 +62,8 @@ class RTO(Scope):
     """
     Simple network controller class for R&S RTO oscilloscopes.
 
-
+    This class is used to control the R&S RTO oscilloscope. Network device
+    autodetection is not supported.
     """
     
     @staticmethod
@@ -66,31 +73,31 @@ class RTO(Scope):
         this function does not detect them and instead returns an empty list.
         """
         device_info = []
-        
         return device_info
 
-    def connect(self, address="", interface="TCPIP", protocol="hislip0", timeout=1e3) -> bool:
+    def connect(self, address: str="", hislip: bool=False, timeout: float=1e3) -> bool:
         """
         Connects to and initializes the R&S RTO oscilloscope.
         All parameters are keyword arguments.
+
+        Note that the HiSLIP protocol is not supported when using the pyvisa-py
+        backend. To use it, use the NI VISA implementation instead.
 
         Parameters
         ----------
         address : str, optional
             The IP address of the instrument. Default is "".
-        interface : str, optional
-            The interface to use to connect to the instrument. May be one
-            of "TCPIP", "GPIB", "ASRL", etc. Default is "TCPIP".
-        protocol : str, optional
-            The protocol to use for the LAN connection. Can be "INSTR"
-            or "hislip0" or "hislip". Default is "hislip0".
+        hislip : bool, optional
+            Whether to use the HiSLIP protocol. Default is False.
         timeout : int, optional
             The device response timeout in milliseconds. 
             Default is 1 millisecond. Pass `None` for infinite timeout.
         """
-        
         rm = visa.ResourceManager()
-        self.device = rm.open_resource("{}::{}::{}".format(interface, address, protocol))
+        if hislip:
+            self.device = rm.open_resource(f"TCPIP::{address}::hislip0")    
+        else:
+            self.device = rm.open_resource(f"TCPIP::{address}")
         self.device.timeout = timeout
         self.write_termination = ''
         self.device.ext_clear_status()
@@ -102,7 +109,7 @@ class RTO(Scope):
         return True
 
     def close(self):
-        pass
+        self.device.close()
 
     @property
     def timeout(self):
@@ -479,13 +486,6 @@ class RTO(Scope):
         else:
             raise ValueError("Cutoff frequency must be between 1e5 and 2e9 Hz")
 
-
-
-
-        
-
-    def close(self):
-        pass
 
 class RemoteDisplay:
     def __init__(self, scope: RTO):
