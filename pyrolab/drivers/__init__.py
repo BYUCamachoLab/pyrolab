@@ -22,8 +22,26 @@ log = logging.getLogger('pyrolab.drivers')
 
 class Instrument:
     """
-    Abstract base class Instrument provides a common interface for other
-    PyroLab features.
+    Abstract base class Instrument provides a common interface for instruments.
+
+    Note that, in order to support autoconnect within the PyroLab framework,
+    the ``__init__`` method is never used to set up or connect to the 
+    instrument. This is because when objects are hosted by a PyroLab server,
+    they are instantiated and that object exists in perpetuity. Since we'd like
+    to be able to connect and disconnect from devices while leaving the server
+    running (an example use case would be to use the device locally, in a lab,
+    manipulating physical controls, without killing the server connection), 
+    separate methods ``connect()`` and ``close()`` are required. In this way,
+    instruments can be forcibly disconnected without leaving the hosting
+    object in an unrecoverable state.
+
+    Attributes
+    ----------
+    _autoconnect_params : dict
+        A private dictionary of parameters that will be used to connect to the
+        instrument when hosted by a PyroLab server. This value should never be
+        manipulated by a user. It is listed here to prevent accidental
+        overwriting by an unwitting user wanting to use the same name.
     """
     def __init__(self) -> None:
         if not hasattr(self, "_autoconnect_params"):
@@ -31,16 +49,28 @@ class Instrument:
 
     def __del__(self) -> None:
         """
-        Destructor. Automatically calls ``close()`` to release any potentially
-        claimed resources.
+        Destructor. Automatically calls ``close()``. 
+        
+        Automatically releases any potentially claimed resources.
         """
         self.close()
 
     @staticmethod
     def detect_devices() -> List[Dict[str, Any]]:
         """
-        Returns a list of dictionaries that could be passed directly to 
-        connect. Each list item is a 
+        Returns a list of connection parameters for available devices.
+        
+        Static function that can be called without object instantiation.
+        Returns all available devices that can be detected on the local
+        computer. Each available devices is represented by a dictionary that 
+        could be passed directly to :py:func:`connect` using dictionary 
+        unpacking.
+
+        Example
+        -------
+        >>> available = Instrument.detect_devices()
+        >>> device = Instrument()
+        >>> device.connect(**available[0])
 
         Returns
         -------
@@ -53,23 +83,47 @@ class Instrument:
 
     def connect(self, **kwargs) -> bool:
         """
-        Connects to instruments or services that require initialization. All
-        parameters must be keyword arguments; the presence of any position
-        arguments will break the functionality of ``autoconnect()``.
+        Connects to instruments or services that require initialization. 
+        
+        All parameters must be keyword arguments; the presence of any 
+        positional arguments will break the functionality of ``autoconnect()``.
+
+        The base class implements parameters as a keyword argument dictionary.
+        Derived classes may declare explicit parameter lists, but all 
+        arguments are required to be keyword arguments, i.e. parameters 
+        with default values. Default values do not necessarily need to be
+        sensible; for example, a default value of None for some required
+        parameter. The code should then raise a ValueError for missing
+        parameters. The dictionary construct must be used because the 
+        autoconnect functionality delivers values to this function as an 
+        unpacked dictionary.
+
+        Parameters
+        ----------
+        kwargs : dict
+            A dictionary of parameters required for connection and setup.
 
         Returns
         -------
         bool
             True if connection was successful, False otherwise.
+
+        Raises
+        ------
+        NotImplementedError
+            If the derived class does not implement this method.
         """
         raise NotImplementedError
 
     @expose
-    def autoconnect(self) -> None:
+    def autoconnect(self) -> bool:
         """
+        Autoconnect to an instrument using internally stored parameters.
+
         If the device is persisted in PyroLab's program data, the parameters
-        for connect should be saved. ``autoconnect()`` simply calls 
-        ``connect()`` with the saved parameters.
+        for connect should be saved and associated with the object (in the 
+        attribute :py:attr:`_autoconnect_params`). ``autoconnect()`` 
+        simply calls :py:func:`connect` with the saved parameters.
 
         Returns
         -------
@@ -88,8 +142,10 @@ class Instrument:
 
     def close(self) -> None:
         """
-        Releases resources, hardware or otherwise. Deletion of object should 
-        also automatically call ``close()``, which should take no parameters.
+        Releases resources, hardware or otherwise. 
+        
+        Deletion of object should also automatically call ``close()``, which 
+        should take no parameters.
 
         Raises
         ------
