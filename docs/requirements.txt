@@ -1,0 +1,4 @@
+Sphinx
+pydata-sphinx-theme
+numpydoc
+sphinx-panels

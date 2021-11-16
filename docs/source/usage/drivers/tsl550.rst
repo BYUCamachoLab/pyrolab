@@ -1,6 +1,0 @@
-.. toctree::
-
-.. automodule:: pyrolab.drivers.lasers.tsl550
-   :members:
-   :undoc-members:
-   
