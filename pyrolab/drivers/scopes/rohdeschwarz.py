@@ -309,7 +309,7 @@ class RTO(Scope):
             Specifies the type of run. Allowable values are ``continuous`` 
             (starts the continuous acquisition), ``single`` (starts a defined
             number of acquisition cycles as set by 
-            :py:func:``acquisition_settings()``), or ``stop`` (stops a 
+            :py:func:`acquisition_settings`), or ``stop`` (stops a 
             running acquisition). Default is ``single``.
         """        
         if run == "single":

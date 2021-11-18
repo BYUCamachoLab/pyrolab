@@ -706,7 +706,7 @@ class KDC101(KinesisInstrument):
         direction : string
             The direction to move the motor. Acceptable values are ``forward``
             (default) and ``backward``. Sense can be reversed by calling 
-            :py:func:``reverse``.
+            :py:func:`reverse`.
         """
         log.debug(f"Move continuous in direction '{direction}' (KDC101 '{self.serialno}')")
         if direction == "forward":
@@ -743,7 +743,7 @@ class KDC101(KinesisInstrument):
         direction : string
             The direction to move the motor. Acceptable values are ``forward``
             and ``backward``. Sense can be reversed by calling 
-            :py:func:``reverse``.
+            :py:func:`reverse`.
         block : bool, optional
             Blocks code until move is completed (default True).
         """
