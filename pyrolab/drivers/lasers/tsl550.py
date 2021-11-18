@@ -20,6 +20,11 @@ Original repo: https://github.com/wecassidy/TSL550
 
    The Santec TSL-550 drivers, which among other things, makes the USB 
    connection appear as a serial port, must be installed.
+
+.. admonition:: Dependencies
+   :class: note
+
+   pyserial
 """
 
 import sys

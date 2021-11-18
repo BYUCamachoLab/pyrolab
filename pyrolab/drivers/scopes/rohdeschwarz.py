@@ -42,6 +42,12 @@ Common Issues
 a timeout warning, it's possible that the acquisition never began because the
 trigger level was never reached. The scope will still be waiting to begin
 acquisition, but you'll be left without data and with a bad connection.
+
+.. admonition:: Dependencies
+   :class: note
+
+   | pyvisa
+   | NI VISA or pyvisa-py
 """
 
 # Current Work
@@ -62,15 +68,18 @@ class RTO(Scope):
     """
     Simple network controller class for R&S RTO oscilloscopes.
 
-    This class is used to control the R&S RTO oscilloscope. Network device
+    This class is used to control the R&S RTO oscilloscope. These are not local
+    devices, nor native PyroLab objects. Therefore, network device 
     autodetection is not supported.
     """
-    
     @staticmethod
     def detect_devices():
         """
+        Network device detection not supported.
+        
         Becuase R&S oscilloscopes are connected to using the IP address,
-        this function does not detect them and instead returns an empty list.
+        this function does not detect them and instead always returns an empty 
+        list.
         """
         device_info = []
         return device_info
@@ -78,20 +87,25 @@ class RTO(Scope):
     def connect(self, address: str="", hislip: bool=False, timeout: float=1e3) -> bool:
         """
         Connects to and initializes the R&S RTO oscilloscope.
-        All parameters are keyword arguments.
+        
+        HiSLIP (High-Speed LAN Instrument Protocol) is a TCP/IP-based protocol 
+        for remote instrument control of LAN-based test and measurement 
+        instruments. It is intended to replace the older VXI-11 protocol.
 
-        Note that the HiSLIP protocol is not supported when using the pyvisa-py
-        backend. To use it, use the NI VISA implementation instead.
+        .. warning::
+           The HiSLIP protocol is not supported when using the pyvisa-py
+           backend **on the client machine**. To use it, you must use the NI VISA 
+           implementation instead.
 
         Parameters
         ----------
-        address : str, optional
-            The IP address of the instrument. Default is "".
+        address : str
+            The IP address of the instrument.
         hislip : bool, optional
-            Whether to use the HiSLIP protocol. Default is False.
+            Whether to use the HiSLIP protocol or not (default ``False``).
         timeout : int, optional
-            The device response timeout in milliseconds. 
-            Default is 1 millisecond. Pass `None` for infinite timeout.
+            The device response timeout in milliseconds (default 1 ms).
+            Pass ``None`` for infinite timeout.
         """
         rm = visa.ResourceManager()
         if hislip:
@@ -113,6 +127,10 @@ class RTO(Scope):
 
     @property
     def timeout(self):
+        """
+        Network timeout duration in milliseconds (errors out if no response
+        received within timeout).
+        """
         return self.device.timeout
 
     @timeout.setter
@@ -121,7 +139,7 @@ class RTO(Scope):
 
     def query(self, message, delay=None):
         """
-        A combination of :py:func:`write(message)` and :py:func:`read()`.
+        A combination of :py:func:`write` and :py:func:`read`.
 
         Parameters
         ----------
@@ -129,7 +147,7 @@ class RTO(Scope):
             The message to send.
         delay : float, optional
             Delay in seconds between write and read operations. If None,
-            defaults to `self.device.query_delay`.
+            defaults to ``self.device.query_delay``.
         """
         return self.device.query(message, delay)
 
@@ -171,9 +189,8 @@ class RTO(Scope):
         """
         Waits for the device until last action is complete.
 
-        Notes
-        -----
-        This function is blocking.
+        .. note::
+           This function is blocking.
         """
         res = self.device.query('*OPC?')
         time.sleep(0.1)
@@ -373,7 +390,9 @@ class RTO(Scope):
 
     def get_data(self, channel, form="ascii"):
         """
-        Retrieves waveform data from the specified channel in the specified 
+        Retrieves waveform data from the specified channel
+        
+        Data is retrieved in the specified 
         data type. Note that data like this can be transferred in two ways: 
         in ASCII form (slow, but human readable) and binary (fast, but more 
         difficult to debug).
@@ -387,8 +406,8 @@ class RTO(Scope):
             Allowable values are ``ascii``, ``real``, ``int8``, and ``int16``.
             Default is ``ascii``.
 
-        See Also
-        --------
+        Notes
+        -----
         RTO User Manual, commands for ``FORMat[:DATA]`` and 
         ``CHANnel<m>[:WAVeform<n>]:DATA[:VALues]?``
         """
