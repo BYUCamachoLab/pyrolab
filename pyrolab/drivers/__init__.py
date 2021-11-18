@@ -66,18 +66,18 @@ class Instrument:
         could be passed directly to :py:func:`connect` using dictionary 
         unpacking.
 
-        Example
-        -------
-        >>> available = Instrument.detect_devices()
-        >>> device = Instrument()
-        >>> device.connect(**available[0])
-
         Returns
         -------
         List[Dict[str, Any]]
             Each list item represents a unique device. The dictionary is the
             keyword arguments passed to ``connect()``. If devices cannot be
             detected, this should return an empty list.
+
+        Examples
+        --------
+        >>> available = Instrument.detect_devices()
+        >>> device = Instrument()
+        >>> device.connect(**available[0])
         """
         raise NotImplementedError
 
