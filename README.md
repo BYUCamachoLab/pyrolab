@@ -67,8 +67,8 @@ uninstallation):
 
 ```
 import pyrolab
-print(pyrolab.SITE_DATA_DIR)
-print(pyrolab.SITE_CONFIG_DIR)
+print(pyrolab.PYROLAB_DATA_DIR)
+print(pyrolab.PYROLAB_CONFIG_DIR)
 ```
 
 These folders can be safely deleted after uninstallation.
