@@ -5,10 +5,13 @@
 # (see pyrolab/__init__.py for details)
 
 """
--------------------------------------------------------------------------------
+Thorlabs UC480 Scientific Camera
+--------------------------------
+
 Driver for a Thorlabs Microscope.
-Author: David Hill (https://github.com/hillda3141)
-Repo: https://github.com/BYUCamachoLab/pyrolab/pyrolab/drivers/cameras
+
+Contributors
+ * David Hill (https://github.com/hillda3141)
 """
 
 from Pyro5.errors import PyroError
@@ -23,6 +26,8 @@ from ctypes import *
 @expose
 class UC480:
     """
+    The Thorlabs UC480 camera driver.
+
     Attributes
     ----------
     HEADERSIZE : int
@@ -120,6 +125,8 @@ class UC480:
 
     def _get_image(self):
         """
+        Retrieves the last frame from the memory buffer.
+        
         Retrieves the last frame from the memory buffer, processes
         it into a gray-scale image, and serializes it using the pickle
         library. The header is then added to inform the client how long
@@ -158,6 +165,8 @@ class UC480:
 
     def _video_loop(self):
         """
+        Starts a separate thread to stream frames.
+
         This function is called as a seperate thread when streaming is initiated.
         It will loop, sending frame by frame accross the socket connection,
         until the threading.Event() stop_video is triggered.
@@ -187,6 +196,8 @@ class UC480:
             
     def get_frame(self):
         """
+        Gets the most recently updated frame.
+
         Returns the most recently updated frame from the camera. Only use if the
         program is connecting to a local camera.   
         """
@@ -209,6 +220,8 @@ class UC480:
 
     def start_capture(self,color=False,local=True):
         """
+        Starts capture from the camera.
+
         This starts the capture from the camera to the allocated
         memory location as well as starts a new parallel thread
         for the socket server to stream from memory to the client.
@@ -230,7 +243,10 @@ class UC480:
     
     def color_gray(self,color=False):
         """
+        Sets the color of the video.
+
         This function switches whether the socket transmits color or grayscale.
+        
         Parameters
         ----------
         color : boolean
@@ -240,10 +256,11 @@ class UC480:
 
     def stop_capture(self):
         """
+        Stops the capture from the camera.
+
         This frees the memory used for storing the frames then triggers
         the stop_video event which will end the parrallel socket thread.
         """
-        
         tc.FreeMemory(self.handle, self.meminfo[0], self.meminfo[1])
         tc.StopCapture(self.handle, 1)
         if(self.local == False):
@@ -277,7 +294,7 @@ class UC480:
     
     def set_exposure(self, exposure):
         """
-        This sets the exposure of the camera.
+        Sets the exposure of the camera.
 
         Parameters
         ----------
@@ -292,8 +309,9 @@ class UC480:
     
     def set_framerate(self, framerate):
         """
-        Sets the framerate of the camera (fps). After calling
-        this function you must reset the exposure.
+        Sets the framerate of the camera (fps). 
+        
+        After calling this function you must reset the exposure.
 
         Parameters
         ----------
@@ -307,6 +325,8 @@ class UC480:
 
     def set_color_mode(self, mode=11):
         """
+        Sets the color mode of the image.
+
         This sets the mode of image that is taken, almost always
         use 11 which will give you the raw photosensor data in the format:
             | R  G0 |...
@@ -314,11 +334,13 @@ class UC480:
               .   .
               .   .
               .   .
+        
         This data is interpreted in the _get_image() function.
+
         Parameters
         ----------
-        mode: int
-            the color mode of the pixel data
+        mode : int
+            The color mode of the pixel data.
         """
         
         i = tc.SetColorMode(self.handle, mode) #11 means raw 8-bit, 6 means
@@ -326,7 +348,7 @@ class UC480:
 
     def set_roi_shape(self, roi_shape):
         """
-        Sets the dimmentions of the region of interest (roi)
+        Sets the dimmentions of the region of interest (roi).
 
         Parameters
         ----------
@@ -344,7 +366,7 @@ class UC480:
 
     def set_roi_pos(self, roi_pos):
         """
-        Sets the origin position of the region of interest
+        Sets the origin position of the region of interest.
 
         Parameters
         ----------
@@ -363,6 +385,8 @@ class UC480:
 
     def close(self):
         """
+        Closes communication with the camera and frees memory.
+
         Calls self.stop_capture to free memory and end the socket server
         and then closes serial communication with the camera.
 

@@ -5,10 +5,13 @@
 # (see pyrolab/__init__.py for details)
 
 """
--------------------------------------------------------------------------------
+Thorlabs Scientific Camera
+--------------------------
+
 Driver for a Thorlabs Microscope.
-Author: David Hill (https://github.com/hillda3141)
-Repo: https://github.com/BYUCamachoLab/pyrolab/pyrolab/drivers/cameras
+
+Contributors
+ * David Hill (https://github.com/hillda3141)
 """
 
 from Pyro5.errors import PyroError
@@ -24,6 +27,8 @@ from ctypes import *
 @expose
 class SCICAM:
     """
+    Driver for the ThorLabs SCICAM.
+
     Attributes
     ----------
     HEADERSIZE : int
@@ -34,8 +39,9 @@ class SCICAM:
 
     def __init__(self, ser_no, port=2222, bit_depth=8, camera="ThorCam FS", exposure=10000):
         """
-        Opens the serial communication with the Thorlabs camera and sets
-        some low-level values, including the bit depth and camera name.
+        Opens the serial communication with the Thorlabs camera.
+        
+        Sets some low-level values, including the bit depth and camera name.
 
         Parameters
         ----------

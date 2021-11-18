@@ -5,28 +5,13 @@
 # (see pyrolab/__init__.py for details)
 
 """
-Pure Photonics Tunable Laser 5xx (specifically designed for PPCL550 and PPCL551)
------------------------------------------------
-Driver for the Santec PPCL-5xx Tunable Laser.
-Author: David Hill (https://github.com/hillda3141)
-Repo: https://github.com/BYUCamachoLab/pyrolab/pyrolab/drivers/lasers
-Functions
----------
-    __init__(self,minWL=1515,maxWL=1570,minPow=7,maxPow=13.5,port="COM4",
-            baudrate=9600)
-    setPower(self,power)
-    setChannel(self,channel=1)
-    setMode(self,mode)
-    setWavelength(self,wavelength,jump=0)
-    on(self,pin=13)
-    off(self,pin=13)
-    _communicate(self,register,data,rw)
-    _send(self,msg)
-    _recieve(self)
-    _checksum(self,msg)
-    _wl_freq(self,unit)
-    close(self)
-    __del__(self)
+Pure Photonics Tunable Laser 5xx
+--------------------------------
+
+Driver for the Santec PPCL-5xx Tunable Laser (specifically designed for PPCL550 and PPCL551)
+
+Contributors
+ * David Hill (https://github.com/hillda3141)
 """
 
 import serial
@@ -98,7 +83,9 @@ WRITE=1
 
 @expose
 class PPCL55x:
-
+    """
+    The Pure Photonic 55x series laser.
+    """
     def __init__(self,minWL=1515,maxWL=1570,minPow=6,maxPow=13.5,port="COM4",
             baudrate=9600):
         """"
