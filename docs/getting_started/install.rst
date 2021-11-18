@@ -40,3 +40,14 @@ Installing from git
 ^^^^^^^^^^^^^^^^^^^
 
 You can also install directly from git by first cloning the repository.
+
+Dependencies
+^^^^^^^^^^^^
+
+Since PyroLab supports many drivers but may only be configured on specific
+computers with a few different devices, it does not install all dependencies
+by default.
+
+Some drivers, for example, have dependencies that are OS-specific. Be sure to
+visit each driver's documentation for a listing of packages you should
+preinstall.

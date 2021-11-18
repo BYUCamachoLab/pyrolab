@@ -1,3 +1,5 @@
+.. _user_guide:
+
 ==========
 User Guide
 ==========
@@ -5,6 +7,7 @@ User Guide
 .. toctree::
    :maxdepth: 2
 
-   install
-   overview
+   nameservers
+   servers
+   clients
    

@@ -1,7 +1,5 @@
 .. _api.drivers:
 
-not using :template: custom-module-template.rst
-
 =======
 Drivers
 =======

@@ -3,7 +3,7 @@ Coding Standards
 ================
 
 Docstring Standards
-------------------
+-------------------
 
 This project strictly adheres to the numpydoc style guide.
 
