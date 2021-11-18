@@ -53,14 +53,14 @@ warnings.filterwarnings("default", category=DeprecationWarning)
 
 from appdirs import AppDirs
 _dirs = AppDirs(__name__, __author__)
-SITE_DATA_DIR = pathlib.Path(_dirs.site_data_dir)
-SITE_CONFIG_DIR = pathlib.Path(_dirs.site_config_dir)
-SITE_DATA_DIR.mkdir(parents=True, exist_ok=True)
-SITE_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+PYROLAB_DATA_DIR = pathlib.Path(_dirs.user_data_dir)
+PYROLAB_CONFIG_DIR = pathlib.Path(_dirs.user_config_dir)
+PYROLAB_DATA_DIR.mkdir(parents=True, exist_ok=True)
+PYROLAB_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
 # Set up logging to file
 import logging
-logfile = SITE_DATA_DIR / "logfile.txt"
+logfile = PYROLAB_DATA_DIR / "logfile.txt"
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                     filename=str(logfile),
