@@ -26,16 +26,16 @@ Note the difference between the two ``servertypes``:
 
 from typing import Optional
 
-from pyrolab import SITE_CONFIG_DIR, SITE_DATA_DIR
+from pyrolab import PYROLAB_CONFIG_DIR, PYROLAB_DATA_DIR
 from pyrolab.utils.configure import Configuration
 from pyrolab.utils.profile import Profile
 from pyrolab.utils.network import get_ip
 
 
-SERVER_CONFIG_DIR = SITE_CONFIG_DIR / "server" / "config"
+SERVER_CONFIG_DIR = PYROLAB_CONFIG_DIR / "server" / "config"
 SERVER_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
-SERVER_DATA_DIR = SITE_DATA_DIR / "server" / "data"
+SERVER_DATA_DIR = PYROLAB_DATA_DIR / "server" / "data"
 SERVER_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 

@@ -5,15 +5,15 @@
 # (see pyrolab/__init__.py for details)
 
 from typing import Optional
-from pyrolab import SITE_CONFIG_DIR, SITE_DATA_DIR
+from pyrolab import PYROLAB_CONFIG_DIR, PYROLAB_DATA_DIR
 from pyrolab.utils.configure import Configuration
 from pyrolab.utils.profile import Profile
 
 
-NAMESERVER_CONFIG_DIR = SITE_CONFIG_DIR / "nameserver" / "config"
+NAMESERVER_CONFIG_DIR = PYROLAB_CONFIG_DIR / "nameserver" / "config"
 NAMESERVER_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
-NAMESERVER_DATA_DIR = SITE_DATA_DIR / "nameserver" / "data"
+NAMESERVER_DATA_DIR = PYROLAB_DATA_DIR / "nameserver" / "data"
 NAMESERVER_DATA_DIR.mkdir(parents=True, exist_ok=True)
 STORAGE_FILE = NAMESERVER_DATA_DIR / "storage.sql"
 
