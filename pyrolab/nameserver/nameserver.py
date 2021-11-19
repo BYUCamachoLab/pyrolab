@@ -18,7 +18,8 @@ import Pyro5.nameserver
 from pyrolab.nameserver.configure import ns_profile as profile
 
 
-log = logging.getLogger("pyrolab.nameserver")
+log = logging.getLogger(__name__)
+
 
 # Inheriting from the Nameserver
 class NameServer(Pyro5.nameserver.NameServer):

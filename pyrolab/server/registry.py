@@ -45,7 +45,7 @@ if TYPE_CHECKING:
     from pyrolab.drivers import Instrument
 
 
-log = logging.getLogger("pyrolab.server.registry")
+log = logging.getLogger(__name__)
 
 
 class InstrumentInfo:

@@ -40,8 +40,7 @@ from pyrolab.api import expose, behavior
 from pyrolab.drivers.lasers import Laser
 
 
-log = logging.getLogger("pyrolab.drivers.lasers.tsl550")
-# logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 @behavior(instance_mode="single")

@@ -53,7 +53,7 @@ from pyrolab.drivers.motion.kinesis.exceptions import (
     KinesisMotorError,
 )
 
-log = logging.getLogger("pyrolab.drivers.motion.kinesis.kdc101")
+log = logging.getLogger(__name__)
 
 
 KCube_DC_Servo_Device_ID = 27

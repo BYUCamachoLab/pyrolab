@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from pyrolab.drivers import Instrument
 
 
-log = logging.getLogger("pyrolab.server.locker")
+log = logging.getLogger(__name__)
 
 
 @expose

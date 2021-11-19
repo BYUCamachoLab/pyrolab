@@ -31,7 +31,7 @@
 # from pyrolab.server.resource import ResourceInfo, ResourceRunner
 
 
-# log = logging.getLogger("pyrolab.server.resourcemanager")
+# log = logging.getLogger(__name__)
 
 
 # # TODO: Make this some sort of PyroLab configuration parameter.

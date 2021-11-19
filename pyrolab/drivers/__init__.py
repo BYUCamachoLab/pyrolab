@@ -17,7 +17,7 @@ from pyrolab.server import expose
 from typing import Any, Dict, List
 
 
-log = logging.getLogger('pyrolab.drivers')
+log = logging.getLogger(__name__)
 
 
 class Instrument:

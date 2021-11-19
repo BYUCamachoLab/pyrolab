@@ -20,7 +20,7 @@ from pyrolab.api import expose, behavior
 from pyrolab.drivers import Instrument
 
 
-log = logging.getLogger("pyrolab.drivers.sample")
+log = logging.getLogger(__name__)
 log.debug("Sample module loaded")
 
 
