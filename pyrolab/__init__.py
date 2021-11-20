@@ -27,6 +27,7 @@ A framework for using remote lab instruments as local resources built on Pyro5
 import pathlib
 import platform
 import sys
+import os
 
 if sys.version_info < (3, 7, 0):
     raise Exception(
@@ -60,8 +61,13 @@ PYROLAB_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
 # Set up logging to file
 import logging
-logfile = PYROLAB_DATA_DIR / "logfile.txt"
-logging.basicConfig(level=logging.DEBUG,
+logfile = os.genv("PYROLAB_LOGFILE", PYROLAB_DATA_DIR / "pyrolab.log")
+loglevel = os.environ.get("PYROLAB_LOGLEVEL", "INFO")
+try:
+    loglevel = getattr(logging, loglevel.upper())
+except AttributeError:
+    loglevel = logging.INFO
+logging.basicConfig(level=loglevel,
                     format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                     filename=str(logfile),
                     filemode='a')
