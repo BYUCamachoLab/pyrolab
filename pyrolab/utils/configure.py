@@ -4,38 +4,64 @@
 # Licensed under the terms of the GNU GPLv3+ License
 # (see pyrolab/__init__.py for details)
 
+import logging
+from typing import Any, Dict
+
 import Pyro5
+
+
+log = logging.getLogger(__name__)
+
 
 class Configuration:
     """
     Inheritable PyroLab configuration object.
 
     Configuration settings that overlap with Pyro5 are automatically updated
-    in Pyro5 when set in PyroLab.
+    in Pyro5 when set in PyroLab. Arguments are case insensitive; any argument
+    will be uppercased for comparison with the Pyro5 config object. Within the 
+    configuration object itself, though, case is preserved.
 
-    All configuration options should be included in the class attribute
-    ``_valid_attributes``. Configuration options should be fully uppercased.
-    In ``__init__()``, lowercase parameter names can be used but must be stored
-    as uppercased attributes.
+    Parameters
+    ----------
+    kwargs : dict
+        Key-value configuration pairs.
+
+    Examples
+    --------
+    >>> from pyrolab.configure import Configuration
+    >>> config = Configuration(host='localhost', port=9090)
+    >>> config = Configuration(**{host: 'localhost', port: 9090})
     """
-    _valid_attributes = []
-
-    def __init__(self) -> None:
-        pass
+    def __init__(self, **kwargs) -> None:
+        self.attrs = {}
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
     def __repr__(self):
         return f"<{self.__class__.__module__}.{self.__class__.__name__} object { {a: getattr(self, a) for a in self._valid_attributes} }>"
 
     def __setattr__(self, key, value):
         """
-        Only known attributes are stored. Attributes shared with the Pyro5 
-        config object are also set.
+        Allows configuration variables to be set as attributes.
+        
+        Attributes shared with the Pyro5 config object are also set.
         """
-        if key not in self._valid_attributes:
-            raise Exception(f"invalid configuration parameter '{key}'")
-        super().__setattr__(key, value)
-        if key in Pyro5.config.__slots__:
-            setattr(Pyro5.config, key, value)
+        if key == "attrs":
+            super().__setattr__(key, value)
+        else:
+            # All Pyro config options are fully uppercased
+            if key.upper() in Pyro5.config.__slots__:
+                setattr(Pyro5.config, key.upper(), value)
+            else:
+                log.warn(f"Unknown configuration option: {key}")
+            self.attrs[key] = value
+
+    def __getattr__(self, key):
+        """
+        Allows configuration variables to be accessed as attributes.
+        """
+        return self.attrs[key]
 
     def __setitem__(self, key, value):
         """
@@ -43,19 +69,26 @@ class Configuration:
         """
         self.__setattr__(key, value)
 
+    def __getitem__(self, key):
+        """
+        Allows attributes to be retrieved similar to a dictionary.
+        """
+        return getattr(self, key)
+
     @classmethod
     def from_dict(cls, dictionary):
         """
-        Case insensitive; all dictionary keys are converted to fully-uppercase
-        before a match is attempted.
+        Creates a configuration object from a dictionary.
+
+        Equivalent to class instantiation using dictionary unpacking.
+
+        Examples
+        --------
+        >>> # The following two are equivalent:
+        >>> cfg = Configuration.from_dict({"host": "localhost", "port": 9090})
+        >>> cfg = Configuration(**{"host": "localhost", "port": 9090})
         """
-        nc = cls()
-        for k, v in dictionary.items():
-            if k.upper() in nc._valid_attributes:
-                setattr(nc, k, v)
-            else:
-                raise Exception(f"invalid configuration parameter '{v}'")
-        return nc
+        return cls(**dictionary)
 
     def to_dict(self):
         """
