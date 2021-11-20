@@ -47,7 +47,7 @@ acquisition, but you'll be left without data and with a bad connection.
    :class: note
 
    | pyvisa
-   | NI VISA or pyvisa-py
+   | NI-VISA *or* pyvisa-py
 """
 
 # Current Work
