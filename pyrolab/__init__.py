@@ -61,8 +61,8 @@ PYROLAB_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
 # Set up logging to file
 import logging
-logfile = os.genv("PYROLAB_LOGFILE", PYROLAB_DATA_DIR / "pyrolab.log")
-loglevel = os.environ.get("PYROLAB_LOGLEVEL", "INFO")
+logfile = os.getenv("PYROLAB_LOGFILE", PYROLAB_DATA_DIR / "pyrolab.log")
+loglevel = os.getenv("PYROLAB_LOGLEVEL", "INFO")
 try:
     loglevel = getattr(logging, loglevel.upper())
 except AttributeError:
