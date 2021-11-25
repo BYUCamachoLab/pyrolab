@@ -1,0 +1,70 @@
+# config.yml
+
+nameservers:
+  - default:
+      host: localhost
+      ns_port: 9090
+      ns_bchost: localhost
+      ns_bcport: 9091
+      ns_autoclean: 0.0
+      storage_type: memory
+  - production:
+      host: camacholab.ee.byu.edu
+      ns_port: 9090
+      ns_bchost: null
+      ns_bcport: 9091
+      ns_autoclean: 15.0
+      storage_type: sql
+  - development:
+      host: localhost
+      ns_port: 9090
+
+servers:
+  - default:
+      host: public
+      ns_host: localhost
+      ns_port: 9090
+      ns_bchost: null
+      ns_bcport: 9091
+      servertype: thread
+  - production: 
+      host: public
+      ns_host: camacholab.ee.byu.edu
+      ns_port: 9090
+      servertype: thread
+  - debug:
+      host: localhost
+      ns_host: localhost
+      ns_port: 9090
+
+services:
+  - wolverine:
+      module: pyrolab.drivers.motion.prm1z8
+      class: PRM1Z8
+      parameters:
+        - serialno: 27003366
+      description: Rotational motion
+      lockable: true
+  - hulk:
+      module: pyrolab.drivers.motion.z825b
+      class: Z825B
+      parameters:
+        - serialno: 27003497
+      description: Longitudinal motion
+      lockable: true
+  - captain america:
+      module: pyrolab.drivers.motion.z825b
+      class: Z825B
+      parameters:
+        - serialno: 27504851
+      description: Lateral motion
+      lockable: true
+
+registration:
+  - wolverine: 
+      - production: "asgard.wolverine"
+      - development: "wolverine"
+  - hulk:
+      - production: "asgard.hulk"
+  - captain america:
+      - production: "asgard.captainamerica"

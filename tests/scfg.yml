@@ -1,0 +1,13 @@
+default:
+    host: public
+    ns_host: localhost
+    ns_port: 9090
+    ns_bchost: null
+    ns_bcport: 9091
+    servertype: thread
+production: 
+    host: public
+    ns_host: camacholab.ee.byu.edu
+    ns_port: 9090
+    servertype: thread
+debug:

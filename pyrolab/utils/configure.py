@@ -39,7 +39,7 @@ class Configuration:
             setattr(self, key, value)
 
     def __repr__(self):
-        return f"<{self.__class__.__module__}.{self.__class__.__name__} object { {a: getattr(self, a) for a in self._valid_attributes} }>"
+        return f"<{self.__class__.__module__}.{self.__class__.__name__} object { self.attrs }>"
 
     def __setattr__(self, key, value):
         """
@@ -54,7 +54,7 @@ class Configuration:
             if key.upper() in Pyro5.config.__slots__:
                 setattr(Pyro5.config, key.upper(), value)
             else:
-                log.warn(f"Unknown configuration option: {key}")
+                log.info(f"Not a Pyro5 configuration option: {key}")
             self.attrs[key] = value
 
     def __getattr__(self, key):

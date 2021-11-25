@@ -43,6 +43,10 @@ storage_file
     ``memory``. Default is an automatic program data directory, so does not 
     need to be provided. Ignored for ``memory`` storage.
 
+
+Configuring a nameserver
+------------------------
+
 An example nameserver configuration file might then contain something like
 this:
 
@@ -66,3 +70,32 @@ this:
         - development:
             host: localhost
             ns_port: 9090
+
+
+Launching a nameserver
+-----------------------
+
+Using the command line interface
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+If PyroLab is installed in the system path and a configuration file exists 
+(either internally within PyroLab or at a location you specify), you can launch 
+a nameserver with the following command:
+
+.. code-block:: bash
+
+    $ pyrolab nameserver -c ./ns_cfg.yml -l production
+
+
+Using a script
+^^^^^^^^^^^^^^
+In order to start up a nameserver using Python code, you could write a small 
+script like this:
+
+.. code-block:: python
+
+    from pyrolab.nameserver import load_ns_configs, start_ns_loop
+
+    configs = load_ns_configs("./ns_cfg.yml")
+    start_ns_loop(configs['default'])
+
+
