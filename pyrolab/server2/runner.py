@@ -1,10 +1,10 @@
 
 # import atexit
 # import importlib
-from pyrolab.server.server import Daemon, DaemonGroup
+from pyrolab.server2.server import Daemon, DaemonGroup
 
 from Pyro5.core import locate_ns
-from pyrolab.server.registry import create_unique_resource
+from pyrolab.server2.registry import create_unique_resource
 # from pyrolab.server.resourcemanager import manager
 # from pyrolab.utils.network import get_ip
 
@@ -12,14 +12,14 @@ from pyrolab.server.registry import create_unique_resource
 # REGISTRY_AUTOSAVE = True
 
 def setup_daemon_group(dg: DaemonGroup):
-    from pyrolab.server.configure import srv_profile
+    from pyrolab.server2.configure import srv_profile
     srv_profile.use(dg.server_config)
 
-    import pyrolab.server.server as daemons
+    import pyrolab.server2.server as daemons
     d_cls: Daemon = getattr(daemons, dg.daemon_class)
     daemon = d_cls()
 
-    from pyrolab.server.registry import InstrumentRegistry
+    from pyrolab.server2.registry import InstrumentRegistry
     reg = InstrumentRegistry().load()
 
     ns = locate_ns(host=srv_profile.NS_HOST, port=srv_profile.NS_PORT)
