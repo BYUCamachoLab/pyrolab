@@ -35,6 +35,14 @@ def change_behavior(cls: Type[Instrument], instance_mode: str="session", instanc
     """
     Dynamically add a behavior to a class.
 
+    Equivalent to using the ``behavior`` decorator on the class, but can 
+    be used dynamically during runtime. Services that specify some default 
+    behavior in the source code can be overridden using this function.
+
+    .. warning::
+       This function modifies the behavior of the class in place! It does 
+       not returning a new class object.
+
     Parameters
     ----------
     cls : class
@@ -44,12 +52,6 @@ def change_behavior(cls: Type[Instrument], instance_mode: str="session", instanc
     instance_creator : callable
         A callable that creates a new instance of the class (see manual for
         more details).
-
-    Returns
-    -------
-    class
-        The same class, but with the modified behavior. The returned object is 
-        the class that should be registered with a Daemon.
 
     Raises
     ------
@@ -69,7 +71,6 @@ def change_behavior(cls: Type[Instrument], instance_mode: str="session", instanc
     if instance_creator and not callable(instance_creator):
         raise TypeError("instance_creator must be a callable")
     cls._pyroInstancing = (instance_mode, instance_creator)
-    return cls
 
 
 class ServerConfiguration(Configuration):
