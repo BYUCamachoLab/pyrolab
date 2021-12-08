@@ -17,6 +17,7 @@ import logging
 from typing import Union
 
 from pyrolab.api import expose, behavior
+from pyrolab.service import Service
 from pyrolab.drivers import Instrument
 
 
@@ -28,7 +29,7 @@ Number = Union[int, float]
 
 
 @expose
-class SampleService:
+class SampleService(Service):
     def __init__(self):
         log.info("SampleService created")
         pass

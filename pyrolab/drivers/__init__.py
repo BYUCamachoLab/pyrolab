@@ -13,16 +13,18 @@ Submodule containing drivers for each supported instrument type.
 
 import logging
 
-from pyrolab.server import expose
+from pyrolab.api import expose
 from typing import Any, Dict, List
+
+from pyrolab.service import Service
 
 
 log = logging.getLogger(__name__)
 
 
-class Instrument:
+class Instrument(Service):
     """
-    Abstract base class Instrument provides a common interface for instruments.
+    Abstract base class provides a common interface for services and instruments.
 
     Note that, in order to support autoconnect within the PyroLab framework,
     the ``__init__`` method is never used to set up or connect to the 
