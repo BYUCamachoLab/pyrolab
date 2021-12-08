@@ -14,22 +14,35 @@ A single module that centralizes the most frequently used objects from PyroLab.
 from Pyro5.core import locate_ns
 from Pyro5.client import Proxy
 
-# from pyrolab.nameserver.configure import ns_profile, NameserverConfiguration
-# from pyrolab.nameserver.nameserver import start_ns_loop, start_ns
-# from pyrolab.server.configure import srv_profile, ServerConfiguration
-# from pyrolab.server.server import Daemon, LockableDaemon
-# from pyrolab.server import expose, behavior, oneway, serve
+from pyrolab.nameserver import (
+    NameServerConfiguration, 
+    start_ns, 
+    start_ns_loop
+)
+from pyrolab.server import (
+    ServerConfiguration, 
+    Daemon, 
+    LockableDaemon,
+    expose,
+    behavior,
+    oneway,
+    # serve,
+    change_behavior
+)
 
 
-# __all__ = [
-#     "locate_ns", 
-#     "Proxy",
-#     "Daemon",
-#     "LockableDaemon",
-#     "expose",
-#     "behavior",
-#     "oneway",
-#     "serve",
-#     "start_ns_loop",
-#     "start_ns",
-# ]
+__all__ = [
+    "locate_ns",
+    "Proxy",
+    "NameServerConfiguration",
+    "start_ns",
+    "start_ns_loop",
+    "ServerConfiguration",
+    "Daemon",
+    "LockableDaemon",
+    "expose",
+    "behavior",
+    "change_behavior",
+    "oneway",
+    # "serve",
+]
