@@ -78,6 +78,7 @@ install_requires = [
     "numpy",
     "scipy",
     "appdirs",
+    "appnope",
 ]
 
 extras_require = {
