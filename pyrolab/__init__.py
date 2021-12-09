@@ -83,3 +83,12 @@ sys.excepthook = Pyro5.errors.excepthook
 
 import appnope
 appnope.nope()
+
+
+import uuid
+from multiprocessing import current_process
+if current_process().name == 'MainProcess':
+    INSTANCE_ID = str(uuid.uuid4()) + '_main'
+    os.environ["PYROLAB_TOPLEVEL_INSTANCE_ID"] = INSTANCE_ID
+else:
+    INSTANCE_ID = str(uuid.uuid4()) + '_child'
