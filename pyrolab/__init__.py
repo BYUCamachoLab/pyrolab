@@ -52,12 +52,14 @@ __website_url__ = "https://camacholab.byu.edu/"
 import warnings
 warnings.filterwarnings("default", category=DeprecationWarning)
 
+
 from appdirs import AppDirs
 _dirs = AppDirs(__name__, __author__)
 PYROLAB_DATA_DIR = pathlib.Path(_dirs.user_data_dir)
 PYROLAB_CONFIG_DIR = pathlib.Path(_dirs.user_config_dir)
 PYROLAB_DATA_DIR.mkdir(parents=True, exist_ok=True)
 PYROLAB_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+
 
 # Set up logging to file
 import logging
@@ -73,9 +75,11 @@ logging.basicConfig(level=loglevel,
                     filemode='a')
 logging.debug("PyroLab started (logger configured).")
 
+
 # Include remote traceback in local tracebacks
 import Pyro5.errors
 sys.excepthook = Pyro5.errors.excepthook
+
 
 import appnope
 appnope.nope()
