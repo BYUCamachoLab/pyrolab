@@ -19,7 +19,7 @@ nameservers:
       host: localhost
       ns_port: 9090
 
-servers:
+daemons:
   - default:
       classname: Daemon
       host: localhost
@@ -68,3 +68,15 @@ services:
       server: lockable
       nameservers: 
         - production
+
+autolaunch:
+  nameservers:
+    - production
+  
+  services:
+    - asgard.wolverine
+    - asgard.hulk
+    - asgard.captainamerica
+
+  features:
+    autoreload: true

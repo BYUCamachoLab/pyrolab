@@ -8,7 +8,7 @@ nameservers:
       host: public
       ns_port: 9100
 
-servers:
+daemons:
   - lockable:
       classname: LockableDaemon
       host: public
