@@ -1,4 +1,4 @@
-from pyrolab.server.configure import ServerConfiguration
+from pyrolab.server.configure import DaemonConfiguration
 from pyrolab.server.registry import InstrumentInfo, InstrumentRegistry
 from pyrolab.server.resource import ResourceInfo
 from pyrolab.server.resourcemanager import ResourceManager
@@ -23,7 +23,7 @@ registry.save()
 
 # We'll now define the daemons that will host our known instruments. Be sure
 # to use the same identifying string!
-srv_cfg = ServerConfiguration(
+srv_cfg = DaemonConfiguration(
     host="public",
     ns_host = "camacholab.ee.byu.edu",
 )
