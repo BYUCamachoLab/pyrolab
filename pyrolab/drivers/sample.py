@@ -125,7 +125,7 @@ class SampleAutoconnectInstrument(Instrument):
         self.connected = False
 
     def close(self):
-        pass
+        self.connected = False
 
     def connect(self, address="localhost", port=9090):
         if address != "0.0.0.0":
