@@ -26,6 +26,7 @@ from pyrolab.utils.network import get_ip
 if TYPE_CHECKING:
     from Pyro5.socketutil import SocketConnection
     from pyrolab.drivers import Instrument
+    from pyrolab.service import Service
 
 
 log = logging.getLogger(__name__)
@@ -73,7 +74,7 @@ def change_behavior(cls: Type[Instrument], instance_mode: str="session", instanc
     cls._pyroInstancing = (instance_mode, instance_creator)
 
 
-class ServerConfiguration(Configuration):
+class DaemonConfiguration(Configuration):
     """
     Server configuration object.
 
@@ -101,7 +102,7 @@ class ServerConfiguration(Configuration):
         Either ``thread`` or ``multiplex`` (default "thread").
     """
     def __init__(self,
-                 module: str="pyrolab.server",
+                 module: str="pyrolab.daemon",
                  classname: str="Daemon",
                  host: str="localhost",
                  port: int=0,
@@ -170,29 +171,6 @@ class Lockable:
         return False
 
 
-def create_lockable(cls) -> Instrument:
-    """
-    Dynamically create a new class that is also based on Lockable.
-
-    Parameters
-    ----------
-    cls : class
-        The class to be used as a template while dynamically creating a new
-        class.
-    
-    Returns
-    -------
-    class
-        A subclass that inherits from the original class and ``Lockable``.
-    """
-    DynamicLockable = type(
-        cls.__name__ + "Lockable",
-        (cls, Lockable, ),
-        {}
-    )
-    return DynamicLockable
-
-
 class Daemon(Pyro5.server.Daemon):
     """
     The PyroLab server daemon. This class is based on the Pyro5.server.Daemon.
@@ -228,6 +206,28 @@ class Daemon(Pyro5.server.Daemon):
     """
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+
+    @staticmethod
+    def prepare_class(cls) -> Type[Service]:
+        """
+        Performs any actions on the class required for the given Daemon.
+
+        Some classes require mixins to be added in order for certain 
+        functionality to work. When the DaemonManager prepares to run a Daemon,
+        the child process will call this method on the class before registering
+        the class.
+
+        Parameters
+        ----------
+        cls : class
+            The class to prepare.
+        
+        Returns
+        -------
+        class
+            The prepared class.
+        """
+        return cls
 
 
 class LockableDaemon(Daemon):
@@ -273,6 +273,29 @@ class LockableDaemon(Daemon):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.locked_instances = {}
+
+    @staticmethod
+    def prepare_class(cls) -> Type[Service]:
+        """
+        Dynamically create a new class that is also based on Lockable.
+
+        Parameters
+        ----------
+        cls : class
+            The class to be used as a template while dynamically creating a new
+            class.
+        
+        Returns
+        -------
+        class
+            A subclass that inherits from the original class and ``Lockable``.
+        """
+        DynamicLockable = type(
+            cls.__name__ + "Lockable",
+            (cls, Lockable, ),
+            {}
+        )
+        return DynamicLockable
 
     def _lock(self, pyroId: str, conn: SocketConnection, user: str="") -> bool:
         """

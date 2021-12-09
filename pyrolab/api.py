@@ -19,8 +19,8 @@ from pyrolab.nameserver import (
     start_ns, 
     start_ns_loop
 )
-from pyrolab.server import (
-    ServerConfiguration, 
+from pyrolab.daemon import (
+    DaemonConfiguration, 
     Daemon, 
     LockableDaemon,
     expose,
@@ -37,7 +37,7 @@ __all__ = [
     "NameServerConfiguration",
     "start_ns",
     "start_ns_loop",
-    "ServerConfiguration",
+    "DaemonConfiguration",
     "Daemon",
     "LockableDaemon",
     "expose",
