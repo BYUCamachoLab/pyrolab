@@ -1,8 +1,8 @@
 import pyrolab
 
-from pyrolab.nameserver import load_ns_configs, start_ns_loop
+from pyrolab.nameserver import load_nameserver_configs, start_ns_loop
 
-configs = load_ns_configs("config.yml")
+configs = load_nameserver_configs("config.yml")
 
 print("Available configurations:", list(configs.keys()))
 

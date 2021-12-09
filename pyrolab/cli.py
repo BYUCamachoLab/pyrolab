@@ -4,6 +4,7 @@
 # Licensed under the terms of the GNU GPLv3+ License
 # (see pyrolab/__init__.py for details)
 
+from multiprocessing.process import current_process
 import click
 
 from pyrolab.manager import DaemonManager
@@ -11,13 +12,18 @@ from pyrolab.nameserver import start_ns_loop
 from pyrolab.configure import (
     update_config,
     reset_config,
-    load_ns_configs, 
-    load_server_configs, 
+    load_nameserver_configs, 
+    load_daemon_configs, 
     load_service_configs,
     get_servers_used_by_services,
     get_services_for_server,
 )
+# from pyrolab.configure import GlobalConfiguration
 from pyrolab.utils import bcolors
+
+
+# GLOBAL_CONFIG = GlobalConfiguration.instance()
+# GLOBAL_CONFIG.default_load()
 
 
 def abort_if_false(ctx, param, value):
@@ -46,10 +52,10 @@ def nameserver(**kwargs):
     """
     if len(kwargs['nameserver']) == 0:
         print(f"Launching nameserver 'default'...")
-        nscfg = load_ns_configs()['default']
+        nscfg = load_nameserver_configs()['default']
     else:
         print(f"Launching nameserver '{kwargs['nameserver'][0]}'...")
-        nscfg = load_ns_configs()[kwargs['nameserver'][0]]
+        nscfg = load_nameserver_configs()[kwargs['nameserver'][0]]
     nscfg.update_pyro_config()
     start_ns_loop(nscfg)
 
@@ -62,14 +68,17 @@ def daemon(**kwargs):
     """
     print(f"Collecting daemons...")
     if len(kwargs['daemons']) == 0 or kwargs['daemons'][0] == 'all':
-        which = load_server_configs().keys()
+        which = load_daemon_configs().keys()
     else:
         which = [*kwargs['daemons']]
-    dm = DaemonManager.instance()
-    for daemon in which:
-        print(f"Launching daemon '{daemon}'...")
-        dm.launch(daemon)
-    dm.wait_for_interrupt()
+
+    if __name__ == "__main__":
+        if current_process().name == 'MainProcess':
+            dm = DaemonManager.instance()
+            for daemon in which:
+                print(f"Launching daemon '{daemon}'...")
+                dm.launch(daemon)
+            dm.wait_for_interrupt()
 
 
 @cli.group()
@@ -123,12 +132,12 @@ def nameservers(ctx, **kwargs):
     """
     if not ctx.obj['verbose']:
         print('Nameserver:')
-        for nscfg in load_ns_configs().keys():
+        for nscfg in load_nameserver_configs().keys():
             print(f'  {nscfg}')
     else:
         print(f"Nameserver configuration (verbose):")
-        cfgs = load_ns_configs()
-            # cfgs = {kwargs['details']: load_ns_configs()[kwargs['details']]}
+        cfgs = load_nameserver_configs()
+            # cfgs = {kwargs['details']: load_nameserver_configs()[kwargs['details']]}
         for nscfg in cfgs.keys():
             print(f'  {nscfg}:')
             for k, v in cfgs[nscfg].to_dict().items():
@@ -143,11 +152,11 @@ def daemons(ctx, **kwargs):
     """
     if not ctx.obj['verbose']:
         print('Daemons:')
-        for daemon in load_server_configs().keys():
+        for daemon in load_daemon_configs().keys():
             print(f'  {daemon}')
     else:
         print(f"Daemon configuration (verbose):")
-        cfgs = load_server_configs()
+        cfgs = load_daemon_configs()
         for daemon in cfgs.keys():
             print(f'  {daemon}:')
             for k, v in cfgs[daemon].to_dict().items():
