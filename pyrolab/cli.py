@@ -72,13 +72,14 @@ def daemon(**kwargs):
     else:
         which = [*kwargs['daemons']]
 
-    if __name__ == "__main__":
-        if current_process().name == 'MainProcess':
-            dm = DaemonManager.instance()
-            for daemon in which:
-                print(f"Launching daemon '{daemon}'...")
-                dm.launch(daemon)
-            dm.wait_for_interrupt()
+    if current_process().name == 'MainProcess':
+        print('is main process')
+        dm = DaemonManager.instance()
+        print('got the instance')
+        for daemon in which:
+            print(f"Launching daemon '{daemon}'...")
+            dm.launch(daemon)
+        dm.wait_for_interrupt()
 
 
 @cli.group()
