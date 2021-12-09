@@ -13,7 +13,7 @@ Submodule defining interfaces for PyroLab services.
 
 from __future__ import annotations
 import logging
-from typing import Any, Dict, List, Type, Optional, Callable
+from typing import Any, Dict, List, Set, Type, Optional, Callable, Union
 from pyrolab.utils import generate_random_name
 
 from pyrolab.utils.configure import Configuration
@@ -60,7 +60,7 @@ class Service:
         cls._pyroInstancing = (instance_mode, instance_creator)
 
 
-class ServiceInfo(Configuration):
+class ServiceConfiguration(Configuration):
     """
     Groups together information about a PyroLab service. 
     
@@ -100,7 +100,7 @@ class ServiceInfo(Configuration):
                  module: str="", 
                  classname: str="", 
                  parameters: Dict[str, Any]={},
-                 description: str="", 
+                 description: Union[str, Set[str]]="", 
                  instancemode: str="session",
                  server: str="default",
                  nameservers: List[str]=[]) -> None:
@@ -112,7 +112,9 @@ class ServiceInfo(Configuration):
         self.module = module
         self.classname = classname
         self.parameters = parameters
-        self.description = {description}
+        if type(description) is not set:
+            description = {description}
+        self.description = description
         self.instancemode = instancemode
         self.server = server
         self.nameservers = nameservers
@@ -141,7 +143,7 @@ class ServiceInfo(Configuration):
         return self.module + "." + self.classname
 
     # @classmethod
-    # def from_dict(cls, dictionary: Dict[str, Any]) -> ServiceInfo:
+    # def from_dict(cls, dictionary: Dict[str, Any]) -> ServiceConfiguration:
     #     """
     #     Builds a InstrumentInfo class from a dictionary.
 
