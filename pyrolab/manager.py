@@ -27,6 +27,7 @@ Python ``multiprocessing`` module.
 from __future__ import annotations
 import importlib
 import time
+import os
 import threading
 import multiprocessing
 import logging
@@ -37,18 +38,19 @@ from typing import TYPE_CHECKING, Any, Dict, Tuple, Type
 from Pyro5.core import locate_ns
 
 from pyrolab.configure import (
-    load_ns_configs, 
-    load_server_configs, 
+    load_nameserver_configs, 
+    load_daemon_configs, 
     load_service_configs, 
     get_services_for_server,
 )
-from pyrolab.service import Service
+from pyrolab.service import Service, ServiceConfiguration
+from pyrolab.daemon import DaemonConfiguration
 
 if TYPE_CHECKING:
     from Pyro5.core import URI
 
     from pyrolab.daemon import Daemon, DaemonConfiguration
-    from pyrolab.service import ServiceInfo
+    from pyrolab.service import ServiceConfiguration
 
 
 log = logging.getLogger(__name__)
@@ -77,16 +79,16 @@ class DaemonRunner(multiprocessing.Process):
     """
     def __init__(self, 
                  *args, 
-                 serverconfig: DaemonConfiguration=None, 
-                 serviceinfos: Dict[str, ServiceInfo]=None,
+                 daemonconfig: dict=None, 
+                 serviceconfigs: Dict[dict]=None,
                  msg_queue: Queue=None, 
                  msg_polling: float=1.0,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.msg_queue: Queue = msg_queue
         self.msg_polling = msg_polling
-        self.serverconfig = serverconfig
-        self.serviceinfos = serviceinfos
+        self.daemonconfig = daemonconfig
+        self.serviceconfigs = serviceconfigs
         self.KILL_SIGNAL = False
 
     def get_daemon(self) -> Type[Daemon]:
@@ -99,18 +101,18 @@ class DaemonRunner(multiprocessing.Process):
         Type[Daemon]
             The class of the referenced Daemon.
         """
-        mod = importlib.import_module(self.serverconfig.module)
-        obj: Daemon = getattr(mod, self.serverconfig.classname)
+        mod = importlib.import_module(self.daemonconfig.module)
+        obj: Daemon = getattr(mod, self.daemonconfig.classname)
         return obj
 
-    def get_service(self, serviceinfo: ServiceInfo) -> Type[Service]:
+    def get_service(self, serviceinfo: ServiceConfiguration) -> Type[Service]:
         """
-        Gets the object given the ServiceInfo.
+        Gets the object given the ServiceConfiguration.
 
         Parameters
         ----------
-        serviceinfo : ServiceInfo
-            The ServiceInfo object that holds the information necessary to
+        serviceinfo : ServiceConfiguration
+            The ServiceConfiguration object that holds the information necessary to
             construct the Service.
 
         Returns
@@ -192,11 +194,19 @@ class DaemonRunner(multiprocessing.Process):
         """
         name = multiprocessing.current_process().name
         log.info(f"Starting '{name}'")
+        TOPLEVEL_PID = os.environ["PYROLAB_TOPLEVEL_PID"]
+        print("Toplevel PID:", TOPLEVEL_PID)
 
-        self.serverconfig.update_pyro_config()
+        # Convert transport dictionaries back to configuration objects
+        self.daemonconfig = DaemonConfiguration.from_dict(self.daemonconfig)
+        self.serviceinfos = {
+            k: ServiceConfiguration.from_dict(v) for k, v in self.serviceconfigs.items()
+        }
+    
+        self.daemonconfig.update_pyro_config()
         daemon, uris = self.setup_daemon()
 
-        nscfgs = load_ns_configs()
+        nscfgs = load_nameserver_configs()
         for servicename, serviceinfo in self.serviceinfos.items():
             for ns in serviceinfo.nameservers:
                 nscfg = nscfgs[ns]
@@ -216,10 +226,16 @@ class DaemonRunner(multiprocessing.Process):
 
 
 class DaemonManager:
+    """
+    A manager class for running a set of PyroLab daemons on separate processes.
+
+    DaemonManager is a singleton. Access the global object by calling 
+    :py:func:`instance`. Only the main process can access the DaemonManager.
+    """
     _instance = None
 
     def __init__(self) -> None:
-        raise RuntimeError("Call ``instance()`` instead.")
+        raise RuntimeError("Cannot directly instantiate singleton, call ``instance()`` instead.")
 
     @classmethod
     def instance(cls):
@@ -236,12 +252,20 @@ class DaemonManager:
         """
         Launch a server.
         """
-        print(servername)
-        serverconfig = load_server_configs()[servername]
+        log.info(f'Launching server {servername}')
+        daemonconfig = load_daemon_configs()[servername]
         serviceinfos = get_services_for_server(servername)
-        print(serviceinfos, len(serviceinfos))
         messenger = multiprocessing.Queue()
-        runner = DaemonRunner(serverconfig=serverconfig, serviceinfos=serviceinfos, msg_queue=messenger, daemon=True)
+
+        # Configuration objects are not picklable, so we need to convert them
+        # to dictionaries. We'll rebuild them in the child processes.
+        runner = DaemonRunner(
+            daemonconfig=daemonconfig.to_dict(),
+            serviceconfigs={k: v.to_dict() for k, v in serviceinfos.items()},
+            msg_queue=messenger, 
+            daemon=True
+        )
+
         self.processes[servername] = runner
         self.messengers[servername] = messenger
         runner.start()
