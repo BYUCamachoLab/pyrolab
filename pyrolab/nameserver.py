@@ -16,6 +16,7 @@ from typing import Dict, List, Optional
 
 import Pyro5.nameserver
 
+from pyrolab.utils.network import get_ip
 from pyrolab.utils.configure import Configuration
 from pyrolab import PYROLAB_DATA_DIR
 
@@ -70,6 +71,8 @@ class NameServerConfiguration(Configuration):
                  ns_autoclean: float=0.0,
                  storage_type: str="memory",
                  storage_filename: str="") -> None:
+        if host == "public":
+            host = get_ip()
         super().__init__(
             host=host,
             ns_host=host,

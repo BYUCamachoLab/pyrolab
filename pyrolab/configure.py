@@ -60,14 +60,15 @@ from multiprocessing import Value
 import pkg_resources
 from pathlib import Path
 from pprint import PrettyPrinter
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Set, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Set, Type, Union
 
 from yaml import safe_load, dump
 
 from pyrolab import PYROLAB_CONFIG_DIR, PYROLAB_DATA_DIR
 from pyrolab.nameserver import NameServerConfiguration
-from pyrolab.server import ServerConfiguration
+from pyrolab.daemon import DaemonConfiguration
 from pyrolab.service import Service, ServiceInfo
+from pyrolab.utils import generate_random_name
 
 if TYPE_CHECKING:
     from pyrolab.drivers import Instrument
@@ -210,10 +211,11 @@ def load_ns_configs(filename: Union[str, Path]=None) -> Dict[str, NameServerConf
             ns_configurations[ns_name] = NameServerConfiguration(**ns_config)
         return ns_configurations
     else:
-        raise ValueError(f"Configuration file '{filename}' does not contain a 'nameservers' section.")
+        # raise ValueError(f"Configuration file '{filename}' does not contain a 'nameservers' section.")
+        return ns_configurations
 
 
-def load_server_configs(filename: Union[str, Path]=None) -> Dict[str, ServerConfiguration]:
+def load_server_configs(filename: Union[str, Path]=None) -> Dict[str, DaemonConfiguration]:
     """
     Reads the server configurations from a YAML file. 
     
@@ -271,14 +273,15 @@ def load_server_configs(filename: Union[str, Path]=None) -> Dict[str, ServerConf
         raise FileNotFoundError(f"Configuration file '{filename}' not found.")
     with open(filename, "r") as f:
         config = safe_load(f)
-    s_configurations = {"default": ServerConfiguration()}
+    s_configurations = {"default": DaemonConfiguration()}
     if "servers" in config:
         for listing in config["servers"]:
             s_name, s_config = list(listing.items())[0]
-            s_configurations[s_name] = ServerConfiguration(**s_config)
+            s_configurations[s_name] = DaemonConfiguration(**s_config)
         return s_configurations
     else:
-        raise ValueError(f"Configuration file '{filename}' does not contain a 'servers' section.")
+        # raise ValueError(f"Configuration file '{filename}' does not contain a 'servers' section.")
+        return s_configurations
 
 
 def load_service_configs(filename: Union[str, Path]=None) -> Dict[str, ServiceInfo]:
@@ -342,10 +345,14 @@ def load_service_configs(filename: Union[str, Path]=None) -> Dict[str, ServiceIn
     if "services" in config:
         for listing in config["services"]:
             s_name, s_config = list(listing.items())[0]
+            if s_name[:4] == "auto":
+                _, count = s_name.split(" ")
+                s_name = generate_random_name(count=int(count))
             services[s_name] = ServiceInfo(name=s_name, **s_config)
         return services
     else:
-        raise ValueError(f"Configuration file '{filename}' does not contain a 'services' section.")
+        # raise ValueError(f"Configuration file '{filename}' does not contain a 'services' section.")
+        return services
 
 
 def get_servers_used_by_services(service_cfgs: Dict[str, Any]) -> List[str]:
@@ -377,7 +384,7 @@ def get_servers_used_by_services(service_cfgs: Dict[str, Any]) -> List[str]:
     return list(set([v['server'] for v in service_cfgs.values()]))
 
 
-def get_services_for_server(server_name):
+def get_services_for_server(servername: str, services: Optional[Dict[str, Any]]=None) -> Dict[str, ServiceInfo]:
     """
     Finds all the services that use a given server.
 
@@ -385,14 +392,19 @@ def get_services_for_server(server_name):
     ----------
     server_name : str
         The name of the server.
+    services : Dict[str, Any], optional
+        A dictionary of service configurations, the output of
+        :py:func:`load_service_configs`. If not provided, the configuration is
+        determined by reading the default (or persisted) configuration file.
     
     Returns
     -------
     services : List[Dict[str, Any]]
         A list of service configurations (by name) that use the server.
     """
-    services = load_service_configs()
-    return [{k: v} for k, v in services.items() if v['server'] == server_name]
+    if not services:
+        services = load_service_configs()
+    return {k: v for k, v in services.items() if v['server'] == servername}
 
 
 def fqn(module, classname) -> str:
@@ -414,177 +426,177 @@ def fqn(module, classname) -> str:
     return module + "." + classname
 
 
-def get_class(self) -> Type[Service]:
-    """
-    Returns the object for the class in PyroLab referenced by 
-    InstrumentInfo. If the class is lockable, returns the lockable version.
+# def get_class(self) -> Type[Service]:
+#     """
+#     Returns the object for the class in PyroLab referenced by 
+#     InstrumentInfo. If the class is lockable, returns the lockable version.
 
-    Returns
-    -------
-    Type[Instrument]
-        The class of the referenced Instrument.
-    """
-    mod = importlib.import_module(self.module)
-    obj: Service = getattr(mod, self.classname)
-    if self.server == "LockableDaemon":
-        obj = create_lockable(obj)
-    return obj
+#     Returns
+#     -------
+#     Type[Instrument]
+#         The class of the referenced Instrument.
+#     """
+#     mod = importlib.import_module(self.module)
+#     obj: Service = getattr(mod, self.classname)
+#     if self.server == "LockableDaemon":
+#         obj = create_lockable(obj)
+#     return obj
 
 
-class ServiceRegistry:
-    """
-    Contains a registry of InstrumentInfo objects. 
+# class ServiceRegistry:
+#     """
+#     Contains a registry of InstrumentInfo objects. 
 
-    PyroLab maintains a reference to a single InstrumentRegistry object, 
-    although the class is not implemented as a Singleton. This means that the
-    class can be instantiated by external scripts to generate registry files
-    that can then be loaded and saved by PyroLab, if desired.
+#     PyroLab maintains a reference to a single InstrumentRegistry object, 
+#     although the class is not implemented as a Singleton. This means that the
+#     class can be instantiated by external scripts to generate registry files
+#     that can then be loaded and saved by PyroLab, if desired.
 
-    InstrumentRegistry is iterable; it can be used as:
+#     InstrumentRegistry is iterable; it can be used as:
 
-    ```python
-    for instrument in registry:
-        # do something
-    ```
-    """
-    def __init__(self) -> None:
-        self.instruments: Dict[str, InstrumentInfo] = {}
+#     ```python
+#     for instrument in registry:
+#         # do something
+#     ```
+#     """
+#     def __init__(self) -> None:
+#         self.instruments: Dict[str, InstrumentInfo] = {}
 
-    def __iter__(self) -> Generator[InstrumentInfo, None, None]:
-        yield from self.instruments.values()
+#     def __iter__(self) -> Generator[InstrumentInfo, None, None]:
+#         yield from self.instruments.values()
 
-    def __len__(self) -> int:
-        return len(self.instruments)
+#     def __len__(self) -> int:
+#         return len(self.instruments)
 
-    def empty(self) -> None:
-        """
-        Empties the instrument registry.
-        """
-        self.instruments = {}
+#     def empty(self) -> None:
+#         """
+#         Empties the instrument registry.
+#         """
+#         self.instruments = {}
 
-    def get(self, name: str) -> InstrumentInfo:
-        """
-        Gets an InstrumentInfo object by name.
+#     def get(self, name: str) -> InstrumentInfo:
+#         """
+#         Gets an InstrumentInfo object by name.
 
-        Parameters
-        ----------
-        name : str
-            The name of the InstrumentInfo to get.
+#         Parameters
+#         ----------
+#         name : str
+#             The name of the InstrumentInfo to get.
 
-        Returns
-        -------
-        info : InstrumentInfo
-            The info object in the registry with the given name.
-        """
-        return self.instruments[name]
+#         Returns
+#         -------
+#         info : InstrumentInfo
+#             The info object in the registry with the given name.
+#         """
+#         return self.instruments[name]
 
-    def register(self, info: InstrumentInfo):
-        """
-        Register an InstrumentInfo object. Note that each info's 
-        ``registered_name`` must be unique within a registry.
+#     def register(self, info: InstrumentInfo):
+#         """
+#         Register an InstrumentInfo object. Note that each info's 
+#         ``registered_name`` must be unique within a registry.
 
-        Parameters
-        ----------
-        info : InstrumentInfo
-            The information object to register.
+#         Parameters
+#         ----------
+#         info : InstrumentInfo
+#             The information object to register.
 
-        Raises
-        ------
-        Exception
-            If the ``registered_name`` already exists in the registry.
-        """
-        if info.name in self.instruments:
-            raise Exception(f"name '{info.name}' already reserved in registry!")
-        else:
-            self.instruments[info.name] = info
+#         Raises
+#         ------
+#         Exception
+#             If the ``registered_name`` already exists in the registry.
+#         """
+#         if info.name in self.instruments:
+#             raise Exception(f"name '{info.name}' already reserved in registry!")
+#         else:
+#             self.instruments[info.name] = info
 
-    def unregister(self, name):
-        """
-        Unregisters a InstrumentInfo from the registry to prevent its being
-        persisted.
+#     def unregister(self, name):
+#         """
+#         Unregisters a InstrumentInfo from the registry to prevent its being
+#         persisted.
 
-        Parameters
-        ----------
-        name : str
-            The name the class uses when registering itself with a nameserver.
+#         Parameters
+#         ----------
+#         name : str
+#             The name the class uses when registering itself with a nameserver.
 
-        Raises
-        ------
-        Exception
-            If the name does not exist in the registry.
-        """
-        if name not in self.instruments:
-            raise Exception(f"name '{name}'' not found in registry!")
-        else:
-            del self.instruments[name]
+#         Raises
+#         ------
+#         Exception
+#             If the name does not exist in the registry.
+#         """
+#         if name not in self.instruments:
+#             raise Exception(f"name '{name}'' not found in registry!")
+#         else:
+#             del self.instruments[name]
 
-    def load(self, path: Union[str, Path]=""):
-        """
-        Loads InstrumentInfo from a yaml file. Default file is the program's
-        internal data file, but a user file can be supplied.
+#     def load(self, path: Union[str, Path]=""):
+#         """
+#         Loads InstrumentInfo from a yaml file. Default file is the program's
+#         internal data file, but a user file can be supplied.
 
-        Parameters
-        ----------
-        path : Union[str, Path], optional
-            The path to the registry file to use. If not provided, uses the
-            program's default data file.
+#         Parameters
+#         ----------
+#         path : Union[str, Path], optional
+#             The path to the registry file to use. If not provided, uses the
+#             program's default data file.
 
-        Returns
-        -------
-            The Registry object is loading is successful, else False.
-        """
-        if path:
-            if type(path) is str:
-                path = Path(path)
-        else:
-            path = INSTRUMENT_REGISTY_FILE
-        if path.exists():
-            self.empty()
-            with path.open('r') as fin:
-                infos = safe_load(fin)
-                for _, info in infos.items():
-                    obj = InstrumentInfo.from_dict(info)
-                    self.instruments[obj.name] = obj
-            return self
-        return False
+#         Returns
+#         -------
+#             The Registry object is loading is successful, else False.
+#         """
+#         if path:
+#             if type(path) is str:
+#                 path = Path(path)
+#         else:
+#             path = INSTRUMENT_REGISTY_FILE
+#         if path.exists():
+#             self.empty()
+#             with path.open('r') as fin:
+#                 infos = safe_load(fin)
+#                 for _, info in infos.items():
+#                     obj = InstrumentInfo.from_dict(info)
+#                     self.instruments[obj.name] = obj
+#             return self
+#         return False
 
-    def save(self, path: Union[str, Path]="", update_file: bool=False):
-        """
-        Saves the current registry to file for persisting instruments.
+#     def save(self, path: Union[str, Path]="", update_file: bool=False):
+#         """
+#         Saves the current registry to file for persisting instruments.
 
-        A path can be specified to create a new file with Instrument 
-        information. This is for inspection or development purposes. If
-        ``update_file`` is True, PyroLab can reference that file's location
-        each time it is started instead of using its default ProgramData file.
-        (TODO: this is not yet impmlemented.)
+#         A path can be specified to create a new file with Instrument 
+#         information. This is for inspection or development purposes. If
+#         ``update_file`` is True, PyroLab can reference that file's location
+#         each time it is started instead of using its default ProgramData file.
+#         (TODO: this is not yet impmlemented.)
 
-        Parameters
-        ----------
-        path : Union[str, Path], optional
-            The location to save the instrument registry file to.
-        update_file : bool, optional
-            Force PyroLab to update it's default instrument registry file 
-            location. TODO: NotYetImplemented
-        """
-        if path:
-            if type(path) is str:
-                path = Path(path)
-        else:
-            path = INSTRUMENT_REGISTY_FILE
-        items = {name: info.to_dict() for name, info in self.instruments.items()}
-        with path.open('w') as fout:
-            fout.write(dump(items))
+#         Parameters
+#         ----------
+#         path : Union[str, Path], optional
+#             The location to save the instrument registry file to.
+#         update_file : bool, optional
+#             Force PyroLab to update it's default instrument registry file 
+#             location. TODO: NotYetImplemented
+#         """
+#         if path:
+#             if type(path) is str:
+#                 path = Path(path)
+#         else:
+#             path = INSTRUMENT_REGISTY_FILE
+#         items = {name: info.to_dict() for name, info in self.instruments.items()}
+#         with path.open('w') as fout:
+#             fout.write(dump(items))
         
-        if update_file:
-            raise NotImplementedError
+#         if update_file:
+#             raise NotImplementedError
 
-    def prettyprint(self) -> None:
-        """
-        Utility for pretty printing the instruments contained within the 
-        registry.
-        """
-        pp = PrettyPrinter()
-        pp.pprint(self.instruments)
+#     def prettyprint(self) -> None:
+#         """
+#         Utility for pretty printing the instruments contained within the 
+#         registry.
+#         """
+#         pp = PrettyPrinter()
+#         pp.pprint(self.instruments)
 
 
 # import uuid

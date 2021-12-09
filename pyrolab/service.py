@@ -14,6 +14,7 @@ Submodule defining interfaces for PyroLab services.
 from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Type, Optional, Callable
+from pyrolab.utils import generate_random_name
 
 from pyrolab.utils.configure import Configuration
 
@@ -61,13 +62,19 @@ class Service:
 
 class ServiceInfo(Configuration):
     """
-    Groups together information about a PyroLab service, including connection
-    parameters for ``autoconnect()``.
+    Groups together information about a PyroLab service. 
+    
+    Includes connection parameters for ``autoconnect()``. Services defined in
+    other modules or libaries can also be included here, so long as the module
+    can be found by the Python environment.
 
     Parameters
     ----------
-    name : str
-        A unique human-readable name for identifying the instrument.
+    name : str, optional
+        A unique human-readable name for identifying the instrument. If not
+        specified, a random name of three hyphenated words will be generated.
+        You can also specify "auto n" where n is an integer to generate a
+        random name of n words.
     module : str
         The PyroLab module the class belongs to, as a string.
     classname : str
@@ -89,7 +96,7 @@ class ServiceInfo(Configuration):
         registration).
     """
     def __init__(self, 
-                 name: str="", 
+                 name: str="auto 3", 
                  module: str="", 
                  classname: str="", 
                  parameters: Dict[str, Any]={},
@@ -97,18 +104,24 @@ class ServiceInfo(Configuration):
                  instancemode: str="session",
                  server: str="default",
                  nameservers: List[str]=[]) -> None:
+        # if name[:4] == "auto":
+        #     _, count = name.split(" ")
+        #     name = generate_random_name(count=int(count))
         super().__init__()
         self.name = name
         self.module = module
         self.classname = classname
         self.parameters = parameters
-        self.description = description
+        self.description = {description}
         self.instancemode = instancemode
         self.server = server
         self.nameservers = nameservers
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}({self.fqn}) at {hex(id(self))}>"
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.fqn})"
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, self.__class__):
