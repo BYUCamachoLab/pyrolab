@@ -56,12 +56,13 @@ configuration settings.
 from __future__ import annotations
 import importlib
 import logging
+import warnings
 from multiprocessing import Value
 from multiprocessing.process import current_process
 import pkg_resources
 from pathlib import Path
 from pprint import PrettyPrinter
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Set, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Set, Tuple, Type, Union
 
 from yaml import safe_load, dump
 
@@ -141,27 +142,59 @@ def reset_config() -> None:
     USER_CONFIG_FILE.unlink(missing_ok=True)
 
 
-def load_nameserver_configs(filename: Union[str, Path]=None) -> Dict[str, NameServerConfiguration]:
+def validate_name(name) -> Tuple[str, bool]:
     """
-    Reads the nameserver configurations from a YAML file. 
+    Validates or automatically generates a name. 
     
-    If no filename is provided, the default file from PyroLab's persistent
-    data is used.
+    If name is "auto n", where n is an integer, it will be replaced with a 
+    random name composed of n hyphenated words.
 
     Parameters
     ----------
-    filename : str or Path, optional
-        The path to the configuration file. If not provided, the default file
-        from PyroLab's persistent data is used.
+    name : str
+        The name to validate.
 
     Returns
     -------
-    ns_configurations: Dict[str, NameserverConfiguration]
-        A dictionary of configuration names to NameserverConfiguration objects.
+    name : str
+        The validated name, or a random name if the name is "auto n".
+    is_auto : bool
+        Whether the name was automatically generated.
+
+    Raises
+    ------
+    ValueError
+        If the name is set to "auto n" but the string is not properly formatted.
+    """
+    if name[:5] == "auto ":
+        try:
+            _, count = name.split(" ")
+        except ValueError:
+            raise ValueError(f"Invalid name '{name}', must be formatted as 'auto <n>'")
+        return generate_random_name(count=int(count)), True
+    else:
+        return name, False
+
+
+def read_nameserver_configs(filename: Union[str, Path]) -> List[Tuple[str, NameServerConfiguration]]:
+    """
+    Reads the nameserver configurations from a YAML file. 
+
+    Parameters
+    ----------
+    filename : str or Path
+        The path to the configuration file.
+
+    Returns
+    -------
+    nscfgs: List[Tuple[str, DaemonConfiguration]]
+        A list of tuples, each being the configuration name with its 
+        corresponding :py:class:`NameserverConfiguration` object.
 
     Examples
     --------
-    Suppose we have the following configuration file:
+    Here's a possible configuration file. Keys not defined assume the default
+    values (see the :py:class:`NameServerConfiguration` class).
 
     .. code-block:: yaml
         nameservers:
@@ -176,66 +209,40 @@ def load_nameserver_configs(filename: Union[str, Path]=None) -> Dict[str, NameSe
             - development:
                 host: localhost
                 ns_port: 9090
-
-    Note that, regardless of whether it is present in the file, the default
-    configuration is always available. It has the following settings:
-
-    .. code-block:: yaml
-        nameservers:
-            - default:
-                host: localhost
-                broadcast: false
-                ns_port: 9090
-                ns_bchost: localhost
-                ns_bcport: 9091
-                ns_autoclean: 0.0
-                storage_type: sql
-                storage_filename: <pyrolab default data directory>
-
-    If a profile named "default" exists in the file, the base default is 
-    overridden. Many places in PyroLab read the default configuration, so be
-    careful and make sure you actually want to change the default.
     
-    >>> from pyrolab.configure import load_nameserver_configs
-    >>> nsconfigs = load_nameserver_configs("config.yaml")
-    >>> list(nsconfigs.keys())
+    >>> from pyrolab.configure import read_nameserver_configs
+    >>> nsconfigs = read_nameserver_configs("config.yaml")
+    >>> [cfg[0] for cfg in nsconfigs]
     ['default', 'production', 'development']
     """
-    if filename is None:
-        filename = get_config_file()
     filename = Path(filename)
     if not filename.exists():
         raise FileNotFoundError(f"Configuration file '{filename}' not found.")
     with open(filename, "r") as f:
         config = safe_load(f)
-    ns_configurations = {"default": NameServerConfiguration()}
-    if "nameservers" in config:
-        for ns in config["nameservers"]:
-            ns_name, ns_config = list(ns.items())[0]
-            ns_configurations[ns_name] = NameServerConfiguration(**ns_config)
-        return ns_configurations
-    else:
-        # raise ValueError(f"Configuration file '{filename}' does not contain a 'nameservers' section.")
-        return ns_configurations
+    nscfgs = []
+    if config:
+        if "nameservers" in config:
+            for ns in config["nameservers"]:
+                name, config = list(ns.items())[0]
+                nscfgs.append((name, NameServerConfiguration(**config)))
+    return nscfgs
 
 
-def load_daemon_configs(filename: Union[str, Path]=None) -> Dict[str, DaemonConfiguration]:
+def read_daemon_configs(filename: Union[str, Path]) -> List[Tuple[str, DaemonConfiguration]]:
     """
-    Reads the daemon configurations from a YAML file. 
-    
-    If no filename is provided, the default file from PyroLab's persistent
-    data is used.
+    Reads the daemon configurations from a YAML file.
 
     Parameters
     ----------
-    filename : str or Path, optional
-        The path to the configuration file. If not provided, the default file
-        from PyroLab's persistent data is used.
+    filename : str or Path
+        The path to the configuration file.
 
     Returns
     -------
-    d_configurations: Dict[str, NameserverConfiguration]
-        A dictionary of configuration names to DaemonConfiguration objects.
+    dcfgs: List[Tuple[str, DaemonConfiguration]]
+        A list of tuples, each being the configuration name with its 
+        corresponding :py:class:`DaemonConfiguration` object.
 
     Examples
     --------
@@ -251,62 +258,42 @@ def load_daemon_configs(filename: Union[str, Path]=None) -> Dict[str, DaemonConf
                 host: public
                 servertype: multiplex
 
-    Note that, regardless of whether it is present in the file, the default
-    configuration is always available. It has the following settings:
-
-    .. code-block:: yaml
-        daemons:
-            - default:
-                classname: Daemon
-                host: localhost
-                servertype: thread
-
-    If a profile named "default" exists in the file, the base default is 
-    overridden. Many places in PyroLab read the default configuration, so be
-    careful and make sure you actually want to change the default.
+    We could then read it like this:
     
-    >>> from pyrolab.configure import load_daemon_configs
-    >>> dconfigs = load_daemon_configs("config.yaml")
-    >>> list(dconfigs.keys())
-    ['default', 'lockable', 'multiplexed']
+    >>> from pyrolab.configure import read_daemon_configs
+    >>> dconfigs = read_daemon_configs("config.yaml")
+    >>> [daemon[0] for daemon in dconfigs]
+    ['lockable', 'multiplexed']
     """
-    if filename is None:
-        filename = get_config_file()
     filename = Path(filename)
     if not filename.exists():
         raise FileNotFoundError(f"Configuration file '{filename}' not found.")
     with open(filename, "r") as f:
         config = safe_load(f)
-    s_configurations = {}
-    if "daemons" in config:
-        for listing in config["daemons"]:
-            s_name, s_config = list(listing.items())[0]
-            s_configurations[s_name] = DaemonConfiguration(**s_config)
-        if not s_configurations and 'default' not in s_configurations:
-            s_configurations = {"default": DaemonConfiguration()}
-        return s_configurations
-    else:
-        # raise ValueError(f"Configuration file '{filename}' does not contain a 'servers' section.")
-        return s_configurations
+    dcfgs = []
+    if config:
+        if "daemons" in config:
+            for daemon in config["daemons"]:
+                name, config = list(daemon.items())[0]
+                # dcfgs[name] = DaemonConfiguration(**config)
+                dcfgs.append((name, DaemonConfiguration(**config)))
+    return dcfgs
 
 
-def load_service_configs(filename: Union[str, Path]=None) -> Dict[str, ServiceConfiguration]:
+def read_service_configs(filename: Union[str, Path]) -> List[Tuple[str, ServiceConfiguration]]:
     """
     Reads the services configurations from a YAML file. 
-    
-    If no filename is provided, the default file from PyroLab's persistent
-    data is used.
 
     Parameters
     ----------
-    filename : str or Path, optional
-        The path to the configuration file. If not provided, the default file
-        from PyroLab's persistent data is used.
+    filename : str or Path
+        The path to the configuration file.
 
     Returns
     -------
-    service_configs: Dict[str, ServiceConfiguration]
-        A dictionary of configuration names to NameserverConfiguration objects.
+    scfgs: List[Tuple[str, ServiceConfiguration]]
+        A list of tuples, each being the configuration names with its
+        corresponding :py:class:`ServiceConfiguration` object.
 
     Examples
     --------
@@ -334,83 +321,55 @@ def load_service_configs(filename: Union[str, Path]=None) -> Dict[str, ServiceCo
                 server: lockable
                 nameservers: 
                     - production
+
+    We could then read it like this:
     
-    >>> from pyrolab.configure import load_service_configs
-    >>> services = load_service_configs("config.yaml")
-    >>> list(services.keys())
+    >>> from pyrolab.configure import read_service_configs
+    >>> services = read_service_configs("config.yaml")
+    >>> [service[0] for service in services]
     ['asgard.wolverine', 'asgard.hulk']
     """
-    if filename is None:
-        filename = get_config_file()
     filename = Path(filename)
     if not filename.exists():
         raise FileNotFoundError(f"Configuration file '{filename}' not found.")
     with open(filename, "r") as f:
         config = safe_load(f)
-    services = {}
-    if "services" in config:
-        for listing in config["services"]:
-            s_name, s_config = list(listing.items())[0]
-            if s_name[:4] == "auto":
-                _, count = s_name.split(" ")
-                s_name = generate_random_name(count=int(count))
-            services[s_name] = ServiceConfiguration(name=s_name, **s_config)
-        return services
-    else:
-        # raise ValueError(f"Configuration file '{filename}' does not contain a 'services' section.")
-        return services
+    scfgs = []
+    if config:
+        if "services" in config:
+            for listing in config["services"]:
+                name, config = list(listing.items())[0]
+                scfgs.append((name, ServiceConfiguration(**config)))
+    return scfgs
 
 
-def get_servers_used_by_services(service_cfgs: Dict[str, Any]) -> List[str]:
-    """
-    Finds all the required servers for a given service configuration.
+# def get_servers_used_by_services(service_cfgs: Dict[str, Any]) -> List[str]:
+#     """
+#     Finds all the required servers for a given service configuration.
 
-    Not all servers defined in the configuration file are necessarily used.
-    This function finds all the servers that are actually used by the
-    defined services.
+#     Not all servers defined in the configuration file are necessarily used.
+#     This function finds all the servers that are actually used by the
+#     defined services.
 
-    Parameters
-    ----------
-    service_cfgs : Dict[str, Any]
-        A dictionary of service configurations, the output of 
-        :py:func:`load_service_configs`.
+#     Parameters
+#     ----------
+#     service_cfgs : Dict[str, Any]
+#         A dictionary of service configurations, the output of 
+#         :py:func:`read_service_configs`.
 
-    Returns
-    -------
-    required_servers : List[str]
-        A list of the names of the required servers.
+#     Returns
+#     -------
+#     required_servers : List[str]
+#         A list of the names of the required servers.
 
-    Examples
-    --------
-    >>> from pyrolab.configure import load_service_configs, get_required_servers
-    >>> services = load_service_configs("config.yaml")
-    >>> get_required_servers(services) 
-    ['lockable']
-    """
-    return list(set([v['server'] for v in service_cfgs.values()]))
-
-
-def get_services_for_server(servername: str, services: Optional[Dict[str, Any]]=None) -> Dict[str, ServiceConfiguration]:
-    """
-    Finds all the services that use a given server.
-
-    Parameters
-    ----------
-    server_name : str
-        The name of the server.
-    services : Dict[str, Any], optional
-        A dictionary of service configurations, the output of
-        :py:func:`load_service_configs`. If not provided, the configuration is
-        determined by reading the default (or persisted) configuration file.
-    
-    Returns
-    -------
-    services : List[Dict[str, Any]]
-        A list of service configurations (by name) that use the server.
-    """
-    if not services:
-        services = load_service_configs()
-    return {k: v for k, v in services.items() if v['server'] == servername}
+#     Examples
+#     --------
+#     >>> from pyrolab.configure import read_service_configs, get_required_servers
+#     >>> services = read_service_configs("config.yaml")
+#     >>> get_required_servers(services) 
+#     ['lockable']
+#     """
+#     return list(set([v['daemon'] for v in service_cfgs.values()]))
 
 
 def fqn(module, classname) -> str:
@@ -483,6 +442,9 @@ class GlobalConfiguration:
         """
         if cls._instance is None:
             inst = cls.__new__(cls)
+            inst.nameservers = {}
+            inst.daemons = {}
+            inst.services = {}
             cls._instance = inst
         return cls._instance
 
@@ -502,6 +464,23 @@ class GlobalConfiguration:
             return USER_CONFIG_FILE
         else:
             return Path(pkg_resources.resource_filename('pyrolab', "data/config/default.yaml"))
+
+    def validate(self, filename: Union[str, Path]) -> bool:
+        """
+        Validates the configuration.
+
+        Checks the following items:
+        * Nameservers are defined.
+        * Daemons are defined.
+        * Services are defined.
+        * Nameserver and daemon names are unique.
+
+        Returns
+        -------
+        bool
+            ``True`` if the configuration is valid, ``False`` otherwise.
+        """
+        return True
 
     def default_load(self) -> None:
         """
@@ -523,9 +502,55 @@ class GlobalConfiguration:
         """
         if current_process().name != 'MainProcess':
             raise Exception("GlobalConfiguration should only be dynamically loaded by the main process.")
-        self.nameservers = load_nameserver_configs(filename)
-        self.daemons = load_daemon_configs(filename)
-        self.services = load_service_configs(filename)
+        for name, config in read_nameserver_configs(filename):
+            if not self.add_nameserver(name, config):
+                warnings.warn(f"Nameserver '{name}' already exists, cannot be added.")
+        for name, config in read_daemon_configs(filename):
+            if not self.add_daemon(name, config):
+                warnings.warn(f"Daemon '{name}' already exists, cannot be added.")
+        for name, config in read_service_configs(filename):
+            if not self.add_service(name, config):
+                warnings.warn(f"Service '{name}' already exists, cannot be added.")
+
+    def persist(self):
+        """
+        Persists the configuration to the locked configuration file.
+
+        This method writes the current configuration to the locked configuration
+        file.
+        """
+        pass
+
+    def add_nameserver(self, name: str, config: NameServerConfiguration) -> bool:
+        """
+        Adds a nameserver to the configuration.
+
+        If an existing nameserver with the same name is found, it is not added.
+        The return status indicates whether the nameserver was added 
+        sucessfully.
+
+        Parameters
+        ----------
+        name : str
+            The name of the nameserver.
+        config : NameserverConfiguration
+            The nameserver configuration.
+
+        Returns
+        -------
+        bool
+            ``True`` if the nameserver was added, ``False`` otherwise.
+        """
+        validname, isauto = validate_name(name)
+        if validname in self.nameservers and not isauto:
+            return False
+
+        if validname in self.nameservers and isauto:
+            while validname in self.nameservers:
+                validname, _ = validate_name(name)
+
+        self.nameservers[validname] = config
+        return True
 
     def list_nameservers(self) -> List[str]:
         """
@@ -549,6 +574,36 @@ class GlobalConfiguration:
         """
         return self.nameservers[nameserver]
 
+    def add_daemon(self, name: str, config: DaemonConfiguration) -> bool:
+        """
+        Adds a daemon to the configuration.
+
+        If an existing daemon with the same name is found, it is not added.
+        The return status indicates whether the daemon was added sucessfully.
+
+        Parameters
+        ----------
+        name : str
+            The name of the daemon.
+        config : DaemonConfiguration
+            The daemon configuration.
+
+        Returns
+        -------
+        bool
+            ``True`` if the daemon was added, ``False`` otherwise.
+        """
+        validname, isauto = validate_name(name)
+        if validname in self.daemons and not isauto:
+            return False
+
+        if validname in self.daemons and isauto:
+            while validname in self.daemons:
+                validname, _ = validate_name(name)
+
+        self.daemons[validname] = config
+        return True
+
     def list_daemons(self) -> List[str]:
         """
         Lists available daemon configurations.
@@ -570,6 +625,36 @@ class GlobalConfiguration:
             The daemon configuration.
         """
         return self.daemons[daemon]
+
+    def add_service(self, name: str, config: ServiceConfiguration) -> bool:
+        """
+        Adds a service to the configuration.
+
+        If an existing service with the same name is found, it is not added.
+        The return status indicates whether the service was added sucessfully.
+
+        Parameters
+        ----------
+        name : str
+            The name of the service.
+        config : ServiceConfiguration
+            The service configuration.
+
+        Returns
+        -------
+        bool
+            ``True`` if the service was added, ``False`` otherwise.
+        """
+        validname, isauto = validate_name(name)
+        if validname in self.services and not isauto:
+            return False
+
+        if validname in self.services and isauto:
+            while validname in self.services:
+                validname, _ = validate_name(name)
+
+        self.services[validname] = config
+        return True
 
     def list_services(self) -> List[str]:
         """
@@ -593,6 +678,42 @@ class GlobalConfiguration:
         """
         return self.services[service]
 
+    def list_services_for_daemon(self, daemon: str) -> List[str]:
+        """
+        Lists services for a daemon.
+
+        Parameters
+        ----------
+        daemon : str
+            The name of the daemon.
+
+        Returns
+        -------
+        List[str]
+            The list of services.
+        """
+        return [k for k, v in self.services.items() if v.daemon == daemon]
+
+    def get_service_configs_for_daemon(self, daemon: str) -> Dict[str, ServiceConfiguration]:
+        """
+        Finds all the services that use a given server.
+
+        Parameters
+        ----------
+        server_name : str
+            The name of the server.
+        services : Dict[str, Any], optional
+            A dictionary of service configurations, the output of
+            :py:func:`read_service_configs`. If not provided, the configuration is
+            determined by reading the default (or persisted) configuration file.
+        
+        Returns
+        -------
+        services : List[Dict[str, Any]]
+            A list of service configurations (by name) that use the server.
+        """
+        return {k: v for k, v in self.services.items() if v['daemon'] == daemon}
+
 
 
 # def get_class(self) -> Type[Service]:
@@ -610,188 +731,3 @@ class GlobalConfiguration:
 #     if self.server == "LockableDaemon":
 #         obj = create_lockable(obj)
 #     return obj
-
-
-# class ServiceRegistry:
-#     """
-#     Contains a registry of InstrumentInfo objects. 
-
-#     PyroLab maintains a reference to a single InstrumentRegistry object, 
-#     although the class is not implemented as a Singleton. This means that the
-#     class can be instantiated by external scripts to generate registry files
-#     that can then be loaded and saved by PyroLab, if desired.
-
-#     InstrumentRegistry is iterable; it can be used as:
-
-#     ```python
-#     for instrument in registry:
-#         # do something
-#     ```
-#     """
-#     def __init__(self) -> None:
-#         self.instruments: Dict[str, InstrumentInfo] = {}
-
-#     def __iter__(self) -> Generator[InstrumentInfo, None, None]:
-#         yield from self.instruments.values()
-
-#     def __len__(self) -> int:
-#         return len(self.instruments)
-
-#     def empty(self) -> None:
-#         """
-#         Empties the instrument registry.
-#         """
-#         self.instruments = {}
-
-#     def get(self, name: str) -> InstrumentInfo:
-#         """
-#         Gets an InstrumentInfo object by name.
-
-#         Parameters
-#         ----------
-#         name : str
-#             The name of the InstrumentInfo to get.
-
-#         Returns
-#         -------
-#         info : InstrumentInfo
-#             The info object in the registry with the given name.
-#         """
-#         return self.instruments[name]
-
-#     def register(self, info: InstrumentInfo):
-#         """
-#         Register an InstrumentInfo object. Note that each info's 
-#         ``registered_name`` must be unique within a registry.
-
-#         Parameters
-#         ----------
-#         info : InstrumentInfo
-#             The information object to register.
-
-#         Raises
-#         ------
-#         Exception
-#             If the ``registered_name`` already exists in the registry.
-#         """
-#         if info.name in self.instruments:
-#             raise Exception(f"name '{info.name}' already reserved in registry!")
-#         else:
-#             self.instruments[info.name] = info
-
-#     def unregister(self, name):
-#         """
-#         Unregisters a InstrumentInfo from the registry to prevent its being
-#         persisted.
-
-#         Parameters
-#         ----------
-#         name : str
-#             The name the class uses when registering itself with a nameserver.
-
-#         Raises
-#         ------
-#         Exception
-#             If the name does not exist in the registry.
-#         """
-#         if name not in self.instruments:
-#             raise Exception(f"name '{name}'' not found in registry!")
-#         else:
-#             del self.instruments[name]
-
-#     def load(self, path: Union[str, Path]=""):
-#         """
-#         Loads InstrumentInfo from a yaml file. Default file is the program's
-#         internal data file, but a user file can be supplied.
-
-#         Parameters
-#         ----------
-#         path : Union[str, Path], optional
-#             The path to the registry file to use. If not provided, uses the
-#             program's default data file.
-
-#         Returns
-#         -------
-#             The Registry object is loading is successful, else False.
-#         """
-#         if path:
-#             if type(path) is str:
-#                 path = Path(path)
-#         else:
-#             path = INSTRUMENT_REGISTY_FILE
-#         if path.exists():
-#             self.empty()
-#             with path.open('r') as fin:
-#                 infos = safe_load(fin)
-#                 for _, info in infos.items():
-#                     obj = InstrumentInfo.from_dict(info)
-#                     self.instruments[obj.name] = obj
-#             return self
-#         return False
-
-#     def save(self, path: Union[str, Path]="", update_file: bool=False):
-#         """
-#         Saves the current registry to file for persisting instruments.
-
-#         A path can be specified to create a new file with Instrument 
-#         information. This is for inspection or development purposes. If
-#         ``update_file`` is True, PyroLab can reference that file's location
-#         each time it is started instead of using its default ProgramData file.
-#         (TODO: this is not yet impmlemented.)
-
-#         Parameters
-#         ----------
-#         path : Union[str, Path], optional
-#             The location to save the instrument registry file to.
-#         update_file : bool, optional
-#             Force PyroLab to update it's default instrument registry file 
-#             location. TODO: NotYetImplemented
-#         """
-#         if path:
-#             if type(path) is str:
-#                 path = Path(path)
-#         else:
-#             path = INSTRUMENT_REGISTY_FILE
-#         items = {name: info.to_dict() for name, info in self.instruments.items()}
-#         with path.open('w') as fout:
-#             fout.write(dump(items))
-        
-#         if update_file:
-#             raise NotImplementedError
-
-#     def prettyprint(self) -> None:
-#         """
-#         Utility for pretty printing the instruments contained within the 
-#         registry.
-#         """
-#         pp = PrettyPrinter()
-#         pp.pprint(self.instruments)
-
-
-# import uuid
-# def create_unique_resource(cls, **kwargs) -> Instrument:
-#     """
-#     Dynamically create a new class that is subclassed from ``cls``. Adds 
-#     attributes to the class as key-value pairs from ``**kwargs``.
-
-#     Parameters
-#     ----------
-#     cls : class
-#         The class to be used as a template while dynamically creating a new
-#         class.
-#     **kwargs
-#         Any number of key-value pairs to be added as attribtes to the class.
-    
-#     Returns
-#     -------
-#     class
-#         A subclass that inherits from the original class.
-#     """
-#     class_id = uuid.uuid4().hex
-#     kwargs["id"] = class_id
-#     UniqueResource = type(
-#         cls.__name__ + "_" + class_id,
-#         (cls, ),
-#         kwargs,
-#     )
-#     return UniqueResource

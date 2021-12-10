@@ -7,23 +7,13 @@
 from multiprocessing.process import current_process
 import click
 
-from pyrolab.manager import DaemonManager
-from pyrolab.nameserver import start_ns_loop
-from pyrolab.configure import (
-    update_config,
-    reset_config,
-    load_nameserver_configs, 
-    load_daemon_configs, 
-    load_service_configs,
-    get_servers_used_by_services,
-    get_services_for_server,
-)
-# from pyrolab.configure import GlobalConfiguration
+from pyrolab.manager import ProcessManager
+from pyrolab.configure import GlobalConfiguration, update_config, reset_config
 from pyrolab.utils import bcolors
 
 
-# GLOBAL_CONFIG = GlobalConfiguration.instance()
-# GLOBAL_CONFIG.default_load()
+GLOBAL_CONFIG = GlobalConfiguration.instance()
+GLOBAL_CONFIG.default_load()
 
 
 def abort_if_false(ctx, param, value):
@@ -50,14 +40,18 @@ def nameserver(**kwargs):
     """
     Launch a nameserver. If none specified, all are launched.
     """
-    if len(kwargs['nameserver']) == 0:
-        print(f"Launching nameserver 'default'...")
-        nscfg = load_nameserver_configs()['default']
+    print(f"Collecting nameservers...")
+    if len(kwargs['nameserver']) == 0 or kwargs['nameserver'][0] == 'all':
+        which = GLOBAL_CONFIG.list_nameservers()
     else:
-        print(f"Launching nameserver '{kwargs['nameserver'][0]}'...")
-        nscfg = load_nameserver_configs()[kwargs['nameserver'][0]]
-    nscfg.update_pyro_config()
-    start_ns_loop(nscfg)
+        which = [*kwargs['nameserver']]
+
+    if current_process().name == 'MainProcess':
+        manager = ProcessManager.instance()
+        for nameserver in which:
+            print(f"Launching nameserver '{nameserver}'...")
+            manager.launch_nameserver(nameserver)
+        manager.wait_for_interrupt()
 
 
 @launch.command()
@@ -68,17 +62,15 @@ def daemon(**kwargs):
     """
     print(f"Collecting daemons...")
     if len(kwargs['daemons']) == 0 or kwargs['daemons'][0] == 'all':
-        which = load_daemon_configs().keys()
+        which = GLOBAL_CONFIG.list_daemons()
     else:
         which = [*kwargs['daemons']]
 
     if current_process().name == 'MainProcess':
-        print('is main process')
-        dm = DaemonManager.instance()
-        print('got the instance')
+        dm = ProcessManager.instance()
         for daemon in which:
             print(f"Launching daemon '{daemon}'...")
-            dm.launch(daemon)
+            dm.launch_daemon(daemon)
         dm.wait_for_interrupt()
 
 
@@ -133,15 +125,13 @@ def nameservers(ctx, **kwargs):
     """
     if not ctx.obj['verbose']:
         print('Nameserver:')
-        for nscfg in load_nameserver_configs().keys():
+        for nscfg in GLOBAL_CONFIG.list_nameservers():
             print(f'  {nscfg}')
     else:
         print(f"Nameserver configuration (verbose):")
-        cfgs = load_nameserver_configs()
-            # cfgs = {kwargs['details']: load_nameserver_configs()[kwargs['details']]}
-        for nscfg in cfgs.keys():
+        for nscfg in GLOBAL_CONFIG.list_nameservers():
             print(f'  {nscfg}:')
-            for k, v in cfgs[nscfg].to_dict().items():
+            for k, v in GLOBAL_CONFIG.get_nameserver_config(nscfg).to_dict().items():
                 print(f'    {k}: {v}')
 
             
@@ -153,14 +143,13 @@ def daemons(ctx, **kwargs):
     """
     if not ctx.obj['verbose']:
         print('Daemons:')
-        for daemon in load_daemon_configs().keys():
+        for daemon in GLOBAL_CONFIG.list_daemons():
             print(f'  {daemon}')
     else:
         print(f"Daemon configuration (verbose):")
-        cfgs = load_daemon_configs()
-        for daemon in cfgs.keys():
+        for daemon in GLOBAL_CONFIG.list_daemons():
             print(f'  {daemon}:')
-            for k, v in cfgs[daemon].to_dict().items():
+            for k, v in GLOBAL_CONFIG.get_daemon_config(daemon).to_dict().items():
                 print(f'    {k}: {v}')
 
 
@@ -172,19 +161,19 @@ def services(ctx, **kwargs):
     List services.
     """
     if not kwargs['daemon']:
-        services = load_service_configs()
+        services = GLOBAL_CONFIG.list_services()
     else:
-        services = get_services_for_server(kwargs['daemon'])
+        services = GLOBAL_CONFIG.list_services_for_daemon(kwargs['daemon'])
 
     if not ctx.obj['verbose']:
         print('Services:')
-        for service in services.keys():
+        for service in services:
             print(f'  {service}')
     else:
         print(f"Service configuration (verbose):")
-        for service in services.keys():
+        for service in services:
             print(f'  {service}:')
-            for k, v in services[service].to_dict().items():
+            for k, v in GLOBAL_CONFIG.get_service_config(service).to_dict().items():
                 print(f'    {k}: {v}')
 
 
