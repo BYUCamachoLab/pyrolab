@@ -70,11 +70,10 @@ class ServiceConfiguration(Configuration):
 
     Parameters
     ----------
-    name : str, optional
-        A unique human-readable name for identifying the instrument. If not
-        specified, a random name of three hyphenated words will be generated.
-        You can also specify "auto n" where n is an integer to generate a
-        random name of n words.
+    name : str
+        A unique human-readable name for identifying the instrument. If you're
+        not creative, you can use :py:func:`pyrolab.utils.generate_random_name`
+        to generate a random name.
     module : str
         The PyroLab module the class belongs to, as a string.
     classname : str
@@ -94,19 +93,21 @@ class ServiceConfiguration(Configuration):
     nameservers : List[str], optional
         A list of nameservers to register the service with. Default is [] (no
         registration).
+    kwargs : dict, optional
+        These arguments are ignored. They are only here to allow for
+        compatibility with the ``Configuration`` class when reinstantiating
+        from dictionary.
     """
     def __init__(self, 
-                 name: str="auto 3", 
+                 name: str="", 
                  module: str="", 
                  classname: str="", 
                  parameters: Dict[str, Any]={},
                  description: Union[str, Set[str]]="", 
                  instancemode: str="session",
-                 server: str="default",
-                 nameservers: List[str]=[]) -> None:
-        # if name[:4] == "auto":
-        #     _, count = name.split(" ")
-        #     name = generate_random_name(count=int(count))
+                 daemon: str="default",
+                 nameservers: List[str]=[],
+                 **kwargs) -> None:
         super().__init__()
         self.name = name
         self.module = module
@@ -116,7 +117,7 @@ class ServiceConfiguration(Configuration):
             description = {description}
         self.description = description
         self.instancemode = instancemode
-        self.server = server
+        self.daemon = daemon
         self.nameservers = nameservers
 
     def __repr__(self) -> str:

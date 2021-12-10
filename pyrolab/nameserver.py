@@ -56,6 +56,16 @@ class NameServerConfiguration(Configuration):
         The filename of the storage to use for the nameserver. Defaults to "".
         Can be specified if storage_type is "sql" or "dbm". If not specified,
         internal data directories will be used.
+    storage : str, optional
+        A Pyro5-style storage string. It's easier and safer to specify 
+        ``storage_type`` and ``storage_filename``. Sometimes, however, 
+        reconstructing this object provides this parameter, hence it's 
+        available. If this argument is specified, it takes precedence. 
+        Defaults to "".
+    kwargs : dict, optional
+        These arguments are ignored. They are only here to allow for
+        compatibility with the ``Configuration`` class when reinstantiating
+        from dictionary.
 
     Raises
     ------
@@ -70,30 +80,34 @@ class NameServerConfiguration(Configuration):
                  ns_bcport: int=9091,
                  ns_autoclean: float=0.0,
                  storage_type: str="memory",
-                 storage_filename: str="") -> None:
+                 storage_filename: str="",
+                 storage: str="",
+                 **kwargs) -> None:
+        super().__init__()
         if host == "public":
             host = get_ip()
-        super().__init__(
-            host=host,
-            ns_host=host,
-            ns_port=ns_port,
-            broadcast=broadcast,
-            ns_bchost=ns_bchost,
-            ns_bcport=ns_bcport,
-            ns_autoclean=ns_autoclean,
-        )
-        if storage_type not in ("memory", "sql", "dbm"):
-            raise ValueError("invalid storage type: " + storage_type)
-        if storage_type != "memory" and not storage_filename:
-            storage_filename = str(STORAGE_FILE.with_suffix(f".{storage_type}"))
-        if storage_type == "sql":
-            self.storage = f"sql:{storage_filename}"
-        elif storage_type == "dbm":
-            self.storage = f"dbm:{storage_filename}"
-        elif storage_type == "memory":
-            self.storage = storage_type
+        self.host = host
+        self.ns_host = host
+        self.ns_port = ns_port
+        self.broadcast = broadcast
+        self.ns_bchost = ns_bchost
+        self.ns_bcport = ns_bcport
+        self.ns_autoclean = ns_autoclean
+        if storage:
+            self.storage = storage
         else:
-            raise ValueError(f"Unknown storage type: {storage_type}")
+            if storage_type not in ("memory", "sql", "dbm"):
+                raise ValueError("invalid storage type: " + storage_type)
+            if storage_type != "memory" and not storage_filename:
+                storage_filename = str(STORAGE_FILE.with_suffix(f".{storage_type}"))
+            if storage_type == "sql":
+                self.storage = f"sql:{storage_filename}"
+            elif storage_type == "dbm":
+                self.storage = f"dbm:{storage_filename}"
+            elif storage_type == "memory":
+                self.storage = storage_type
+            else:
+                raise ValueError(f"Unknown storage type: {storage_type}")
 
 
 # # Inheriting from the Nameserver

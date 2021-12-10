@@ -45,7 +45,7 @@ services:
         - serialno: 27003366
       description: Rotational motion
       instancemode: single
-      server: lockable
+      daemon: lockable
       nameservers: 
         - production
   - asgard.hulk:
@@ -55,7 +55,7 @@ services:
         - serialno: 27003497
       description: Longitudinal motion
       instancemode: single
-      server: lockable
+      daemon: lockable
       nameservers: 
         - production
   - asgard.captainamerica:
@@ -65,7 +65,7 @@ services:
         - serialno: 27504851
       description: Lateral motion
       instancemode: single
-      server: lockable
+      daemon: lockable
       nameservers: 
         - production
 
@@ -78,5 +78,6 @@ autolaunch:
     - asgard.hulk
     - asgard.captainamerica
 
-  features:
-    autoreload: true
+features:
+  autoreload_config: true
+  autorelaunch: true
