@@ -68,6 +68,7 @@ from pyrolab.nameserver import NameServerConfiguration
 from pyrolab.daemon import DaemonConfiguration
 from pyrolab.service import ServiceConfiguration
 from pyrolab.utils import generate_random_name
+from pyrolab.utils.network import get_ip
 
 
 log = logging.getLogger(__name__)
@@ -206,6 +207,12 @@ def read_nameserver_configs(filename: Union[str, Path]) -> List[Tuple[str, NameS
     return nscfgs
 
 
+def _revert_ipaddress_to_keyword(config: dict) -> None:
+    for ipattr in ["host", "ns_host", "ns_bchost"]:
+        if config.get(ipattr, None) == get_ip():
+            config[ipattr] = "public"
+
+
 def nameserver_configs_to_yaml(nscfgs: Dict[str, NameServerConfiguration]) -> str:
     """
     Writes the nameserver configurations to a YAML file. 
@@ -219,6 +226,7 @@ def nameserver_configs_to_yaml(nscfgs: Dict[str, NameServerConfiguration]) -> st
     config = {"nameservers": []}
     for name, nscfg in nscfgs.items():
         config["nameservers"].append({name: nscfg.to_dict()})
+        _revert_ipaddress_to_keyword(config["nameservers"][-1][name])
     return dump(config, default_flow_style=False)
 
 
@@ -286,6 +294,7 @@ def daemon_configs_to_yaml(dcfgs: Dict[str, DaemonConfiguration]) -> str:
     config = {"daemons": []}
     for name, dcfg in dcfgs.items():
         config["daemons"].append({name: dcfg.to_dict()})
+        _revert_ipaddress_to_keyword(config["daemons"][-1][name])
     return dump(config, default_flow_style=False)
 
 
@@ -470,6 +479,7 @@ class GlobalConfiguration:
             inst.nameservers = {}
             inst.daemons = {}
             inst.services = {}
+            inst.features = {}
             cls._instance = inst
         return cls._instance
 
@@ -515,6 +525,15 @@ class GlobalConfiguration:
         configuration object.
         """
         self.load_config_file(self.get_config_file())
+
+    def clear_all(self) -> None:
+        """
+        Clears all configuration data without reloading built-in defaults.
+        """
+        self.nameservers = {}
+        self.daemons = {}
+        self.services = {}
+        self.features = {}
 
     def load_config_file(self, filename: Union[str, Path]) -> None:
         """
