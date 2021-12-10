@@ -93,9 +93,9 @@ script like this:
 
 .. code-block:: python
 
-    from pyrolab.nameserver import load_nameserver_configs, start_ns_loop
+    from pyrolab.nameserver import read_nameserver_configs, start_ns_loop
 
-    configs = load_nameserver_configs("./ns_cfg.yml")
+    configs = read_nameserver_configs("./ns_cfg.yml")
     start_ns_loop(configs['default'])
 
 
