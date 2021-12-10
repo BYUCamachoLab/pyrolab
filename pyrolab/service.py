@@ -99,22 +99,18 @@ class ServiceConfiguration(Configuration):
         from dictionary.
     """
     def __init__(self, 
-                 name: str="", 
                  module: str="", 
                  classname: str="", 
                  parameters: Dict[str, Any]={},
-                 description: Union[str, Set[str]]="", 
+                 description: str="", 
                  instancemode: str="session",
                  daemon: str="default",
                  nameservers: List[str]=[],
                  **kwargs) -> None:
         super().__init__()
-        self.name = name
         self.module = module
         self.classname = classname
         self.parameters = parameters
-        if type(description) is not set:
-            description = {description}
         self.description = description
         self.instancemode = instancemode
         self.daemon = daemon

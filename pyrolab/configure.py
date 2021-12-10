@@ -54,26 +54,20 @@ configuration settings.
 """
 
 from __future__ import annotations
-import importlib
 import logging
 import warnings
-from multiprocessing import Value
-from multiprocessing.process import current_process
 import pkg_resources
 from pathlib import Path
-from pprint import PrettyPrinter
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Set, Tuple, Type, Union
+from multiprocessing.process import current_process
+from typing import Dict, List, Tuple, Union
 
 from yaml import safe_load, dump
 
 from pyrolab import PYROLAB_CONFIG_DIR, PYROLAB_DATA_DIR
 from pyrolab.nameserver import NameServerConfiguration
 from pyrolab.daemon import DaemonConfiguration
-from pyrolab.service import Service, ServiceConfiguration
+from pyrolab.service import ServiceConfiguration
 from pyrolab.utils import generate_random_name
-
-if TYPE_CHECKING:
-    from pyrolab.drivers import Instrument
 
 
 log = logging.getLogger(__name__)
@@ -81,28 +75,11 @@ log = logging.getLogger(__name__)
 
 CONFIG_DIR = PYROLAB_CONFIG_DIR / "config"
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-USER_CONFIG_FILE = CONFIG_DIR / "user_configuration.yaml"
 
 ACTIVE_DATA_DIR = PYROLAB_DATA_DIR / "activedata"
 ACTIVE_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-
-def get_config_file() -> Path:
-    """
-    Returns the path to the configuration file.
-
-    If a user configuration file exists, it is used. Otherwise, the default
-    configuration file is used.
-
-    Returns
-    -------
-    config_file : Path
-        The path to the configuration file.
-    """
-    if USER_CONFIG_FILE.exists():
-        return USER_CONFIG_FILE
-    else:
-        return Path(pkg_resources.resource_filename('pyrolab', "data/config/default.yaml"))
+USER_CONFIG_FILE = CONFIG_DIR / "user_configuration.yaml"
 
 
 def update_config(filename: Union[str, Path]=None) -> None:
@@ -229,6 +206,22 @@ def read_nameserver_configs(filename: Union[str, Path]) -> List[Tuple[str, NameS
     return nscfgs
 
 
+def nameserver_configs_to_yaml(nscfgs: Dict[str, NameServerConfiguration]) -> str:
+    """
+    Writes the nameserver configurations to a YAML file. 
+
+    Parameters
+    ----------
+    nscfgs : Dict[str, NameServerConfiguration]
+        A dictionary of configuration names to their corresponding 
+        :py:class:`NameserverConfiguration` objects.
+    """
+    config = {"nameservers": []}
+    for name, nscfg in nscfgs.items():
+        config["nameservers"].append({name: nscfg.to_dict()})
+    return dump(config, default_flow_style=False)
+
+
 def read_daemon_configs(filename: Union[str, Path]) -> List[Tuple[str, DaemonConfiguration]]:
     """
     Reads the daemon configurations from a YAML file.
@@ -278,6 +271,22 @@ def read_daemon_configs(filename: Union[str, Path]) -> List[Tuple[str, DaemonCon
                 # dcfgs[name] = DaemonConfiguration(**config)
                 dcfgs.append((name, DaemonConfiguration(**config)))
     return dcfgs
+
+
+def daemon_configs_to_yaml(dcfgs: Dict[str, DaemonConfiguration]) -> str:
+    """
+    Writes the daemon configurations to a YAML file.
+
+    Parameters
+    ----------
+    dcfgs : Dict[str, DaemonConfiguration]
+        A dictionary of configuration names to their corresponding 
+        :py:class:`DaemonConfiguration` objects.
+    """
+    config = {"daemons": []}
+    for name, dcfg in dcfgs.items():
+        config["daemons"].append({name: dcfg.to_dict()})
+    return dump(config, default_flow_style=False)
 
 
 def read_service_configs(filename: Union[str, Path]) -> List[Tuple[str, ServiceConfiguration]]:
@@ -341,6 +350,22 @@ def read_service_configs(filename: Union[str, Path]) -> List[Tuple[str, ServiceC
                 name, config = list(listing.items())[0]
                 scfgs.append((name, ServiceConfiguration(**config)))
     return scfgs
+
+
+def service_configs_to_yaml(scfgs: Dict[str, ServiceConfiguration]) -> str:
+    """
+    Writes the service configurations to a YAML file.
+
+    Parameters
+    ----------
+    scfgs : Dict[str, ServiceConfiguration]
+        A dictionary of configuration names to their corresponding 
+        :py:class:`ServiceConfiguration` objects.
+    """
+    config = {"services": []}
+    for name, scfg in scfgs.items():
+        config["services"].append({name: scfg.to_dict()})
+    return dump(config, default_flow_style=False)
 
 
 # def get_servers_used_by_services(service_cfgs: Dict[str, Any]) -> List[str]:
@@ -489,7 +514,7 @@ class GlobalConfiguration:
         This method reads the default configuration file and updates the
         configuration object.
         """
-        self.load_config_file(get_config_file())
+        self.load_config_file(self.get_config_file())
 
     def load_config_file(self, filename: Union[str, Path]) -> None:
         """
@@ -713,6 +738,16 @@ class GlobalConfiguration:
             A list of service configurations (by name) that use the server.
         """
         return {k: v for k, v in self.services.items() if v['daemon'] == daemon}
+
+    def to_yaml(self) -> str:
+        """
+        Returns the configuration as a YAML string.
+        """
+        nscfg = nameserver_configs_to_yaml(self.nameservers)
+        dcfg = daemon_configs_to_yaml(self.daemons)
+        scfg = service_configs_to_yaml(self.services)
+        # TODO: Include options
+        return f"{nscfg}\n{dcfg}\n{scfg}"
 
 
 

@@ -292,8 +292,7 @@ class DaemonRunner(multiprocessing.Process):
             for ns in serviceinfo.nameservers:
                 nscfg = GLOBAL_CONFIG.get_nameserver_config(ns)
                 ns = locate_ns(nscfg.host, nscfg.ns_port)
-                # ns.register(serviceinfo.name, uris[servicename], metadata=serviceinfo.description)
-                ns.register(servicename, uris[servicename], metadata=serviceinfo.description)
+                ns.register(servicename, uris[servicename], metadata={serviceinfo.description})
 
         self.process_message_queue()
         daemon.requestLoop(loopCondition=self.stay_alive)
