@@ -15,7 +15,7 @@ class bcolors:
 
 def generate_random_name(count=3) -> str:
     """
-    Reads ``count`` random words and returns them as a hyphenated string.
+    Concatenates ``count`` random words as a hyphenated string.
 
     Wordlist is located in pyrolab/data/wordlist.txt.
 
@@ -36,6 +36,4 @@ def generate_random_name(count=3) -> str:
     with open(path, 'r') as f:
         wordlist = f.read().splitlines()
 
-    # random.shuffle(wordlist)
-    # return '-'.join(wordlist[:count])
     return '-'.join([secrets.choice(wordlist) for _ in range(count)])
