@@ -10,12 +10,6 @@ Santec Tunable Semiconductor Laser 550 (TSL550)
 
 Driver for the Santec TSL-550 Tunable Laser.
 
-Contributors
- * Wesley Cassidy (https://github.com/wecassidy)
- * Sequoia Ploeg (https://github.com/sequoiap)
-
-Original repo: https://github.com/wecassidy/TSL550
-
 .. note::
 
    The Santec TSL-550 drivers, which among other things, makes the USB 
@@ -38,6 +32,8 @@ from serial.tools import list_ports
 
 from pyrolab.api import expose, behavior
 from pyrolab.drivers.lasers import Laser
+from pyrolab.errors import CommunicationException
+from scipy.constants import speed_of_light as C
 
 
 log = logging.getLogger(__name__)
@@ -68,6 +64,14 @@ class TSL550(Laser):
         The minimum wavelength of the laser in nanometers (value 1500).
     MAXIMUM_WAVELENGTH : float
         The maximum wavelength of the laser in nanometers (value 1630).
+    MINIMUM_POWER_DBM : float
+        The minimum power of the laser in dBm (value -10).
+    MAXIMUM_POWER_DBM : float
+        The maximum power of the laser in dBm (value 15).
+    MINIMUM_POWER_ATTENUATION : float
+        The minimum internal attenuation of the laser in dB (value 0).
+    MAXIMUM_POWER_ATTENUATION : float
+        The maximum internal attenuation of the laser is dB (value 30).
     SWEEP_OFF : int
         Constant to compare against the value of :py:func:`sweep_status` (value 0).
     SWEEP_RUNNING : int 
@@ -106,7 +110,15 @@ class TSL550(Laser):
 
     MINIMUM_WAVELENGTH = 1500
     MAXIMUM_WAVELENGTH = 1630
+    MINIMUM_POWER_DBM = -10
+    MAXIMUM_POWER_DBM = 15
+    MINIMUM_POWER_ATTENUATION = 0
+    MAXIMUM_POWER_ATTENUATION = 30
 
+    MINIMUM_FREQUENCY = C/MAXIMUM_WAVELENGTH
+    MAXIMUM_FREQUENCY = C/MINIMUM_WAVELENGTH
+    MINIMUM_POWER_MW = 10**(MINIMUM_POWER_DBM/10)
+    MAXIMUM_POWER_MW = 10**(MAXIMUM_POWER_DBM/10)
 
     @staticmethod
     def detect_devices(self) -> List[Dict[str, Any]]:
@@ -130,16 +142,29 @@ class TSL550(Laser):
         return device_info
 
 
-    def connect(self, address: str="", baudrate: int=9600, terminator: str="\r", timeout: int=100, query_delay: float=0.05) -> bool:
+    def connect(self, port: str="", baudrate: int=9600, terminator: str="\r",
+            timeout: int=100, query_delay: float=0.05) -> bool:
         """
         Connects to and initializes the laser. All parameters are keyword arguments.
 
         Parameters
         ----------
-        address : str
-            Address is the serial port the laser is connected to (default "").
+        port : str
+            Port is the serial port the laser is connected to (default "").
         baudrate : int, optional
             Baudrate can be set on the device (default 9600).
+        min_wavelength : float
+            Minimum wavelength the laser will produce in nanometers (default 0).
+        max_wavelength : float
+            Maximum wavelength the laser will produce in nanometers (default 10000).
+        min_power : float
+            Minimum power level of the laser in dBm (default 0)
+        max_power : float
+            Maximum power level of the laser in dBm (default 30)
+        min_power_att : float
+            Minimum internal power attenuation of the laser in dB (default 0)
+        max_power_att : float
+            Maximum internal power attenaution of the laser in dB (default 30)
         terminator : str, optional
             The string that marks the end of a command (default "\\\\r").
         timeout : int, optional
@@ -154,7 +179,11 @@ class TSL550(Laser):
             True if the device has been successfuly connected to. False otherwise.
         """
         log.debug("Entering connect()")
-        self.device = serial.Serial(address, baudrate=baudrate, timeout=timeout)
+        try:
+            self.device = serial.Serial(address, baudrate=baudrate, timeout=timeout)
+        except serial.SerialException as e:
+            raise CommunicationError("Could not connect to laser on port " + port)
+            raise e
         self.device.flushInput()
         self.device.flushOutput()
         self.query_delay = query_delay
@@ -339,6 +368,9 @@ class TSL550(Laser):
         >>> laser.wavelength(1560.123)
         """
         if val is not None:
+            if(val < MINIMUM_WAVELENGTH or val > MAXIMUM_WAVELENGTH):
+                raise ValueError("Inputed wavelength not in acceptable range "
+                + str(MINIMUM_WAVELENGTH) + " to " + str(MAXIMUM_WAVELENGTH))
             log.info(f"Setting wavelength to {val} nm")
             self._set_var("WA", 4, val)
             return
@@ -369,6 +401,9 @@ class TSL550(Laser):
         >>> laser.frequency(192.0000)
         """
         if val is not None:
+            if(val < MINIMUM_FREQUENCY or val > MAXIMUM_FREQUENCY):
+                raise ValueError("Inputed frequency not in acceptable range "
+                + str(MINIMUM_FREQUENCY) + " to " + str(MAXIMUM_FREQUENCY))
             log.info(f"Setting frequency to {val} THz")
             self._set_var("FQ", 5, val)
             return
@@ -400,6 +435,9 @@ class TSL550(Laser):
         >>> laser.power_mW(10)
         """
         if val is not None:
+            if(val < MINIMUM_POWER_MW or val > MAXIMUM_POWER_MW):
+                raise ValueError("Inputed power not in acceptable range "
+                + str(MINIMUM_POWER_MW) + " to " + str(MAXIMUM_POWER_MW))
             log.info(f"Setting power to {val} mW")
             self._set_var("LP", 2, val)
             return
@@ -437,6 +475,9 @@ class TSL550(Laser):
         >>> laser.power_dBm(3)
         """
         if val is not None:
+            if(val < MINIMUM_POWER_DBM or val > MAXIMUM_POWER_DBM):
+                raise ValueError("Inputed power not in acceptable range "
+                + str(MINIMUM_POWER_DBM) + " to " + str(MAXIMUM_POWER_DBM))
             log.info(f"Setting power to {val} dBm")
             self._set_var("OP", 2, val)
             return
@@ -454,26 +495,29 @@ class TSL550(Laser):
         Parameters
         ----------
         val : float, optional
-            The power to be set on the laser in decibels.
+            The internal attenuator value to be set on the laser in decibels.
 
         Returns
         -------
         float
-            The currently set power in decibel-milliwatts.
+            The currently set internal attenuator value in decibels.
 
         Examples
         --------
-        You can get the current power by calling without arguments.
-        The below code indicates the currently output power is -40 dBm.
+        You can get the current setting by calling without arguments.
+        The below code indicates the current setting is 25 dB.
 
-        >>> laser.power_dBm()
-        -040.000
+        >>> laser.power_att()
+        25.000
 
-        The following sets the output optical power to +3 dBm.
+        The following sets the internal attenuator value to 28 dB.
 
-        >>> laser.power_dBm(3)
+        >>> laser.power_att(28)
         """
         if val is not None:
+            if(val < MINIMUM_POWER_ATTENUATION or val > MAXIMUM_POWER_ATTENUATION):
+                raise ValueError("Inputed attenuation not in acceptable range "
+                + str(MINIMUM_POWER_ATTENUATION) + " to " + str(MAXIMUM_POWER_ATTENUATION))
             log.info(f"Setting power to {val} dBm")
             self._set_var("AT", 2, val)
             return

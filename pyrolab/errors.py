@@ -10,13 +10,17 @@ Errors
 
 Custom errors for PyroLab.
 """
+from Pyro5.errors import PyroError
 
 
-class PyroLabException(Exception):
+class PyroLabException(PyroError):
     """Base class for all PyroLab exceptions."""
     pass
 
-
-class PyroLabError(PyroLabException):
-    """Base class for all PyroLab errors."""
+class CommunicationException(PyrolabException):
+    """
+    Error raised when there is a problem communicating with device
+    """
+    def __init__(self, message="Communication failed with device"):
+        super().__init__(message)
     pass

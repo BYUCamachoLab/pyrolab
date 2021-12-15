@@ -5,10 +5,10 @@
 # (see pyrolab/__init__.py for details)
 
 """
-Pure Photonics Tunable Laser PPCL550
+Pure Photonics Tunable Laser PPCL551
 --------------------------------
 
-Driver for the Pure Photonics PPCL550 Tunable Laser
+Driver for the Pure Photonics PPCL551 Tunable Laser
 
 Contributors
  * David Hill (https://github.com/hillda3141)
@@ -28,7 +28,7 @@ from Pyro5.api import expose
 @expose
 class PPCL550(PurePhotonicsTunableLaser):
     """
-    Driver for a Pure Photonic PPCL550 series laser.
+    Driver for a Pure Photonic PPCL551 series laser.
 
     The laser must already be physically powered and connected to a USB port
     of some host computer, whether that be a local machine or one hosted by 
@@ -38,16 +38,16 @@ class PPCL550(PurePhotonicsTunableLaser):
     Attributes
     ----------
     MINIMUM_WAVELENGTH : float
-        The minimum wavelength of the laser in nanometers (value 1529).
+        The minimum wavelength of the laser in nanometers (value 1572).
     MAXIMUM_WAVELENGTH : float
-        The maximum wavelength of the laser in nanometers (value 1566).
+        The maximum wavelength of the laser in nanometers (value 1609).
     MINIMUM_POWER_DBM : float
         The minimum power of the laser in dBm (value 7).
     MAXIMUM_POWER_DBM : float
         The maximum power of the laser in dBm (value 13.5).
     """
 
-    MINIMUM_WAVELENGTH = 1529
-    MAXIMUM_WAVELENGTH = 1566
+    MINIMUM_WAVELENGTH = 1572
+    MAXIMUM_WAVELENGTH = 1609
     MINIMUM_POWER_DBM = 7
     MAXIMUM_POWER_DBM = 13.5
