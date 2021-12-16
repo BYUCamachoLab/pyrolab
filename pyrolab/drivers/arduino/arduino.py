@@ -14,7 +14,9 @@ Contributors
  * David Hill (https://github.com/hillda3141)
 
 Original repo: https://github.com/BYUCamachoLab/pyrolab
-Arduino should be running the code found here: https://www.arduino.cc/en/reference/firmata
+Arduino should be running example code found under standard Arduino examples:
+Examples/Firmata/StandardFirmata or similar code if the device memory is not large enough.
+Code also stored locally in pyrolab/arduino/arduino_code/StandardFirmata.ino
 
 .. admonition:: Dependencies
    :class: note
@@ -25,7 +27,6 @@ Arduino should be running the code found here: https://www.arduino.cc/en/referen
 from pyfirmata import Arduino, ArduinoMega, ArduinoDue, ArduinoNano, util
 
 from Pyro5.api import expose
-from pyrolab.errors import CommunicationException
 from pyrolab.arduino.errors import UnknownBoardException
 from pyrolab.arduino import Arduino
 
