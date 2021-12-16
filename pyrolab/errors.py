@@ -17,7 +17,7 @@ class PyroLabException(PyroError):
     """Base class for all PyroLab exceptions."""
     pass
 
-class CommunicationException(PyrolabException):
+class CommunicationException(PyroLabException):
     """
     Error raised when there is a problem communicating with device
     """
