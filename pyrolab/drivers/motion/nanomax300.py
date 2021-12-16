@@ -16,10 +16,10 @@ Supported OS:
 """
 
 from numpy import interp
+from Pyro5.api import expose, behavior
 
 from pyrolab.drivers.motion import Motion
 from pyrolab.drivers.motion.kinesis.bpc303 import BPC303
-from pyrolab.api import expose, behavior
 
 
 SHORT_MAX = 32767
