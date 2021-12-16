@@ -52,3 +52,12 @@ Motion
    nanomax300
    prm1z8
    z825b
+
+Microcontrollers/processors
+----------------------------
+.. currentmodule:: pyrolab.drivers.arduino
+.. autosummary::
+   :toctree: api/
+   :recursive:
+
+   arduino

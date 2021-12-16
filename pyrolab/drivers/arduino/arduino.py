@@ -6,16 +6,16 @@
 
 """
 Arduino Parent Driver
---------------------------------
+---------------------
 
 Driver for Arduino that is running firmata code
 
 Contributors
  * David Hill (https://github.com/hillda3141)
 
-Original repo: https://github.com/BYUCamachoLab/pyrolab
 Arduino should be running example code found under standard Arduino examples:
-Examples/Firmata/StandardFirmata or similar code if the device memory is not large enough.
+Examples/Firmata/StandardFirmata or similar code if the device memory is not 
+large enough. 
 Code also stored locally in pyrolab/arduino/arduino_code/StandardFirmata.ino
 
 .. admonition:: Dependencies
@@ -25,44 +25,56 @@ Code also stored locally in pyrolab/arduino/arduino_code/StandardFirmata.ino
 """
 
 from pyfirmata import Arduino, ArduinoMega, ArduinoDue, ArduinoNano, util
-
 from Pyro5.api import expose
-from pyrolab.arduino.errors import UnknownBoardException
-from pyrolab.arduino import Arduino
+
+from pyrolab.errors import PyroLabException
+from pyrolab.drivers.arduino import Arduino
+
+
+class UnknownBoardException(PyroLabException):
+    """
+    Error raised when the arduino board name is unknown or not supported
+    """
+    def __init__(self, message="Unknown board"):
+        super().__init__(message)
+
 
 @expose
-class StandardArduinoDriver(Arduino):
+class BaseArduinoDriver(Arduino):
+    """
+    A base class providing pin read/write access for common Arduino boards.
+    """
 
     def connect(self, port: str, board: str="uno") -> None:
-        """"
+        """
         Initialize a connection with the arduino.
 
         Parameters
         ----------
         port : str
             Computer serial port to which the arduino is connected
-        board : str
-            | The type of the arduino that is being used
-            | uno: Arduino Uno (https://store.arduino.cc/products/arduino-uno-rev3)
-            | mega: Arduino Mega (https://store.arduino.cc/products/arduino-mega-2560-rev3)
-            | due: Arduino Due (https://store.arduino.cc/products/arduino-due)
-            | nano: Arduino Nano (https://store.arduino.cc/products/arduino-nano)
+        board : str, optional
+            | The type of the arduino that is being used:
+            | ``uno``: `Arduino Uno <https://store.arduino.cc/products/arduino-uno-rev3>`_
+            | ``mega``: `Arduino Mega <https://store.arduino.cc/products/arduino-mega-2560-rev3>`_
+            | ``due``: `Arduino Due <https://store.arduino.cc/products/arduino-due>`_
+            | ``nano``: `Arduino Nano <https://store.arduino.cc/products/arduino-nano>`_
         """
         self.port = port
 
         if board == "uno":
             self.board = Arduino(self.port)
-        else if board == "mega":
+        elif board == "mega":
             self.board = ArduinoMega(self.port)
-        else if board == "due":
+        elif board == "due":
             self.board = ArduinoDue(self.port)
-        else if board == "nano":
+        elif board == "nano":
             self.board = ArduinoNano(self.port)
         else:
             raise UnknownBoardException("Unknown board " + board)
 
     def digital_write(self, pin: int, value: int) -> None:
-        """"
+        """
         Tell the arduino to turn a pin digitally to the inputed value.
 
         Parameters
@@ -79,7 +91,7 @@ class StandardArduinoDriver(Arduino):
         pin.write(value)
     
     def pwm_write(self, pin: int, value: float) -> None:
-        """"
+        """
         Tell the arduino to produce a pwm signal on a pin.
 
         Parameters
@@ -89,13 +101,12 @@ class StandardArduinoDriver(Arduino):
         value : float
             The duty cycle of the pwm to be set (0 - 1.0)
         """
-
         command_string = "d:" + str(pin) + ":p"
         pin = self.board.get_pin(command_string)
         pin.write(value)
     
     def servo_write(self, pin: int, value: int) -> None:
-        """"
+        """
         Tell the arduino to configure a pin to drive a servo to
         the inputed angle.
 
@@ -106,12 +117,11 @@ class StandardArduinoDriver(Arduino):
         value : int
             The angle in degrees to move the servo to
         """
-
         self.board.servo_config(pin)
         self.board.digital[pin].write(value)
     
     def digital_read(self, pin: int) -> int:
-        """"
+        """
         Tell the arduino to read a value from a digital pin.
 
         Parameters
@@ -124,13 +134,12 @@ class StandardArduinoDriver(Arduino):
         int
             The value read by the digital pin, 0 (LOW) or 1 (HIGH)
         """
-
         command_string = "d:" + str(pin) + ":i"
         pin = self.board.get_pin(command_string)
         return pin.read()
     
     def analog_read(self, pin: int) -> float:
-        """"
+        """
         Tell the arduino to read a value from an analog pin.
 
         Parameters
@@ -143,14 +152,12 @@ class StandardArduinoDriver(Arduino):
         float
             The value read by the analog pin (0 - 1.0)
         """
-
         command_string = "a:" + str(pin) + ":i"
         pin = self.board.get_pin(command_string)
         return pin.read()
 
     def close(self) -> None:
-        """"
+        """
         Close the connection with the arduino.
         """
-        
         self.board.exit()
