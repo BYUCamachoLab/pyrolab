@@ -13,5 +13,5 @@ Submodule containing drivers for each supported arduino type.
 
 from pyrolab.drivers import Instrument
 
-class Firmata(Instrument):
+class Arduino(Instrument):
     pass

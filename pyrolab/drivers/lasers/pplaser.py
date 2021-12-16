@@ -232,7 +232,7 @@ class PurePhotonicsTunableLaser(Laser):
         ----------
         mode : int
             | The mode corresponds to the following modes of the laser:
-            | 0: Regular mode (`TSL550.SWEEP_OFF`)
+            | 0: Regular mode
             | 1: No dither mode
             | 2: Clean mode
         
