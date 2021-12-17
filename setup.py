@@ -79,6 +79,10 @@ install_requires = [
     "scipy",
     "appdirs",
     "appnope",
+    "pydantic",
+    "typer",
+    "colorama",
+    "pyyaml",
 ]
 
 extras_require = {

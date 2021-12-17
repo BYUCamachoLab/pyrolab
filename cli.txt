@@ -1,0 +1,17 @@
+pyrolab commands
+
+
+config
+ps
+rename
+start
+stop
+restart
+
+
+
+
+
+Autoreload when watching a directory? 
+* watchdog
+* watchgod

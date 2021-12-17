@@ -80,11 +80,6 @@ logging.debug("PyroLab started (logger configured).")
 import Pyro5.errors
 sys.excepthook = Pyro5.errors.excepthook
 
-
-import appnope
-appnope.nope()
-
-
 from multiprocessing import current_process
 if current_process().name == 'MainProcess':
     PID = str(os.getpid()) + '_main'
