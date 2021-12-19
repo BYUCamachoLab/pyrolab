@@ -54,6 +54,9 @@ class Instrument(Service):
         Destructor. Automatically calls ``close()``. 
         
         Automatically releases any potentially claimed resources.
+
+        # TODO: This function is unsafe! It is not guaranteed to be called!
+        # Enforce calling close() explicitly.
         """
         self.close()
 
