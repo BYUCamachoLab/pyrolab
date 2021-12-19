@@ -59,8 +59,10 @@ import warnings
 import pkg_resources
 from pathlib import Path
 from multiprocessing.process import current_process
-from typing import Dict, List, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
+import Pyro5
+from pydantic import BaseModel, BaseSettings, Field, validator
 from yaml import safe_load, dump
 
 from pyrolab import PYROLAB_CONFIG_DIR, PYROLAB_DATA_DIR
@@ -81,6 +83,212 @@ ACTIVE_DATA_DIR = PYROLAB_DATA_DIR / "activedata"
 ACTIVE_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 USER_CONFIG_FILE = CONFIG_DIR / "user_configuration.yaml"
+
+
+class PyroConfigMixin:
+    """
+    Mixin for pydantic models, updates fields that are Pyro5 configuration options.
+    """
+    def update_pyro_config(self, values: dict=None) -> None:
+        """
+        Sets all key-value attributes that are Pyro5 configuration options.
+        """
+        if values is None:
+            values = self.dict()
+        for key, value in values.items():
+            if key.upper() in Pyro5.config.__slots__:
+                # All Pyro config options are fully uppercased
+                setattr(Pyro5.config, key.upper(), value)
+
+
+class NameServerSettings(BaseSettings, PyroConfigMixin):
+    """
+    The NameServer Settings class. 
+    
+    Contains all applicable configuration parameters for running a nameserver.
+
+    Parameters
+    ----------
+    host : str, optional
+        The hostname of the nameserver. Defaults to "localhost".
+    ns_port : int, optional
+        The port of the nameserver. Defaults to 9090.
+    broadcast : bool, optional
+        Whether to launch a broadcast server. Defaults to False.
+    ns_bchost : str, optional
+        The hostname of the broadcast server. Defaults to None.
+    ns_bcport : int, optional
+        The port of the broadcast server. Defaults to 9091.
+    ns_autoclean : float, optional
+        The interval in seconds at which the nameserver will ping registered
+        objects and clean up unresponsive ones. Default is 0.0 (off).
+    storage : str, optional
+        A Pyro5-style storage string. You have several options:
+
+        * ``memory``: Fast, volatile in-memory database. This is the default.
+        * ``dbm[:dbfile]``: Persistent database using dbm. Optionally provide 
+        the filename to use (ignore for PyroLab to create automatically). This 
+        storage type does not support metadata.
+        * ``sql[:dbfile]``: Persistent database using sqlite. Optionally 
+        provide the filename to use (ignore for PyroLab to create 
+        automatically).
+    """
+    host: str = "localhost"
+    ns_port: int = 9090
+    broadcast: bool = False
+    ns_bchost: Optional[bool] = None
+    ns_bcport: int = 9091
+    ns_autoclean: float = 0.0
+    storage: str = "memory"
+
+    @validator('storage')
+    def valid_memory_format(cls, v: str):
+        if any(v.startswith(storage) for storage in ["memory", "dbm", "sql"]):
+            return v
+        else:
+            raise ValueError(f"Invalid storage specification: {v}")
+
+    def update_pyro_config(self) -> None:
+        values = self.dict()
+        if values['host'] == "public":
+            value = get_ip()
+        if value in ["sql", "dbm"]:
+            value = str(ACTIVE_DATA_DIR / f"{value}:{hex(id(self))}_ns_storage.{value}")
+        super().update_pyro_config(values=values)
+
+
+class DaemonSettings(BaseSettings, PyroConfigMixin):
+    """
+    Server configuration object.
+
+    Note that for the ``host`` parameter, the string "public" will always be
+    reevaluated to the computer's public IP address.
+
+    Parameters
+    ----------
+    module : str, optional
+        The module that contains the Daemon class (default "pyrolab.server").
+    classname : str, optional
+        The name of the Daemon class to use (default is basic "Daemon").
+    host : str, optional
+        The hostname of the local server, or the string "public", which 
+        is converted to the host's public IP address (default "localhost").
+    ns_host : str, optional
+        The hostname of the nameserver (default "localhost").
+    ns_port : int, optional
+        The port of the nameserver (default 9090).
+    ns_bcport : int, optional
+        The port of the broadcast server (default 9091).
+    ns_bchost : bool, optional
+        Whether to broadcast the nameserver (default None).
+    servertype : str, optional
+        Either ``thread`` or ``multiplex`` (default "thread").
+    """
+    module: str="pyrolab.daemon",
+    classname: str="Daemon",
+    host: str="localhost",
+    port: int=0,
+    unixsocket: Optional[str]=None,
+    nathost: Optional[str]=None,
+    natport: int=0,
+    servertype: str="thread"
+
+
+class ServiceSettings(BaseSettings, PyroConfigMixin):
+    """
+    Groups together information about a PyroLab service. 
+    
+    Includes connection parameters for ``autoconnect()``. Services defined in
+    other modules or libaries can also be included here, so long as the module
+    can be found by the Python environment.
+
+    Parameters
+    ----------
+    name : str
+        A unique human-readable name for identifying the instrument. If you're
+        not creative, you can use :py:func:`pyrolab.utils.generate_random_name`
+        to generate a random name.
+    module : str
+        The PyroLab module the class belongs to, as a string.
+    classname : str
+        The classname of the object to be registered, as a string.
+    parameters : Dict[str, Any]
+        A dictionary of parameters passed to the object's ``connect()`` 
+        function when ``autoconnect()`` is invoked.        
+    description : str
+        Description string for providing more information about the device.
+        Will be displayed in the nameserver.
+    instancemode : str, optional
+        The mode of the object to be created. See ``Service.set_behavior()``.
+        Default is ``session``.
+    server : str, optional
+        The name of the daemon configuration to register the service with.
+        Default is ``default``.
+    nameservers : List[str], optional
+        A list of nameservers to register the service with. Default is [] (no
+        registration).
+    """
+    module: str
+    classname: str
+    parameters: Dict[str, Any] = {}
+    description: str = ""
+    instancemode: str = "session"
+    daemon: str = "default"
+    nameservers: List[str] = []
+
+
+class PyroLabConfiguration(BaseSettings):
+    nameservers: Dict[str, NameServerSettings] = {}
+    daemons: Dict[str, DaemonSettings] = {}
+    services: Dict[str, ServiceSettings] = {}
+    # inst.features = {}
+    # cls._instance = inst
+
+    def yaml(self, 
+             sort_keys: bool=False, 
+             default_flow_style: bool=False,
+             exclude_defaults: bool=True) -> str:
+        """
+        Returns a YAML representation of the configuration.
+
+        Parameters
+        ----------
+        sort_keys : bool, optional
+            Sorts the keys of the dictionary alphabetically if True, else 
+            leaves them in the order as declared by the model (default False).
+        default_flow_style : bool, optional
+            Uses the default flow style if True, or formats in human-readable
+            from if False (default False).
+        exclude_defaults : bool, optional
+            Excludes default values from the YAML output if True, else
+            includes them (default True).
+        """
+        return dump(self.dict(exclude_defaults=exclude_defaults), sort_keys=sort_keys, default_flow_style=default_flow_style)
+
+    @staticmethod
+    def from_yaml(yaml: str) -> PyroLabConfiguration:
+        """
+        Loads a YAML representation of the configuration.
+
+        Parameters
+        ----------
+        yaml : str
+            The YAML string to load.
+        """
+        return PyroLabConfiguration.parse_obj(safe_load(yaml))
+
+    @staticmethod
+    def read_config_file(filename: Union[str, Path]) -> PyroLabConfiguration:
+        """
+        Loads a configuration file.
+
+        Parameters
+        ----------
+        filename : str
+            The filename of the YAML configuration file to load.
+        """
+        with open(filename, "r") as f:
+            return PyroLabConfiguration.parse_obj(safe_load(f))
 
 
 def update_config(filename: Union[str, Path]=None) -> None:
