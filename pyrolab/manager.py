@@ -27,27 +27,25 @@ Python ``multiprocessing`` module.
 from __future__ import annotations
 import importlib
 import time
-import os
 import threading
 import multiprocessing
 import logging
 from multiprocessing import current_process
 from multiprocessing.queues import Queue
-from typing import TYPE_CHECKING, Any, Dict, Tuple, Type, Union
+from typing import TYPE_CHECKING, Dict, NamedTuple, Tuple, Type
 
 from Pyro5.core import locate_ns
 
-from pyrolab.nameserver import NameServerConfiguration, start_ns_loop
-from pyrolab.service import Service, ServiceConfiguration
-from pyrolab.daemon import DaemonConfiguration
+from pyrolab.nameserver import start_ns_loop
 from pyrolab.configure import GlobalConfiguration
 from pyrolab.utils import bcolors
 
 if TYPE_CHECKING:
     from Pyro5.core import URI
 
-    from pyrolab.daemon import Daemon, DaemonConfiguration
-    from pyrolab.service import ServiceConfiguration
+    from pyrolab.daemon import Daemon
+    from pyrolab.service import Service
+    from pyrolab.configure import NameServerConfiguration, DaemonConfiguration, ServiceConfiguration
 
 
 log = logging.getLogger(__name__)
@@ -73,14 +71,19 @@ class NameServerRunner(multiprocessing.Process):
     """
     def __init__(self, 
                  *args, 
-                 nameservercfg: Dict[dict]=None,
+                 name: str="",
+                 nsconfig: NameServerConfiguration=None,
                  msg_queue: Queue=None, 
                  msg_polling: float=1.0,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        if not name:
+            self.name = multiprocessing.current_process().name
+        else:
+            self.name = f"{multiprocessing.current_process().name}: {name}"
         self.msg_queue: Queue = msg_queue
         self.msg_polling = msg_polling
-        self.nameservercfg = nameservercfg
+        self.nsconfig = nsconfig
         self.KILL_SIGNAL = False
 
     def process_message_queue(self) -> None:
@@ -97,9 +100,8 @@ class NameServerRunner(multiprocessing.Process):
         if not self.msg_queue.empty():
             msg = self.msg_queue.get()
             if msg is None:
-                log.info(f"{multiprocessing.current_process().name} recived KILL")
+                log.info(f"{self.name} recived KILL")
                 self.KILL_SIGNAL = True
-                raise Exception("KILL SIGNAL RECEIVED")
 
     def stay_alive(self):
         """
@@ -123,17 +125,13 @@ class NameServerRunner(multiprocessing.Process):
         When the kill signal is received, gracefully shuts down and removes
         its registration from the nameserver.
         """
-        name = multiprocessing.current_process().name
-        log.info(f"Starting '{name}'")
-        TOPLEVEL_PID = os.environ["PYROLAB_TOPLEVEL_PID"]
-        print("Toplevel PID:", TOPLEVEL_PID)
-
-        # Convert transport dictionaries back to configuration objects
-        self.nameservercfg = NameServerConfiguration.from_dict(self.nameservercfg)
+        log.info(f"Starting '{self.name}'")
+        # TOPLEVEL_PID = os.environ["PYROLAB_TOPLEVEL_PID"]
+        # print("Toplevel PID:", TOPLEVEL_PID)
     
-        self.nameservercfg.update_pyro_config()
+        self.nsconfig.update_pyro_config()
         self.process_message_queue()
-        start_ns_loop(self.nameservercfg)
+        start_ns_loop(self.nsconfig, loop_condition=self.stay_alive)
 
 
 class DaemonRunner(multiprocessing.Process):
@@ -159,12 +157,17 @@ class DaemonRunner(multiprocessing.Process):
     """
     def __init__(self, 
                  *args, 
-                 daemonconfig: dict=None, 
-                 serviceconfigs: Dict[dict]=None,
+                 name: str="",
+                 daemonconfig: DaemonConfiguration=None, 
+                 serviceconfigs: Dict[ServiceConfiguration]=None,
                  msg_queue: Queue=None, 
                  msg_polling: float=1.0,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        if not name:
+            self.name = multiprocessing.current_process().name
+        else:
+            self.name = f"{multiprocessing.current_process().name}: {name}"
         self.msg_queue: Queue = msg_queue
         self.msg_polling = msg_polling
         self.daemonconfig = daemonconfig
@@ -173,8 +176,7 @@ class DaemonRunner(multiprocessing.Process):
 
     def get_daemon(self) -> Type[Daemon]:
         """
-        Returns the object for the daemon in PyroLab referenced by 
-        ResourceInfo.
+        Returns the class object for the daemon given by the configuration.
 
         Returns
         -------
@@ -185,13 +187,13 @@ class DaemonRunner(multiprocessing.Process):
         obj: Daemon = getattr(mod, self.daemonconfig.classname)
         return obj
 
-    def get_service(self, serviceinfo: ServiceConfiguration) -> Type[Service]:
+    def get_service(self, serviceconfig: ServiceConfiguration) -> Type[Service]:
         """
-        Gets the object given the ServiceConfiguration.
+        Gets the class object given by the ServiceConfiguration.
 
         Parameters
         ----------
-        serviceinfo : ServiceConfiguration
+        serviceconfig : ServiceConfiguration
             The ServiceConfiguration object that holds the information necessary to
             construct the Service.
 
@@ -200,12 +202,12 @@ class DaemonRunner(multiprocessing.Process):
         Type[Service]
             The class of the referenced Service.
         """
-        mod = importlib.import_module(serviceinfo.module)
-        obj: Service = getattr(mod, serviceinfo.classname)
+        mod = importlib.import_module(serviceconfig.module)
+        obj: Service = getattr(mod, serviceconfig.classname)
         
-        obj.set_behavior(serviceinfo.instancemode)
-        if serviceinfo.parameters:
-            obj._autoconnect_params = {k:v for x in serviceinfo.parameters for k, v in x.items()}
+        obj.set_behavior(serviceconfig.instancemode)
+        if serviceconfig.parameters:
+            obj._autoconnect_params = serviceconfig.parameters
 
         return obj
 
@@ -217,20 +219,26 @@ class DaemonRunner(multiprocessing.Process):
         Returns
         -------
         daemon, uri
-            The Daemon object and the URI for the hosted object, to be 
-            registered with the nameserver.
+            The instantiated Daemon object and the URI for the hosted object, 
+            to be registered with the nameserver.
         """
         daemon = self.get_daemon()
         daemon = daemon()
+
         uris = {}
-        for servicename, serviceinfo in self.serviceinfos.items():
-            log.info(f"{multiprocessing.current_process().name} registering service {servicename}")
-            service = self.get_service(serviceinfo)
+        for sname, sconfig in self.serviceconfigs.items():
+            log.info(f"{self.name} registering service {sname}")
+            service = self.get_service(sconfig)
 
             service = daemon.prepare_class(service)
             
             uri = daemon.register(service)
-            uris[servicename] = uri
+            uris[sname] = uri
+        
+        if self.daemonconfig.nameservers:
+            uri = daemon.register(daemon)
+            uris[self.name] = uri
+
         return daemon, uris
 
     def process_message_queue(self) -> None:
@@ -247,7 +255,7 @@ class DaemonRunner(multiprocessing.Process):
         if not self.msg_queue.empty():
             msg = self.msg_queue.get()
             if msg is None:
-                log.info(f"{multiprocessing.current_process().name} recived KILL")
+                log.info(f"{self.name} recived KILL")
                 self.KILL_SIGNAL = True
 
     def stay_alive(self):
@@ -272,38 +280,56 @@ class DaemonRunner(multiprocessing.Process):
         When the kill signal is received, gracefully shuts down and removes
         its registration from the nameserver.
         """
-        name = multiprocessing.current_process().name
-        log.info(f"Starting '{name}'")
-        TOPLEVEL_PID = os.environ["PYROLAB_TOPLEVEL_PID"]
-        print("Toplevel PID:", TOPLEVEL_PID)
+        log.info(f"Starting '{self.name}'")
+        # TOPLEVEL_PID = os.environ["PYROLAB_TOPLEVEL_PID"]
+        # print("Toplevel PID:", TOPLEVEL_PID)
 
-        # Convert transport dictionaries back to configuration objects
-        self.daemonconfig = DaemonConfiguration.from_dict(self.daemonconfig)
-        self.serviceinfos = {
-            k: ServiceConfiguration.from_dict(v) for k, v in self.serviceconfigs.items()
-        }
-    
+        # Set Pyro5 settings for daemon
         self.daemonconfig.update_pyro_config()
         daemon, uris = self.setup_daemon()
 
         GLOBAL_CONFIG = GlobalConfiguration.instance()
 
-        for servicename, serviceinfo in self.serviceinfos.items():
-            for ns in serviceinfo.nameservers:
+        # Register all services with the nameserver
+        for sname, sinfo in self.serviceconfigs.items():
+            for ns in sinfo.nameservers:
                 nscfg = GLOBAL_CONFIG.get_nameserver_config(ns)
                 ns = locate_ns(nscfg.host, nscfg.ns_port)
-                ns.register(servicename, uris[servicename], metadata={serviceinfo.description})
+                ns.register(sname, uris[sname], metadata={sinfo.description})
 
+        for ns in self.daemonconfig.nameservers:
+            nscfg = GLOBAL_CONFIG.get_nameserver_config(ns)
+            ns = locate_ns(nscfg.host, nscfg.ns_port)
+            ns.register(self.name, uris[self.name])
+
+        # Start the request loop
         self.process_message_queue()
         daemon.requestLoop(loopCondition=self.stay_alive)
 
-        log.info(f"Shutting down '{name}'")
+        # Cleanup
+        log.info(f"Shutting down '{self.name}'")
         self._timer.cancel()
-        for servicename, serviceinfo in self.serviceinfos.items():
-            for ns in serviceinfo.nameservers:
+        for sname, sinfo in self.serviceconfigs.items():
+            for ns in sinfo.nameservers:
                 nscfg = GLOBAL_CONFIG.get_nameserver_config(ns)
-                ns = locate_ns(nscfg.host, nscfg.ns_port)
-                ns.remove(servicename)
+                try:
+                    ns = locate_ns(nscfg.host, nscfg.ns_port)
+                    ns.remove(sname)
+                except Exception as e:
+                    log.error(e)
+
+
+class ProcessGroup(NamedTuple):
+    process: multiprocessing.Process
+    msg_queue: Queue
+
+
+class NameServerProcessGroup(ProcessGroup):
+    pass
+
+
+class DaemonProcessGroup(ProcessGroup):
+    pass
 
 
 class ProcessManager:
@@ -314,6 +340,8 @@ class ProcessManager:
     :py:func:`instance`. Only the main process can access the ProcessManager.
     """
     _instance = None
+    nameservers: Dict[str, NameServerProcessGroup] = {}
+    daemons: Dict[str, DaemonProcessGroup] = {}
 
     def __init__(self) -> None:
         raise RuntimeError("Cannot directly instantiate singleton, call ``instance()`` instead.")
@@ -324,10 +352,8 @@ class ProcessManager:
             raise Exception("ProcessManager should only be accessed by the main process.")
         if cls._instance is None:
             inst = cls.__new__(cls)
-            inst.ns_processes: Dict[str, NameServerRunner] = {}
-            inst.d_processes: Dict[str, DaemonRunner] = {}
-            inst.ns_messengers: Dict[str, Queue] = {}
-            inst.d_messengers: Dict[str, Queue] = {}
+            inst.nameservers = {}
+            inst.daemons = {}
             cls._instance = inst
         return cls._instance
 
@@ -339,41 +365,33 @@ class ProcessManager:
         GLOBAL_CONFIG = GlobalConfiguration.instance()
         nscfg = GLOBAL_CONFIG.get_nameserver_config(nameserver)
         messenger = multiprocessing.Queue()
-
-        # Configuration objects are not picklable, so we need to convert them
-        # to dictionaries. We'll rebuild them in the child processes.
         runner = NameServerRunner(
-            nameservercfg=nscfg.to_dict(),
+            name=nameserver,
+            nsconfig=nscfg,
             msg_queue=messenger, 
             daemon=True
         )
-
-        self.ns_processes[nameserver] = runner
-        self.ns_messengers[nameserver] = messenger
+        self.nameservers[nameserver] = NameServerProcessGroup(runner, messenger)
         runner.start()
         
 
     def launch_daemon(self, daemon: str):
         """
-        Launch a server.
+        Launch a daemon and all its associated services.
         """
         log.info(f'Launching server {daemon}')
         GLOBAL_CONFIG = GlobalConfiguration.instance()
         daemonconfig = GLOBAL_CONFIG.get_daemon_config(daemon)
-        serviceinfos = GLOBAL_CONFIG.get_service_configs_for_daemon(daemon)
+        serviceconfigs = GLOBAL_CONFIG.get_service_configs_for_daemon(daemon)
         messenger = multiprocessing.Queue()
-
-        # Configuration objects are not picklable, so we need to convert them
-        # to dictionaries. We'll rebuild them in the child processes.
         runner = DaemonRunner(
-            daemonconfig=daemonconfig.to_dict(),
-            serviceconfigs={k: v.to_dict() for k, v in serviceinfos.items()},
+            name=daemon,
+            daemonconfig=daemonconfig,
+            serviceconfigs=serviceconfigs,
             msg_queue=messenger, 
             daemon=True
         )
-
-        self.d_processes[daemon] = runner
-        self.d_messengers[daemon] = messenger
+        self.daemons[daemon] = DaemonProcessGroup(runner, messenger)
         runner.start()
 
     # def launch_all(self):
@@ -384,34 +402,34 @@ class ProcessManager:
 
     def shutdown_nameserver(self, nameserver: str) -> None:
         print(f"  Shutting down '{nameserver}'...", end="")
-        polling = self.ns_processes[nameserver].msg_polling
-        self.ns_messengers[nameserver].put(None)
+        group = self.nameservers[nameserver]
+        polling = group.process.msg_polling
+        group.msg_queue.put(None)
         time.sleep(polling)
-        del self.ns_processes[nameserver]
-        del self.ns_messengers[nameserver]
+        del self.nameservers[nameserver]
         print(f"{bcolors.OKGREEN}done{bcolors.ENDC}")
 
     def shutdown_daemon(self, daemon: str) -> None:
         print(f"  Shutting down '{daemon}'...", end="")
-        polling = self.d_processes[daemon].msg_polling
-        self.d_messengers[daemon].put(None)
+        group = self.daemons[daemon]
+        polling = group.process.msg_polling
+        group.msg_queue.put(None)
         time.sleep(polling)
-        del self.d_processes[daemon]
-        del self.d_messengers[daemon]
+        del self.daemons[daemon]
         print(f"{bcolors.OKGREEN}done{bcolors.ENDC}")
 
     def shutdown_all(self) -> None:
-        for daemon in list(self.d_processes.keys()):
+        for daemon in list(self.daemons.keys()):
             self.shutdown_daemon(daemon)
-        for nameserver in list(self.ns_processes.keys()):
+        for nameserver in list(self.nameservers.keys()):
             self.shutdown_nameserver(nameserver)
 
-    def wait_for_interrupt(self) -> None:
-        try:
-            while True:
-                time.sleep(1)
-        except KeyboardInterrupt:
-            print("Shutting down all...")
-            self.shutdown_all()
-            print(f"{bcolors.OKGREEN}DONE{bcolors.ENDC}")
-            raise
+    # def wait_for_interrupt(self) -> None:
+    #     try:
+    #         while True:
+    #             time.sleep(1)
+    #     except KeyboardInterrupt:
+    #         print("Shutting down all...")
+    #         self.shutdown_all()
+    #         print(f"{bcolors.OKGREEN}DONE{bcolors.ENDC}")
+    #         raise
