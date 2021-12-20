@@ -10,6 +10,7 @@ Errors
 
 Custom errors for PyroLab.
 """
+
 from Pyro5.errors import PyroError
 
 
