@@ -15,12 +15,10 @@ from Pyro5.core import locate_ns
 from Pyro5.client import Proxy
 
 from pyrolab.nameserver import (
-    NameServerConfiguration, 
     start_ns, 
     start_ns_loop
 )
 from pyrolab.daemon import (
-    DaemonConfiguration, 
     Daemon, 
     LockableDaemon,
     expose,
@@ -29,15 +27,21 @@ from pyrolab.daemon import (
     # serve,
     change_behavior
 )
+from pyrolab.configure import (
+    GlobalConfiguration,
+    update_config,
+    reset_config
+)
+from pyrolab.service import Service
+
+config = GlobalConfiguration.instance()
 
 
 __all__ = [
     "locate_ns",
     "Proxy",
-    "NameServerConfiguration",
     "start_ns",
     "start_ns_loop",
-    "DaemonConfiguration",
     "Daemon",
     "LockableDaemon",
     "expose",
@@ -45,4 +49,8 @@ __all__ = [
     "change_behavior",
     "oneway",
     # "serve",
+    "config",
+    "update_config",
+    "reset_config",
+    "Service",
 ]
