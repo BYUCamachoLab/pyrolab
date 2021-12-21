@@ -25,6 +25,7 @@ Python ``multiprocessing`` module.
 """
 
 from __future__ import annotations
+from datetime import datetime
 import importlib
 import time
 import threading
@@ -322,6 +323,7 @@ class DaemonRunner(multiprocessing.Process):
 class ProcessGroup(NamedTuple):
     process: multiprocessing.Process
     msg_queue: Queue
+    created: datetime
 
 
 class NameServerProcessGroup(ProcessGroup):
@@ -371,9 +373,15 @@ class ProcessManager:
             msg_queue=messenger, 
             daemon=True
         )
-        self.nameservers[nameserver] = NameServerProcessGroup(runner, messenger)
+        self.nameservers[nameserver] = NameServerProcessGroup(runner, messenger, datetime.now())
         runner.start()
-        
+
+    def get_nameserver_process(self, nameserver: str) -> NameServerProcessGroup:
+        """
+        Return the process group for a nameserver.
+        """
+        if nameserver in self.nameservers:
+            return self.nameservers[nameserver]
 
     def launch_daemon(self, daemon: str):
         """
@@ -391,8 +399,15 @@ class ProcessManager:
             msg_queue=messenger, 
             daemon=True
         )
-        self.daemons[daemon] = DaemonProcessGroup(runner, messenger)
+        self.daemons[daemon] = DaemonProcessGroup(runner, messenger, datetime.now())
         runner.start()
+
+    def get_daemon_process(self, daemon: str) -> DaemonProcessGroup:
+        """
+        Return the process group for a daemon.
+        """
+        if daemon in self.daemons:
+            return self.daemons[daemon]
 
     # def launch_all(self):
     #     """

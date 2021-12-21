@@ -727,3 +727,17 @@ def reset_config() -> None:
     configuration each time PyroLab is started.
     """
     USER_CONFIG_FILE.unlink(missing_ok=True)
+
+def export_config(filename: Union[str, Path]) -> None:
+    """
+    Exports the current configuration to a file.
+
+    Parameters
+    ----------
+    filename : str or Path
+        The path to the configuration file to export to.
+    """
+    GlobalConfiguration.instance().save_config(USER_CONFIG_FILE, force=True)
+    with USER_CONFIG_FILE.open("r") as fin:
+        with Path(filename).open("w") as fout:
+            fout.write(fin.read())

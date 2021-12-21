@@ -8,40 +8,138 @@
 pyrolab commands to be implemented
 
 
+pyrolab launch
+pyrolab shutdown
+
 pyrolab ps
 pyrolab config update FILENAME
 pyrolab config reset
 pyrolab config export FILENAME
-pyrolab reload
 pyrolab start NAME
+pyrolab start -ns --nameserver NAME
+pyrolab start -d --daemon NAME
 pyrolab stop NAME
-pyrolab info NAME
+pyrolab stop nameserver NAME
+pyrolab stop daemon NAME
+pyrolab info NAME --verbose
 pyrolab logs NAME
-pyrolab rename NAME
+pyrolab rename OLDNAME NEWNAME
 pyrolab restart NAME
 pyrolab rm NAME
 pyrolab add nameserver NAME
 pyrolab add daemon NAME
 pyrolab add service NAME
 pyrolab remotens list NAME
-pyrolab version
+pyrolab --version
 
 
 Autoreload when watching a directory? 
 * watchdog
 * watchgod
 """
+import subprocess
+from typing import Optional
+import pkg_resources
+from pathlib import Path
 
 import typer
+
+from pyrolab.api import Proxy
+from pyrolab.configure import update_config, reset_config, export_config
+from pyrolab.pyrolabd import PyroLabDaemon, InstanceInfo, LOCKFILE
+
+
+def get_daemon(abort=True) -> PyroLabDaemon:
+    if LOCKFILE.exists():
+        ii = InstanceInfo.parse_file(LOCKFILE)
+        DAEMON = Proxy(ii.uri)
+        return DAEMON
+    elif abort:
+        raise typer.Abort("PyroLab daemon is not running! Try 'pyrolab launch' first.")
+    else:
+        return None
 
 
 app = typer.Typer()
 
 
+def _version_callback(value: bool) -> None:
+    if value:
+        from pyrolab import __version__
+        typer.echo(f"PyroLab {__version__}")
+        raise typer.Exit()
+
+
+@app.callback()
+def main(version: bool = typer.Option(False, "--version", "-v", help="Show the version and exit", callback=_version_callback, is_eager=True)):
+    return
+
 @app.command()
-def hello(name: str):
-    message = typer.style(f"Hello {name}!", fg=typer.colors.GREEN, bold=True)
-    typer.echo(message)
+def launch():
+    """
+    Launch the PyroLab daemon
+    """
+    daemon = get_daemon(abort=False)
+    if daemon is None:
+        rsrc = Path(pkg_resources.resource_filename('pyrolab', "pyrolabd.py"))
+        subprocess.Popen(["python", f"{str(rsrc)}"])
+        typer.echo("PyroLab daemon launched")
+    else:
+        typer.echo("PyroLab is already running")
+
+@app.command()
+def shutdown():
+    daemon = get_daemon()
+    daemon.shutdown()
+
+@app.command()
+def ps():
+    daemon = get_daemon()
+    typer.echo(daemon.ps())
+
+
+config_app = typer.Typer()
+start_app = typer.Typer()
+stop_app = typer.Typer()
+info_app = typer.Typer()
+logs_app = typer.Typer()
+rename_app = typer.Typer()
+restart_app = typer.Typer()
+rm_app = typer.Typer()
+add_app = typer.Typer()
+
+app.add_typer(config_app, name="config")
+app.add_typer(start_app, name="start")
+# app.add_typer(stop_app, name="stop")
+# app.add_typer(info_app, name="info")
+# app.add_typer(logs_app, name="logs")
+# app.add_typer(rename_app, name="rename")
+# app.add_typer(restart_app, name="restart")
+# app.add_typer(rm_app, name="rm")
+# app.add_typer(add_app, name="add")
+
+
+@config_app.command("update")
+def config_update(filename: str):
+    """Update the configuration file"""
+    update_config(filename)
+    
+@config_app.command("reset")
+def config_reset():
+    """Reset the configuration file"""
+    reset_config()
+
+@config_app.command("export")
+def config_export(filename: str):
+    """Export the configuration file"""
+    export_config(filename)
+
+@start_app.callback()
+def start_something(name: Optional[str] = typer.Argument(None, help="Name of the service to start"),):
+    print(name)
+    raise typer.Exit()
+
+# @start_app.command("nameserver")
 
 @app.command()
 def goodbye(name: str, formal: bool=False):
