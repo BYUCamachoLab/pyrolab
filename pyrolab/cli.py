@@ -80,7 +80,8 @@ def launch():
         subprocess.Popen(["python", f"{str(rsrc)}"], close_fds=True, start_new_session=True, creationflags=DETACHED_PROCESS) # stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, 
         typer.secho("PyroLab daemon launched.", fg=typer.colors.GREEN)
     else:
-        typer.secho("PyroLab daemon is already running!", fg=typer.colors.GREEN)
+        typer.secho("PyroLab daemon is already running!", fg=typer.colors.RED)
+        raise typer.Abort()
 
 @app.command()
 def shutdown():
