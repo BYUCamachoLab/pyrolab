@@ -5,6 +5,15 @@
 # (see pyrolab/__init__.py for details)
 
 """
+Command Line Interface
+=======================
+
+You should be able to find all background pyrolab daemons by running (on Unix):
+
+```
+ps aux | grep pyrolabd
+```
+
 pyrolab commands to be implemented
 
 
@@ -79,19 +88,22 @@ def main(version: bool = typer.Option(False, "--version", "-v", help="Show the v
 def launch():
     """
     Launch the PyroLab daemon
+
+    # TODO: Add options for port number
     """
     daemon = get_daemon(abort=False)
     if daemon is None:
         rsrc = Path(pkg_resources.resource_filename('pyrolab', "pyrolabd.py"))
-        subprocess.Popen(["python", f"{str(rsrc)}"])
-        typer.echo("PyroLab daemon launched")
+        subprocess.Popen(["python", f"{str(rsrc)}"], close_fds=True, start_new_session=True) # stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, 
+        typer.secho("PyroLab daemon launched.", fg=typer.colors.GREEN)
     else:
-        typer.echo("PyroLab is already running")
+        typer.secho("PyroLab daemon is already running!", fg=typer.colors.GREEN)
 
 @app.command()
 def shutdown():
     daemon = get_daemon()
     daemon.shutdown()
+    typer.secho("PyroLab daemon shutdown", fg=typer.colors.GREEN)
 
 @app.command()
 def ps():
