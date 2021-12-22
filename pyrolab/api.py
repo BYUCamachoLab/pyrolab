@@ -34,6 +34,7 @@ from pyrolab.configure import (
 )
 from pyrolab.service import Service
 
+
 config = GlobalConfiguration.instance()
 
 
