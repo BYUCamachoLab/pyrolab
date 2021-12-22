@@ -55,7 +55,8 @@ def get_daemon(abort=True) -> PyroLabDaemon:
         DAEMON = Proxy(ii.uri)
         return DAEMON
     elif abort:
-        raise typer.Abort("PyroLab daemon is not running! Try 'pyrolab launch' first.")
+        typer.secho("PyroLab daemon is not running! Try 'pyrolab launch' first.", fg=typer.colors.RED)
+        raise typer.Abort()
     else:
         return None
 
