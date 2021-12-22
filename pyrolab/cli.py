@@ -63,18 +63,24 @@ def _version_callback(value: bool) -> None:
         raise typer.Exit()
 
 @app.callback()
-def main(version: bool = typer.Option(False, "--version", "-v", help="Show the version and exit.", callback=_version_callback, is_eager=True)):
+def main(
+    version: bool = typer.Option(False, "--version", "-v", help="Show the version and exit.", callback=_version_callback, is_eager=True)
+):
     return
 
 @app.command()
-def launch():
+def launch(
+    force: bool = typer.Option(False, "--force", "-f", help="Force launch of the daemon (only if you're positive it has died!)."),
+):
     """
     Launch the PyroLab daemon.
 
     # TODO: Add options for port number
     """
     daemon = get_daemon(abort=False)
-    if daemon is None:
+    if daemon is None or force:
+        if force:
+            LOCKFILE.unlink()
         rsrc = Path(pkg_resources.resource_filename('pyrolab', "pyrolabd.py"))
         DETACHED_PROCESS = 0x00000008
         subprocess.Popen(["python", f"{str(rsrc)}"], close_fds=True, start_new_session=True, creationflags=DETACHED_PROCESS) # stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, 
