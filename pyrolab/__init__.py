@@ -53,6 +53,13 @@ import warnings
 warnings.filterwarnings("default", category=DeprecationWarning)
 
 
+# Hide a very annoying warnings from appnope about Python 3.12
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
+    import appnope
+    appnope.nope()
+
+
 from appdirs import AppDirs
 _dirs = AppDirs(__name__, __author__)
 PYROLAB_DATA_DIR = pathlib.Path(_dirs.user_data_dir)
@@ -79,6 +86,7 @@ logging.debug("PyroLab started (logger configured).")
 # Include remote traceback in local tracebacks
 import Pyro5.errors
 sys.excepthook = Pyro5.errors.excepthook
+
 
 from multiprocessing import current_process
 if current_process().name == 'MainProcess':

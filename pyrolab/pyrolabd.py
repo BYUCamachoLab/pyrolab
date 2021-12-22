@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, NamedTuple, Union
 
-import appnope
 import Pyro5.api as api
 from pydantic import BaseModel
 from tabulate import tabulate
@@ -15,7 +14,6 @@ from pyrolab.configure import DaemonConfiguration, GlobalConfiguration, NameServ
 
 
 log = logging.getLogger(__name__)
-appnope.nope()
 
 
 INSTANCE_DATA = PYROLAB_DATA_DIR / "instance"
@@ -198,7 +196,6 @@ class PyroLabDaemon:
 
     @api.oneway
     def shutdown(self):
-        print("shutting down")
         self._pyroDaemon.shutdown()
 
 
