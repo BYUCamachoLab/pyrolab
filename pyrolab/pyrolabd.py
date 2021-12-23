@@ -8,17 +8,23 @@ import Pyro5.api as api
 from pydantic import BaseModel
 from tabulate import tabulate
 
-from pyrolab import PYROLAB_DATA_DIR
+from pyrolab import PYROLABD_DATA, LOCKFILE, USER_CONFIG_FILE
 from pyrolab.manager import ProcessManager
-from pyrolab.configure import DaemonConfiguration, GlobalConfiguration, NameServerConfiguration, ServiceConfiguration, update_config, reset_config, export_config
+from pyrolab.configure import (
+    DaemonConfiguration, 
+    GlobalConfiguration, 
+    NameServerConfiguration, 
+    ServiceConfiguration, 
+    update_config, 
+    reset_config, 
+    export_config,
+)
+
+
+RUNTIME_CONFIG = PYROLABD_DATA / "runtime_config.yaml"
 
 
 log = logging.getLogger(__name__)
-
-
-INSTANCE_DATA = PYROLAB_DATA_DIR / "instance"
-INSTANCE_DATA.mkdir(parents=True, exist_ok=True)
-LOCKFILE = INSTANCE_DATA / "pyrolabd.lock"
 
 
 class InstanceInfo(BaseModel):
@@ -62,10 +68,28 @@ def parse_process(process) -> Dict[str, Any]:
 @api.expose
 @api.behavior(instance_mode="single")
 class PyroLabDaemon:
-    def __init__(self):
-        print(f"launching {id(self)} running at {os.getpid()}")
+    def __init__(self):        
         self.manager = ProcessManager.instance()
-        GlobalConfiguration.instance().load_config()
+
+        if USER_CONFIG_FILE.exists():
+            self.gconfig = GlobalConfiguration.instance()
+            self.gconfig.load_config(USER_CONFIG_FILE)
+            self.gconfig.save_config(RUNTIME_CONFIG, force=True)
+        else:
+            self.gconfig = GlobalConfiguration.instance()
+
+    def reload(self) -> bool:
+        """
+        Reloads the latest configuration file and restarts services that were 
+        running.
+
+        Returns
+        -------
+        bool
+            True if the reload was successful, False otherwise.
+        """
+        self.gconfig.load_config(RUNTIME_CONFIG)
+        return self.manager.reload()
 
     def whoami(self):
         return f"{id(self)} at {os.getpid()}"
@@ -77,17 +101,16 @@ class PyroLabDaemon:
         Lists process names, status (i.e. running, stopped, etc.), start time,
         URI/ports, etc.
         """
-        plc = GlobalConfiguration.instance().get_config()
         listing = []
-        for ns in plc.nameservers.keys():
+        for ns in self.gconfig.get_config().nameservers.keys():
             process = self.manager.get_nameserver_process(ns)
             results = parse_process(process)
             listing.append(PSInfo(ns, "nameserver", **results))
-        for daemon in plc.daemons.keys():
+        for daemon in self.gconfig.get_config().daemons.keys():
             process = self.manager.get_daemon_process(daemon)
             results = parse_process(process)
             listing.append(PSInfo(daemon, "daemon", **results))
-        for service in plc.services.keys():
+        for service in self.gconfig.get_config().services.keys():
             listing.append(PSInfo(service, "service", "", "", ""))
         
         return tabulate(listing, headers=["NAME", "TYPE", "CREATED", "STATUS", "URI"])
@@ -99,9 +122,9 @@ class PyroLabDaemon:
         return reset_config()
 
     def config_export(self, filename: Union[str, Path]):
-        return export_config(filename)
+        return export_config(self.gconfig, filename)
 
-    def start_ns(self, nameserver: str):
+    def start_nameserver(self, nameserver: str):
         self.manager.launch_nameserver(nameserver)
 
     def start_daemon(self, daemon: str):
@@ -110,7 +133,7 @@ class PyroLabDaemon:
     def start_service(self, service: str):
         pass
 
-    def stop_ns(self, nameserver: str):
+    def stop_nameserver(self, nameserver: str):
         self.manager.stop_nameserver(nameserver)
 
     def stop_daemon(self, daemon: str):
@@ -119,35 +142,32 @@ class PyroLabDaemon:
     def stop_service(self, service: str):
         pass
 
-    def info(self, name: str):
-        pass
+    # def info(self, name: str):
+    #     pass
 
-    def logs(self, name: str):
-        pass
+    # def logs(self, name: str):
+    #     pass
 
     def rename_nameserver(self, old_name: str, new_name: str):
-        GLOBAL_CONFIG = GlobalConfiguration.instance()
-        if old_name in GLOBAL_CONFIG.get_config().nameservers:
-            config = GLOBAL_CONFIG.get_config().nameservers[old_name]
-            del GLOBAL_CONFIG.get_config().nameservers[old_name]
-            GLOBAL_CONFIG.get_config().nameservers[new_name] = config
-            GLOBAL_CONFIG.save_config()
+        if old_name in self.gconfig.get_config().nameservers:
+            config = self.gconfig.get_config().nameservers[old_name]
+            del self.gconfig.get_config().nameservers[old_name]
+            self.gconfig.get_config().nameservers[new_name] = config
+            self.gconfig.save_config(RUNTIME_CONFIG)
 
     def rename_daemon(self, old_name: str, new_name: str):
-        GLOBAL_CONFIG = GlobalConfiguration.instance()
-        if old_name in GLOBAL_CONFIG.get_config().daemons:
-            config = GLOBAL_CONFIG.get_config().daemons[old_name]
-            del GLOBAL_CONFIG.get_config().daemons[old_name]
-            GLOBAL_CONFIG.get_config().daemons[new_name] = config
-            GLOBAL_CONFIG.save_config()
+        if old_name in self.gconfig.get_config().daemons:
+            config = self.gconfig.get_config().daemons[old_name]
+            del self.gconfig.get_config().daemons[old_name]
+            self.gconfig.get_config().daemons[new_name] = config
+            self.gconfig.save_config(RUNTIME_CONFIG)
 
     def rename_service(self, old_name: str, new_name: str):
-        GLOBAL_CONFIG = GlobalConfiguration.instance()
-        if old_name in GLOBAL_CONFIG.get_config().services:
-            config = GLOBAL_CONFIG.get_config().services[old_name]
-            del GLOBAL_CONFIG.get_config().services[old_name]
-            GLOBAL_CONFIG.get_config().services[new_name] = config
-            GLOBAL_CONFIG.save_config()
+        if old_name in self.gconfig.get_config().services:
+            config = self.gconfig.get_config().services[old_name]
+            del self.gconfig.get_config().services[old_name]
+            self.gconfig.get_config().services[new_name] = config
+            self.gconfig.save_config(RUNTIME_CONFIG)
 
     def restart_nameserver(self, name: str):
         pass
@@ -159,40 +179,34 @@ class PyroLabDaemon:
         pass
 
     def add_nameserver(self, name: str, config: NameServerConfiguration):
-        GLOBAL_CONFIG = GlobalConfiguration.instance()
-        if name not in GLOBAL_CONFIG.get_config().nameservers:
-            GLOBAL_CONFIG.get_config().nameservers[name] = config
-            GLOBAL_CONFIG.save_config()
+        if name not in self.gconfig.get_config().nameservers:
+            self.gconfig.get_config().nameservers[name] = config
+            self.gconfig.save_config(RUNTIME_CONFIG)
 
     def rm_nameserver(self, name: str):
-        GLOBAL_CONFIG = GlobalConfiguration.instance()
-        if name in GLOBAL_CONFIG.get_config().nameservers:
-            del GLOBAL_CONFIG.get_config().nameservers[name]
-            GLOBAL_CONFIG.save_config()
+        if name in self.gconfig.get_config().nameservers:
+            del self.gconfig.get_config().nameservers[name]
+            self.gconfig.save_config(RUNTIME_CONFIG)
 
     def add_daemon(self, name: str, config: DaemonConfiguration):
-        GLOBAL_CONFIG = GlobalConfiguration.instance()
-        if name not in GLOBAL_CONFIG.get_config().daemons:
-            GLOBAL_CONFIG.get_config().daemons[name] = config
-            GLOBAL_CONFIG.save_config()
+        if name not in self.gconfig.get_config().daemons:
+            self.gconfig.get_config().daemons[name] = config
+            self.gconfig.save_config(RUNTIME_CONFIG)
 
     def rm_daemon(self, name: str):
-        GLOBAL_CONFIG = GlobalConfiguration.instance()
-        if name in GLOBAL_CONFIG.get_config().daemons:
-            del GLOBAL_CONFIG.get_config().daemons[name]
-            GLOBAL_CONFIG.save_config()
+        if name in self.gconfig.get_config().daemons:
+            del self.gconfig.get_config().daemons[name]
+            self.gconfig.save_config(RUNTIME_CONFIG)
 
     def add_service(self, name: str, config: ServiceConfiguration):
-        GLOBAL_CONFIG = GlobalConfiguration.instance()
-        if name not in GLOBAL_CONFIG.get_config().services:
-            GLOBAL_CONFIG.get_config().services[name] = config
-            GLOBAL_CONFIG.save_config()
+        if name not in self.gconfig.get_config().services:
+            self.gconfig.get_config().services[name] = config
+            self.gconfig.save_config(RUNTIME_CONFIG)
 
     def rm_service(self, name: str):
-        GLOBAL_CONFIG = GlobalConfiguration.instance()
-        if name in GLOBAL_CONFIG.get_config().services:
-            del GLOBAL_CONFIG.get_config().services[name]
-            GLOBAL_CONFIG.save_config()
+        if name in self.gconfig.get_config().services:
+            del self.gconfig.get_config().services[name]
+            self.gconfig.save_config(RUNTIME_CONFIG)
 
     @api.oneway
     def shutdown(self):
@@ -203,9 +217,15 @@ if __name__ == "__main__":
     if LOCKFILE.exists():
         raise RuntimeError(f"Lockfile already exists. Is another instance running?")
     else:
+        import sys
+        if len(sys.argv) > 1:
+            port = int(sys.argv[1])
+        else:
+            port = 0
+
         try:
             LOCKFILE.touch(exist_ok=False)
-            daemon = api.Daemon()
+            daemon = api.Daemon(port=port)
             pyrolabd = PyroLabDaemon()
             uri = daemon.register(pyrolabd, "pyrolabd")
             ii = InstanceInfo(pid=os.getpid(), uri=str(uri))
@@ -214,3 +234,4 @@ if __name__ == "__main__":
             daemon.requestLoop()
         finally:
             LOCKFILE.unlink()
+            RUNTIME_CONFIG.unlink()
