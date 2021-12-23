@@ -1,3 +1,4 @@
+==========
 Deployment
 ==========
 
@@ -30,25 +31,50 @@ overwriting the lockfile is safe. Be aware that this is what's happening if
 you decide to debug your batch file; you may be creating a bunch of orphaned
 processes!
 
-Once the batch file is written, do the following:
+Once the batch file is written, you have two options. You can configure Windows
+to run the file as a task on a schedule (in our case, on startup), which should
+in theory work even if no one logs in to the computer, but it is simply 
+restarted. This is nice in a lab, if you're not actually using the computer
+hosting various PyroLab services; you can just start the computer by pressing
+the power button and not worry about logging in on each computer that hosts a 
+service you need. For example, many of our computers run "headless," without a
+monitor attached, and it would be a hassle to remote into every machine after
+startup just to login. The second option is to place the .bat file in the 
+Startup folder. These only get launched on login, however. Instructions for 
+both methods are included below.
 
-    1. Open the Windows Task Scheduler.
-    2. Create a new basic task.
-    3. Name it something recognizable, like "pyrolabd". Optionally, add a description.
-    4. Set the trigger time to "When the computer starts".
-    5. Set the action to "Start a program".
-    6. Find the batch file location, place that in "Program/script".
-    7. Select "Open the Properties dialog..." before clicking Finish, or open the
-       Properties dialog manually by selecting it from the list of scheduled tasks.
-    8. Under "General", ensure that it's running under some User's account.
-    9. Additionally, select, "Run whether user is logged on or not" (note: do NOT
-       select "Do not store password.").
-    10. Select "Run with highest privileges".
-    11. Under "Conditions", deselect all (for example, we always want the task
-        to start, regardless of battery state or the computer being idle).
-    12. Under "Settings", select "Allow task to be run on demand", "Run task as 
-        soon as possible after a scheduled start is missed", and "If the 
-        running task does not end when requested, force it to stop".
+Using the Task Scheduler
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+1. Open the Windows Task Scheduler.
+2. Create a new basic task.
+3. Name it something recognizable, like "pyrolabd". Optionally, add a 
+   description.
+4. Set the trigger time to "When the computer starts".
+5. Set the action to "Start a program".
+6. Find the batch file location, place that in "Program/script".
+7. Select "Open the Properties dialog..." before clicking Finish, or open the
+   Properties dialog manually by selecting it from the list of scheduled tasks.
+8. Under "General", ensure that it's running under some User's account.
+9. Additionally, select, "Run whether user is logged on or not" (note: do NOT
+   select "Do not store password.").
+10. Select "Run with highest privileges".
+11. Under "Conditions", deselect all (for example, we always want the task
+    to start, regardless of battery state or the computer being idle).
+12. Under "Settings", select "Allow task to be run on demand", "Run task as 
+    soon as possible after a scheduled start is missed", and "If the 
+    running task does not end when requested, force it to stop".
+
+Using the Startup folder
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+1. Press the Windows+R key to open the run dialog.
+2. Type "shell:startup" and press Enter.
+3. Right click in the folder and select "New".
+4. Click "Shortcut".
+5. Type the location of the batch file, or browse to it.
+6. Click "Next".
+7. Type a name for the shortcut (such as "pyrolabd"), and click "Finish".
 
 macOS
 -----
