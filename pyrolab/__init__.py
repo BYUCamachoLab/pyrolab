@@ -51,6 +51,8 @@ __website_url__ = "https://camacholab.byu.edu/"
 
 import warnings
 warnings.filterwarnings("default", category=DeprecationWarning)
+if "PYROLAB_HUSH_DEPRECATION" in os.environ:
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
 # Hide a very annoying warnings from appnope about Python 3.12
@@ -63,9 +65,22 @@ with warnings.catch_warnings():
 from appdirs import AppDirs
 _dirs = AppDirs(__name__, __author__)
 PYROLAB_DATA_DIR = pathlib.Path(_dirs.user_data_dir)
-PYROLAB_CONFIG_DIR = pathlib.Path(_dirs.user_config_dir)
 PYROLAB_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+PYROLAB_CONFIG_DIR = pathlib.Path(_dirs.user_config_dir)
 PYROLAB_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+
+PYROLABD_DATA = PYROLAB_DATA_DIR / "pyrolabd"
+PYROLABD_DATA.mkdir(parents=True, exist_ok=True)
+
+NAMESERVER_STORAGE = PYROLAB_DATA_DIR / "nameservers"
+NAMESERVER_STORAGE.mkdir(parents=True, exist_ok=True)
+
+CONFIG_DIR = PYROLAB_CONFIG_DIR / "config"
+CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+
+LOCKFILE = PYROLABD_DATA / "pyrolabd.lock"
+USER_CONFIG_FILE = CONFIG_DIR / "user_configuration.yaml"
 
 
 # Set up logging to file
