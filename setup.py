@@ -74,9 +74,9 @@ setup_args = dict(
 
 install_requires = [
     "Pyro5",
-    "deprecation",
     "numpy",
     "scipy",
+    "deprecation",
     "appdirs",
     "appnope",
     "pydantic",
