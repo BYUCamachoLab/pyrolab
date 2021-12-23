@@ -289,6 +289,7 @@ class DaemonRunner(multiprocessing.Process):
         self.daemonconfig.update_pyro_config()
         daemon, uris = self.setup_daemon()
 
+        # TODO: Is this process safe? Check that this is the same object.
         GLOBAL_CONFIG = GlobalConfiguration.instance()
 
         # Register all services with the nameserver
@@ -432,6 +433,14 @@ class ProcessManager:
         time.sleep(polling)
         del self.daemons[daemon]
         print(f"{bcolors.OKGREEN}done{bcolors.ENDC}")
+
+    def reload(self) -> bool:
+        """
+        Reload all servers.
+
+        TODO: Implement this.
+        """
+        return False
 
     def shutdown_all(self) -> None:
         for daemon in list(self.daemons.keys()):
