@@ -55,9 +55,8 @@ configuration settings.
 
 from __future__ import annotations
 import logging
-import warnings
 from pathlib import Path
-from multiprocessing.process import current_process
+import shutil
 from typing import IO, Any, Dict, List, Optional, Union
 
 import Pyro5
@@ -71,20 +70,11 @@ try:
 except ImportError:
     from yaml import Loader
 
-from pyrolab import PYROLAB_CONFIG_DIR, PYROLAB_DATA_DIR
+from pyrolab import NAMESERVER_STORAGE, USER_CONFIG_FILE
 from pyrolab.utils import generate_random_name, get_ip
 
 
 log = logging.getLogger(__name__)
-
-
-CONFIG_DIR = PYROLAB_CONFIG_DIR / "config"
-CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-
-ACTIVE_DATA_DIR = PYROLAB_DATA_DIR / "activedata"
-ACTIVE_DATA_DIR.mkdir(parents=True, exist_ok=True)
-
-USER_CONFIG_FILE = CONFIG_DIR / "user_configuration.yaml"
 
 
 class UniqueOrAutoKeyLoader(Loader):
@@ -190,7 +180,81 @@ class PyroConfigMixin:
         return pyroset
 
 
-class NameServerConfiguration(BaseSettings, PyroConfigMixin):
+class YAMLMixin:
+    def yaml(self, 
+             sort_keys: bool=False, 
+             default_flow_style: bool=False,
+             exclude_defaults: bool=False) -> str:
+        """
+        Returns a YAML representation of the configuration.
+
+        Parameters
+        ----------
+        sort_keys : bool, optional
+            Sorts the keys of the dictionary alphabetically if True, else 
+            leaves them in the order as declared by the model (default False).
+        default_flow_style : bool, optional
+            Uses the default flow style if True, or formats in human-readable
+            from if False (default False).
+        exclude_defaults : bool, optional
+            Excludes default values from the YAML output if True, else
+            includes them (default False).
+        """
+        return dump(self.dict(exclude_defaults=exclude_defaults), sort_keys=sort_keys, default_flow_style=default_flow_style)
+
+    @classmethod
+    def from_yaml(cls, yaml: Union[bytes, IO[bytes], str, IO[str]]) -> PyroLabConfiguration:
+        """
+        Loads a YAML representation of the configuration.
+
+        .. warning::
+           The YAML ``load`` function can run arbitrary code on your machine. Only
+           load trusted or untampered files! If in doubt, examine the file first.
+           It's a short text file, and should not be hard to vet.
+
+        Parameters
+        ----------
+        yaml : bytes, str, IO[bytes], IO[str]
+            The YAML to load.
+        """
+        loaded = load(yaml, Loader=UniqueOrAutoKeyLoader)
+        cfg = cls.parse_obj(loaded)
+        return cfg
+
+    @classmethod
+    def from_file(cls, filename: Union[str, Path]) -> PyroLabConfiguration:
+        """
+        Loads a configuration file.
+
+        .. warning::
+           The YAML ``load`` function can run arbitrary code on your machine. Only
+           load trusted or untampered files! If in doubt, examine the file first.
+           It's a short text file, and should not be hard to vet.
+
+        Parameters
+        ----------
+        filename : str, Path
+            The filename of the YAML configuration file to load.
+
+        Returns
+        -------
+        PyroLabConfiguration
+            The configuration object.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the file does not exist.
+        """
+        filename = Path(filename)
+        if filename.exists():
+            with filename.open("r") as f:
+                return cls.from_yaml(f)
+        else:
+            raise FileNotFoundError(f"File does not exist: '{filename}'")
+
+
+class NameServerConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
     """
     The NameServer Settings class. 
     
@@ -278,11 +342,11 @@ class NameServerConfiguration(BaseSettings, PyroConfigMixin):
             The path to the storage location.
         """
         if self.storage in ["sql", "dbm"]:
-            return f"{self.storage}:" + str(ACTIVE_DATA_DIR / f"ns_{self.name}.{self.storage}")
+            return f"{self.storage}:" + str(NAMESERVER_STORAGE / f"ns_{self.name}.{self.storage}")
         return self.storage
 
 
-class DaemonConfiguration(BaseSettings, PyroConfigMixin):
+class DaemonConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
     """
     Server configuration object.
 
@@ -341,7 +405,7 @@ class DaemonConfiguration(BaseSettings, PyroConfigMixin):
     nameservers: List[str] = []
 
 
-class ServiceConfiguration(BaseSettings, PyroConfigMixin):
+class ServiceConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
     """
     Groups together information about a PyroLab service. 
     
@@ -412,7 +476,7 @@ class ServiceConfiguration(BaseSettings, PyroConfigMixin):
     nameservers: List[str] = []
 
 
-class PyroLabConfiguration(BaseSettings):
+class PyroLabConfiguration(BaseSettings, YAMLMixin):
     """
     Global configuration options for PyroLab.
 
@@ -427,29 +491,8 @@ class PyroLabConfiguration(BaseSettings):
     services: Dict[str, ServiceConfiguration] = {}
     autolaunch: Dict[str, List[str]] = {"nameservers": [], "services": []}
 
-    def yaml(self, 
-             sort_keys: bool=False, 
-             default_flow_style: bool=False,
-             exclude_defaults: bool=False) -> str:
-        """
-        Returns a YAML representation of the configuration.
-
-        Parameters
-        ----------
-        sort_keys : bool, optional
-            Sorts the keys of the dictionary alphabetically if True, else 
-            leaves them in the order as declared by the model (default False).
-        default_flow_style : bool, optional
-            Uses the default flow style if True, or formats in human-readable
-            from if False (default False).
-        exclude_defaults : bool, optional
-            Excludes default values from the YAML output if True, else
-            includes them (default False).
-        """
-        return dump(self.dict(exclude_defaults=exclude_defaults), sort_keys=sort_keys, default_flow_style=default_flow_style)
-
-    @staticmethod
-    def from_yaml(yaml: Union[bytes, IO[bytes], str, IO[str]]) -> PyroLabConfiguration:
+    @classmethod
+    def from_yaml(cls, yaml: Union[bytes, IO[bytes], str, IO[str]]) -> PyroLabConfiguration:
         """
         Loads a YAML representation of the configuration.
 
@@ -463,43 +506,10 @@ class PyroLabConfiguration(BaseSettings):
         yaml : bytes, str, IO[bytes], IO[str]
             The YAML to load.
         """
-        loaded = load(yaml, Loader=UniqueOrAutoKeyLoader)
-        cfg = PyroLabConfiguration.parse_obj(loaded)
+        cfg = super().from_yaml(yaml)
         for name, nscfg in cfg.nameservers.items():
             nscfg.set_name(name)
         return cfg
-
-    @staticmethod
-    def from_file(filename: Union[str, Path]) -> PyroLabConfiguration:
-        """
-        Loads a configuration file.
-
-        .. warning::
-           The YAML ``load`` function can run arbitrary code on your machine. Only
-           load trusted or untampered files! If in doubt, examine the file first.
-           It's a short text file, and should not be hard to vet.
-
-        Parameters
-        ----------
-        filename : str, Path
-            The filename of the YAML configuration file to load.
-
-        Returns
-        -------
-        PyroLabConfiguration
-            The configuration object.
-
-        Raises
-        ------
-        FileNotFoundError
-            If the file does not exist.
-        """
-        filename = Path(filename)
-        if filename.exists():
-            with filename.open("r") as f:
-                return PyroLabConfiguration.from_yaml(f)
-        else:
-            raise FileNotFoundError(f"File does not exist: '{filename}'")
 
     def get_nameserver_settings(self, nameserver: str) -> NameServerConfiguration:
         return self.nameservers[nameserver]
@@ -561,7 +571,7 @@ class GlobalConfiguration:
         """
         self.config = PyroLabConfiguration()
 
-    def load_config(self, filename: Union[str, Path]=None) -> None:
+    def load_config(self, filename: Union[str, Path]) -> None:
         """
         Reads the configuration file and updates the internal configuration.
 
@@ -575,17 +585,12 @@ class GlobalConfiguration:
         FileNotFoundError
             If the file does not exist.
         """
-        # if current_process().name != 'MainProcess':
-        #     raise Exception("GlobalConfiguration should only be dynamically loaded by the main process.")
         if not filename:
-            if USER_CONFIG_FILE.exists():
-                filename = USER_CONFIG_FILE
-            else:
-                self.config = PyroLabConfiguration()
-                return
+            self.config = PyroLabConfiguration()
+            return
         self.config = PyroLabConfiguration.from_file(filename)
 
-    def save_config(self, filename: Union[str, Path], force=False) -> None:
+    def save_config(self, filename: Union[str, Path]) -> None:
         """
         Persists the configuration to a file.
 
@@ -595,18 +600,8 @@ class GlobalConfiguration:
         ----------
         filename : str or Path
             The path to save the configuration file to.
-        force : bool, optional
-            If True, overwrites the file if it already exists (default False).
-
-        Raises
-        ------
-        FileExistsError
-            If the file already exists and saving would overwrite it. PyroLab
-            will refuse to overwrite it unless ``force`` is True.
         """
         filename = Path(filename)
-        if filename.exists() and not force:
-            raise FileExistsError(f"File already exists: '{filename}'")
         with filename.open("w") as f:
             f.write(self.config.yaml())
 
@@ -728,16 +723,16 @@ def reset_config() -> None:
     """
     USER_CONFIG_FILE.unlink(missing_ok=True)
 
-def export_config(filename: Union[str, Path]) -> None:
+def export_config(config: GlobalConfiguration, filename: Union[str, Path]) -> None:
     """
     Exports the current configuration to a file.
 
     Parameters
     ----------
+    config : GlobalConfiguration
+        The configuration to export.
     filename : str or Path
-        The path to the configuration file to export to.
+        The path to the configuration file or directory to export to.
     """
-    GlobalConfiguration.instance().save_config(USER_CONFIG_FILE, force=True)
-    with USER_CONFIG_FILE.open("r") as fin:
-        with Path(filename).open("w") as fout:
-            fout.write(fin.read())
+    config.save_config(USER_CONFIG_FILE, force=True)
+    shutil.copy(USER_CONFIG_FILE, filename)
