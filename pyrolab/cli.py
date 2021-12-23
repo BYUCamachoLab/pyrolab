@@ -19,16 +19,22 @@ Autoreload when watching a directory?
 * watchdog
 * watchgod
 """
+import shutil
 import subprocess
+import platform
+import sys
+import textwrap
 from typing import Optional
 import pkg_resources
 from pathlib import Path
+from tabulate import tabulate
 
 import typer
 
+from pyrolab import USER_CONFIG_FILE
 from pyrolab.api import Proxy
-from pyrolab.configure import update_config, reset_config, export_config
-from pyrolab.pyrolabd import PyroLabDaemon, InstanceInfo, LOCKFILE
+from pyrolab.configure import PyroLabConfiguration, update_config, reset_config
+from pyrolab.pyrolabd import PyroLabDaemon, InstanceInfo, LOCKFILE, RUNTIME_CONFIG
 
 
 def get_daemon(abort=True) -> PyroLabDaemon:
@@ -50,6 +56,7 @@ def get_daemon(abort=True) -> PyroLabDaemon:
 # --------
 # pyrolab launch
 # pyrolab shutdown
+# pyrolab reload
 # pyrolab ps
 # pyrolab --version
 ###############################################################################
@@ -70,20 +77,33 @@ def main(
 
 @app.command()
 def launch(
+    port: int = typer.Option(None, "--port", "-p", help="Port to use for the PyroLab daemon."),
     force: bool = typer.Option(False, "--force", "-f", help="Force launch of the daemon (only if you're positive it has died!)."),
 ):
     """
     Launch the PyroLab daemon.
 
-    # TODO: Add options for port number
+    Only use the `--force` flag if you're sure the daemon is dead, or you may
+    orphan the process.
     """
     daemon = get_daemon(abort=False)
     if daemon is None or force:
         if force:
             LOCKFILE.unlink()
+        
         rsrc = Path(pkg_resources.resource_filename('pyrolab', "pyrolabd.py"))
-        DETACHED_PROCESS = 0x00000008
-        subprocess.Popen(["python", f"{str(rsrc)}"], close_fds=True, start_new_session=True, creationflags=DETACHED_PROCESS) # stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, 
+        
+        if port:
+            args = [sys.executable, str(rsrc), str(port)]
+        else:
+            args = [sys.executable, str(rsrc)]
+        
+        if platform.system() == "Windows":
+            DETACHED_PROCESS = 0x00000008
+            subprocess.Popen(args, close_fds=True, start_new_session=True, creationflags=DETACHED_PROCESS)
+        else:
+            subprocess.Popen(args, close_fds=True, start_new_session=True) # stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, 
+        
         typer.secho("PyroLab daemon launched.", fg=typer.colors.GREEN)
     else:
         typer.secho("PyroLab daemon is already running!", fg=typer.colors.RED)
@@ -99,16 +119,18 @@ def shutdown():
     typer.secho("PyroLab daemon shutdown", fg=typer.colors.GREEN)
 
 @app.command()
-def reset():
+def reload():
     """
-    Removes the lock file that tracks the PyroLab daemon's state.
+    Reload the PyroLab daemon using the latest configuration file.
+
+    Useful if the configuration file has been updated.
     """
-    typer.confirm("Only do this if you are sure the daemon is not running, or you may orphan the process. Continue?", abort=True)
-    if LOCKFILE.exists():
-        LOCKFILE.unlink()
-        typer.secho("PyroLab daemon reset", fg=typer.colors.GREEN)
+    daemon = get_daemon()
+    result = daemon.reload()
+    if result:
+        typer.secho("PyroLab daemon reloaded.", fg=typer.colors.GREEN)
     else:
-        typer.secho("PyroLab daemon is not running!", fg=typer.colors.GREEN)
+        typer.secho("PyroLab daemon reload failed.", fg=typer.colors.RED)
 
 @app.command()
 def ps():
@@ -127,6 +149,7 @@ def ps():
 # pyrolab config update FILENAME
 # pyrolab config reset
 # pyrolab config export FILENAME
+# pyrolab config save
 ###############################################################################
 
 config_app = typer.Typer()
@@ -150,33 +173,56 @@ def config_reset():
 @config_app.command("export")
 def config_export(filename: str):
     """Export the configuration file"""
-    export_config(filename)
+    daemon = get_daemon(abort=False)
+    if daemon:
+        daemon.config_export(filename)
+    elif USER_CONFIG_FILE.exists():
+        shutil.copy(USER_CONFIG_FILE, filename)
+    else:
+        typer.secho("No configuration file found.", fg=typer.colors.RED)
+        raise typer.Abort()
 
+@config_app.command("save")
+def config_save():
+    """
+    Save the current daemon configuration to the user configuration file.
+    
+    Requires that the background daemon be running.
+    """
+    daemon = get_daemon()
+    if daemon:
+        daemon.config_export(USER_CONFIG_FILE)
+    else:
+        typer.secho("Save only valid when daemon is running.", fg=typer.colors.RED)
+        raise typer.Abort()
 
 ###############################################################################
 # pyrolab Start App
 #
 # COMMANDS
 # --------
-# pyrolab start NAME
-# pyrolab start -ns --nameserver NAME
-# pyrolab start -d --daemon NAME
+# pyrolab start nameserver NAME
+# pyrolab start daemon NAME
 ###############################################################################
 
 start_app = typer.Typer()
-app.add_typer(start_app, name="start")
+app.add_typer(start_app, name="start", help="Start a nameserver, daemon, or service.")
 
-@start_app.callback()
-def start_something(name: Optional[str] = typer.Argument(None, help="Name of the service to start"),):
+@start_app.command("nameserver")
+def start_nameserver(name: str):
     """
-    Start a nameserver, daemon, or service.
+    Start a nameserver.
     """
-    # TODO: If "all" requested, start all services
-    print(name)
-    raise typer.Exit()
+    daemon = get_daemon()
+    daemon.start_nameserver(name)
 
-# @start_app.command("nameserver")
-
+@start_app.command("daemon")
+def start_daemon(name: str):
+    """
+    Start a daemon.
+    """
+    daemon = get_daemon()
+    daemon.start_daemon(name)
 
 ###############################################################################
 # pyrolab Stop App
@@ -203,28 +249,96 @@ def stop_nameserver(name: Optional[str] = typer.Argument(None, help="Name of the
     """
     Stop a nameserver.
     """
-    pass
+    daemon = get_daemon()
+    daemon.stop_nameserver(name)
 
 @stop_app.command("daemon")
 def stop_daemon(name: Optional[str] = typer.Argument(None, help="Name of the service to stop"),):
     """
     Stop a daemon.
     """
-    pass
+    daemon = get_daemon()
+    daemon.stop_daemon(name)
 
 ###############################################################################
 # pyrolab Info App
 #
 # COMMANDS
 # --------
-# pyrolab info NAME --verbose
+# pyrolab info nameserver NAME --verbose
+# pyrolab info daemon NAME --verbose
+# pyrolab info service NAME --verbose
 ###############################################################################
 
 info_app = typer.Typer()
-# app.add_typer(info_app, name="info")
+app.add_typer(info_app, name="info")
 
-# Accept --verbose as an argument, which gives nameserver details, too
+@info_app.command("nameserver")
+def info_nameserver(
+    name: str, 
+):
+    """
+    Get information on a nameserver.
+    """
+    if RUNTIME_CONFIG.exists():
+        config = PyroLabConfiguration.from_file(RUNTIME_CONFIG)
+    elif USER_CONFIG_FILE.exists():
+        config = PyroLabConfiguration.from_file(USER_CONFIG_FILE)
+    else:
+        typer.secho("No configuration file found.", fg=typer.colors.RED)
+        raise typer.Exit()
 
+    if name in config.nameservers:
+        info = textwrap.indent(str(config.nameservers[name].yaml()), '  ')
+        typer.echo(f"{name}\n{info}")
+    else:
+        typer.secho("Nameserver not found.", fg=typer.colors.RED)
+        raise typer.Exit()
+
+@info_app.command("daemon")
+def info_daemon(
+    name: str, 
+):
+    """
+    Get information on a daemon.
+    """
+    if RUNTIME_CONFIG.exists():
+        config = PyroLabConfiguration.from_file(RUNTIME_CONFIG)
+    elif USER_CONFIG_FILE.exists():
+        config = PyroLabConfiguration.from_file(USER_CONFIG_FILE)
+    else:
+        typer.secho("No configuration file found.", fg=typer.colors.RED)
+        raise typer.Exit()
+
+    if name in config.daemons:
+        info = textwrap.indent(str(config.daemons[name].yaml()), '  ')
+        typer.echo(f"{name}\n{info}")
+    else:
+        typer.secho("Daemon not found.", fg=typer.colors.RED)
+        raise typer.Exit()
+
+@info_app.command("service")
+def info_service(
+    name: str, 
+):
+    """
+    Get information on a service.
+    """
+    if RUNTIME_CONFIG.exists():
+        config = PyroLabConfiguration.from_file(RUNTIME_CONFIG)
+    elif USER_CONFIG_FILE.exists():
+        config = PyroLabConfiguration.from_file(USER_CONFIG_FILE)
+    else:
+        typer.secho("No configuration file found.", fg=typer.colors.RED)
+        raise typer.Exit()
+
+    if name in config.services:
+        info = textwrap.indent(str(config.services[name].yaml()), '  ')
+        typer.echo(f"{name}\n{info}")
+    else:
+        typer.secho("Service not found.", fg=typer.colors.RED)
+        typer.echo(config.services.keys())
+        raise typer.Exit()
 
 ###############################################################################
 # pyrolab Logs App
@@ -237,7 +351,6 @@ info_app = typer.Typer()
 logs_app = typer.Typer()
 # app.add_typer(logs_app, name="logs")
 
-
 ###############################################################################
 # pyrolab Rename App
 #
@@ -247,8 +360,40 @@ logs_app = typer.Typer()
 ###############################################################################
 
 rename_app = typer.Typer()
-# app.add_typer(rename_app, name="rename")
+app.add_typer(rename_app, name="rename")
 
+@rename_app.command("nameserver")
+def rename_nameserver(
+    old_name: str, 
+    new_name: str, 
+):
+    """
+    Rename a nameserver.
+    """
+    daemon = get_daemon()
+    daemon.rename_nameserver(old_name, new_name)
+
+@rename_app.command("daemon")
+def rename_daemon(
+    old_name: str, 
+    new_name: str, 
+):
+    """
+    Rename a daemon.
+    """
+    daemon = get_daemon()
+    daemon.rename_daemon(old_name, new_name)
+
+@rename_app.command("service")
+def rename_service(
+    old_name: str, 
+    new_name: str, 
+):
+    """
+    Rename a service.
+    """
+    daemon = get_daemon()
+    daemon.rename_service(old_name, new_name)
 
 ###############################################################################
 # pyrolab Restart App
@@ -261,7 +406,6 @@ rename_app = typer.Typer()
 restart_app = typer.Typer()
 # app.add_typer(restart_app, name="restart")
 
-
 ###############################################################################
 # pyrolab Remove App
 #
@@ -272,7 +416,6 @@ restart_app = typer.Typer()
 
 rm_app = typer.Typer()
 # app.add_typer(rm_app, name="rm")
-
 
 ###############################################################################
 # pyrolab Add App
