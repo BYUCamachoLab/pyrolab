@@ -484,6 +484,19 @@ class PyroLabConfiguration(BaseSettings, YAMLMixin):
        The YAML ``load`` function can run arbitrary code on your machine. Only
        load trusted or untampered files! If in doubt, examine the file first.
        It's a short text file, and should not be hard to vet.
+
+    Please call ``initialize_nameservers()`` anytime after modifying the
+    nameservers dictionary. Nameservers themselves contain a private attribute
+    of their own name, which can only be given to them by the parent 
+    configuration object.
+
+    Equality is defined as the values of each section being equal. Since the
+    keyword "auto" allows for names to be automatically generated, equality
+    ignores names in all cases. Therefore, two configurations that are 
+    essentially identical but have services or nameservices in a different 
+    order from each other will be considered different, while two 
+    configurations that have identical values but different key names will be 
+    considered equal.
     """
     version: str = "1.0"
     nameservers: Dict[str, NameServerConfiguration] = {}
@@ -491,25 +504,20 @@ class PyroLabConfiguration(BaseSettings, YAMLMixin):
     services: Dict[str, ServiceConfiguration] = {}
     autolaunch: Dict[str, List[str]] = {"nameservers": [], "services": []}
 
-    @classmethod
-    def from_yaml(cls, yaml: Union[bytes, IO[bytes], str, IO[str]]) -> PyroLabConfiguration:
-        """
-        Loads a YAML representation of the configuration.
+    def __eq__(self, other: Any) -> bool:
+        this = self.dict()
+        that = other.dict()
+        this['nameservers'] = list(this['nameservers'].values())
+        that['nameservers'] = list(that['nameservers'].values())
+        this['daemons'] = list(this['daemons'].values())
+        that['daemons'] = list(that['daemons'].values())
+        this['services'] = list(this['services'].values())
+        that['services'] = list(that['services'].values())
+        return this == that
 
-        .. warning::
-           The YAML ``load`` function can run arbitrary code on your machine. Only
-           load trusted or untampered files! If in doubt, examine the file first.
-           It's a short text file, and should not be hard to vet.
-
-        Parameters
-        ----------
-        yaml : bytes, str, IO[bytes], IO[str]
-            The YAML to load.
-        """
-        cfg = super().from_yaml(yaml)
-        for name, nscfg in cfg.nameservers.items():
+    def initialize_nameservers(self):
+        for name, nscfg in self.nameservers.items():
             nscfg.set_name(name)
-        return cfg
 
     def get_nameserver_settings(self, nameserver: str) -> NameServerConfiguration:
         return self.nameservers[nameserver]
@@ -589,6 +597,7 @@ class GlobalConfiguration:
             self.config = PyroLabConfiguration()
             return
         self.config = PyroLabConfiguration.from_file(filename)
+        self.config.initialize_nameservers()
 
     def save_config(self, filename: Union[str, Path]) -> None:
         """
@@ -734,5 +743,6 @@ def export_config(config: GlobalConfiguration, filename: Union[str, Path]) -> No
     filename : str or Path
         The path to the configuration file or directory to export to.
     """
-    config.save_config(USER_CONFIG_FILE, force=True)
-    shutil.copy(USER_CONFIG_FILE, filename)
+    config.save_config(USER_CONFIG_FILE)
+    if Path(filename) != USER_CONFIG_FILE:
+        shutil.copy(USER_CONFIG_FILE, filename)
