@@ -357,6 +357,7 @@ class ProcessManager:
             inst = cls.__new__(cls)
             inst.nameservers = {}
             inst.daemons = {}
+            inst.GLOBAL_CONFIG = GlobalConfiguration.instance()
             cls._instance = inst
         return cls._instance
 
@@ -365,8 +366,7 @@ class ProcessManager:
         Launch a nameserver.
         """
         log.info(f'Launching server {nameserver}')
-        GLOBAL_CONFIG = GlobalConfiguration.instance()
-        nscfg = GLOBAL_CONFIG.get_nameserver_config(nameserver)
+        nscfg = self.GLOBAL_CONFIG.get_nameserver_config(nameserver)
         messenger = multiprocessing.Queue()
         runner = NameServerRunner(
             name=nameserver,
@@ -389,9 +389,8 @@ class ProcessManager:
         Launch a daemon and all its associated services.
         """
         log.info(f'Launching server {daemon}')
-        GLOBAL_CONFIG = GlobalConfiguration.instance()
-        daemonconfig = GLOBAL_CONFIG.get_daemon_config(daemon)
-        serviceconfigs = GLOBAL_CONFIG.get_service_configs_for_daemon(daemon)
+        daemonconfig = self.GLOBAL_CONFIG.get_daemon_config(daemon)
+        serviceconfigs = self.GLOBAL_CONFIG.get_service_configs_for_daemon(daemon)
         messenger = multiprocessing.Queue()
         runner = DaemonRunner(
             name=daemon,
@@ -440,7 +439,22 @@ class ProcessManager:
 
         TODO: Implement this.
         """
-        return False
+        running_nameservers = list(self.nameservers.keys())
+        running_daemons = list(self.daemons.keys())
+
+        for name in running_nameservers:
+            self.shutdown_nameserver(name)
+        for name in running_daemons:
+            self.shutdown_daemon(name)
+
+        for name in running_nameservers:
+            if name in self.GLOBAL_CONFIG.nameservers:
+                self.launch_nameserver(name)
+        for name in running_daemons:
+            if name in self.GLOBAL_CONFIG.daemons:
+                self.launch_daemon(name)
+
+        return True
 
     def shutdown_all(self) -> None:
         for daemon in list(self.daemons.keys()):
