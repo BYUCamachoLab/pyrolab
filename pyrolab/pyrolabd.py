@@ -74,7 +74,7 @@ class PyroLabDaemon:
         if USER_CONFIG_FILE.exists():
             self.gconfig = GlobalConfiguration.instance()
             self.gconfig.load_config(USER_CONFIG_FILE)
-            self.gconfig.save_config(RUNTIME_CONFIG, force=True)
+            self.gconfig.save_config(RUNTIME_CONFIG)
         else:
             self.gconfig = GlobalConfiguration.instance()
 
@@ -115,13 +115,13 @@ class PyroLabDaemon:
         
         return tabulate(listing, headers=["NAME", "TYPE", "CREATED", "STATUS", "URI"])
 
-    def config_update(self, filename: Union[str, Path]):
+    def config_update(self, filename: str):
         return update_config(filename)
 
     def config_reset(self):
         return reset_config()
 
-    def config_export(self, filename: Union[str, Path]):
+    def config_export(self, filename: str):
         return export_config(self.gconfig, filename)
 
     def start_nameserver(self, nameserver: str):
