@@ -139,3 +139,12 @@ plcdev = PyroLabConfiguration.from_file(tempdev)
 
 # print(plcprod.yaml())
 # print(plcdev.yaml())
+
+
+from pyrolab.configure import PyroLabConfiguration
+from pyrolab import USER_CONFIG_FILE
+
+p1 = PyroLabConfiguration.from_file(USER_CONFIG_FILE)
+p2 = PyroLabConfiguration.from_file(USER_CONFIG_FILE)
+
+p1 == p2
