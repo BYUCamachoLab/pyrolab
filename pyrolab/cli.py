@@ -37,10 +37,14 @@ from pyrolab.configure import PyroLabConfiguration, update_config, reset_config
 from pyrolab.pyrolabd import PyroLabDaemon, InstanceInfo, LOCKFILE, RUNTIME_CONFIG
 
 
-def get_daemon(abort=True) -> PyroLabDaemon:
+def get_daemon(abort=True, suppress_reload_message=False) -> PyroLabDaemon:
     if LOCKFILE.exists():
         ii = InstanceInfo.parse_file(LOCKFILE)
         DAEMON = Proxy(ii.uri)
+        if not suppress_reload_message and RUNTIME_CONFIG.exists():
+            if PyroLabConfiguration.from_file(RUNTIME_CONFIG) != PyroLabConfiguration.from_file(USER_CONFIG_FILE):
+                typer.secho("User configuration doesn't match runtime configuration!", fg=typer.colors.RED)
+                typer.secho("Either run 'pyrolab reload' or 'pyrolab config save' to sync them.", fg=typer.colors.RED)
         return DAEMON
     elif abort:
         typer.secho("PyroLab daemon is not running! Try 'pyrolab launch' first.", fg=typer.colors.RED)
@@ -86,7 +90,7 @@ def launch(
     Only use the `--force` flag if you're sure the daemon is dead, or you may
     orphan the process.
     """
-    daemon = get_daemon(abort=False)
+    daemon = get_daemon(abort=False, suppress_reload_message=True)
     if daemon is None or force:
         if force:
             LOCKFILE.unlink()
@@ -97,7 +101,7 @@ def launch(
             args = [sys.executable, str(rsrc), str(port)]
         else:
             args = [sys.executable, str(rsrc)]
-        
+
         if platform.system() == "Windows":
             DETACHED_PROCESS = 0x00000008
             subprocess.Popen(args, close_fds=True, start_new_session=True, creationflags=DETACHED_PROCESS)
@@ -114,7 +118,7 @@ def shutdown():
     """
     Shutdown the PyroLab daemon.
     """
-    daemon = get_daemon()
+    daemon = get_daemon(suppress_reload_message=True)
     daemon.shutdown()
     typer.secho("PyroLab daemon shutdown", fg=typer.colors.GREEN)
 
@@ -125,7 +129,7 @@ def reload():
 
     Useful if the configuration file has been updated.
     """
-    daemon = get_daemon()
+    daemon = get_daemon(suppress_reload_message=True)
     result = daemon.reload()
     if result:
         typer.secho("PyroLab daemon reloaded.", fg=typer.colors.GREEN)
@@ -189,9 +193,9 @@ def config_save():
     
     Requires that the background daemon be running.
     """
-    daemon = get_daemon()
+    daemon = get_daemon(suppress_reload_message=True)
     if daemon:
-        daemon.config_export(USER_CONFIG_FILE)
+        daemon.config_export(str(USER_CONFIG_FILE))
     else:
         typer.secho("Save only valid when daemon is running.", fg=typer.colors.RED)
         raise typer.Abort()
