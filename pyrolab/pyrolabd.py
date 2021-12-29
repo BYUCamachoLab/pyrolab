@@ -9,20 +9,14 @@ import Pyro5.api as api
 from pydantic import BaseModel
 from tabulate import tabulate
 
-from pyrolab import PYROLABD_DATA, LOCKFILE, USER_CONFIG_FILE
+from pyrolab import LOCKFILE, USER_CONFIG_FILE, RUNTIME_CONFIG
 from pyrolab.manager import ProcessManager
 from pyrolab.configure import (
     DaemonConfiguration, 
     GlobalConfiguration, 
     NameServerConfiguration, 
     ServiceConfiguration, 
-    # update_config, 
-    # reset_config, 
-    # export_config,
 )
-
-
-RUNTIME_CONFIG = PYROLABD_DATA / "runtime_config.yaml"
 
 
 log = logging.getLogger(__name__)
@@ -124,10 +118,10 @@ class PyroLabDaemon:
         self.manager.launch_daemon(daemon)
 
     def stop_nameserver(self, nameserver: str):
-        self.manager.stop_nameserver(nameserver)
+        self.manager.shutdown_nameserver(nameserver)
 
     def stop_daemon(self, daemon: str):
-        self.manager.stop_daemon(daemon)
+        self.manager.shutdown_daemon(daemon)
 
     # def info(self, name: str):
     #     pass
