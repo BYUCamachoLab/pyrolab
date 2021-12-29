@@ -70,6 +70,9 @@ setup_args = dict(
         "Topic :: Scientific/Engineering",
     ],
     python_requires=">=3.7",
+    entry_points = {
+        "console_scripts": ['pyrolab = pyrolab.cli:app'],
+    }
 )
 
 install_requires = [
