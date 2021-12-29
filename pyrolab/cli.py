@@ -31,10 +31,10 @@ from tabulate import tabulate
 
 import typer
 
-from pyrolab import USER_CONFIG_FILE
+from pyrolab import USER_CONFIG_FILE, RUNTIME_CONFIG, LOCKFILE
 from pyrolab.api import Proxy
 from pyrolab.configure import PyroLabConfiguration, export_config, update_config, reset_config
-from pyrolab.pyrolabd import PyroLabDaemon, InstanceInfo, LOCKFILE, RUNTIME_CONFIG
+from pyrolab.pyrolabd import PyroLabDaemon, InstanceInfo
 
 
 def get_daemon(abort=True, suppress_reload_message=False) -> PyroLabDaemon:
@@ -49,7 +49,7 @@ def get_daemon(abort=True, suppress_reload_message=False) -> PyroLabDaemon:
                 )
         return DAEMON
     elif abort:
-        typer.secho("PyroLab daemon is not running! Try 'pyrolab launch' first.", fg=typer.colors.RED)
+        typer.secho("PyroLab daemon is not running! Try 'pyrolab up' first.", fg=typer.colors.RED)
         raise typer.Abort()
     else:
         return None
@@ -82,19 +82,19 @@ def main(
     return
 
 @app.command()
-def launch(
+def up(
     port: int = typer.Option(None, "--port", "-p", help="Port to use for the PyroLab daemon."),
     force: bool = typer.Option(False, "--force", "-f", help="Force launch of the daemon (only if you're positive it has died!)."),
 ):
     """
-    Launch the PyroLab daemon.
+    Start the background PyroLab daemon.
 
     Only use the `--force` flag if you're sure the daemon is dead, or you may
     orphan the process.
     """
     daemon = get_daemon(abort=False, suppress_reload_message=True)
     if daemon is None or force:
-        if force:
+        if force and LOCKFILE.exists():
             LOCKFILE.unlink()
         
         rsrc = Path(pkg_resources.resource_filename('pyrolab', "pyrolabd.py"))
@@ -106,6 +106,10 @@ def launch(
 
         if platform.system() == "Windows":
             DETACHED_PROCESS = 0x00000008
+            # Replace python.exe with pythonw.exe on Windows, usually in the
+            # same directory (certainly true for conda installations).
+            executable = Path(sys.exec_prefix) / "pythonw.exe"
+            args[0] = str(executable)
             subprocess.Popen(args, close_fds=True, start_new_session=True, creationflags=DETACHED_PROCESS)
         else:
             subprocess.Popen(args, close_fds=True, start_new_session=True) # stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, 
@@ -116,9 +120,9 @@ def launch(
         raise typer.Abort()
 
 @app.command()
-def shutdown():
+def down():
     """
-    Shutdown the PyroLab daemon.
+    Stop the background PyroLab daemon.
     """
     daemon = get_daemon(suppress_reload_message=True)
     daemon.shutdown()
@@ -223,7 +227,7 @@ def start_daemon(name: str):
 ###############################################################################
 
 stop_app = typer.Typer()
-app.add_typer(stop_app, name="stop")
+app.add_typer(stop_app, name="stop", help="Stop a nameserver or daemon (and its services).")
 
 @stop_app.command("nameserver")
 def stop_nameserver(name: Optional[str] = typer.Argument(None, help="Name of the service to stop"),):
@@ -252,7 +256,7 @@ def stop_daemon(name: Optional[str] = typer.Argument(None, help="Name of the ser
 ###############################################################################
 
 info_app = typer.Typer()
-app.add_typer(info_app, name="info")
+app.add_typer(info_app, name="info", help="Print details about a nameserver, daemon, or service.")
 
 @info_app.command("nameserver")
 def info_nameserver(
