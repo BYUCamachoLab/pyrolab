@@ -33,7 +33,7 @@ import typer
 
 from pyrolab import USER_CONFIG_FILE
 from pyrolab.api import Proxy
-from pyrolab.configure import PyroLabConfiguration, update_config, reset_config
+from pyrolab.configure import PyroLabConfiguration, export_config, update_config, reset_config
 from pyrolab.pyrolabd import PyroLabDaemon, InstanceInfo, LOCKFILE, RUNTIME_CONFIG
 
 
@@ -42,9 +42,11 @@ def get_daemon(abort=True, suppress_reload_message=False) -> PyroLabDaemon:
         ii = InstanceInfo.parse_file(LOCKFILE)
         DAEMON = Proxy(ii.uri)
         if not suppress_reload_message and RUNTIME_CONFIG.exists():
-            if PyroLabConfiguration.from_file(RUNTIME_CONFIG) != PyroLabConfiguration.from_file(USER_CONFIG_FILE):
-                typer.secho("User configuration doesn't match runtime configuration!", fg=typer.colors.RED)
-                typer.secho("Either run 'pyrolab reload' or 'pyrolab config save' to sync them.", fg=typer.colors.RED)
+            if RUNTIME_CONFIG.stat().st_mtime < USER_CONFIG_FILE.stat().st_mtime:
+                typer.secho(
+                    "The configuration file has been updated. Run `pyrolab reload` for changes to take effect.",
+                    fg=typer.colors.RED
+                )
         return DAEMON
     elif abort:
         typer.secho("PyroLab daemon is not running! Try 'pyrolab launch' first.", fg=typer.colors.RED)
@@ -153,7 +155,7 @@ def ps():
 # pyrolab config update FILENAME
 # pyrolab config reset
 # pyrolab config export FILENAME
-# pyrolab config save
+## pyrolab config save
 ###############################################################################
 
 config_app = typer.Typer()
@@ -177,27 +179,10 @@ def config_reset():
 @config_app.command("export")
 def config_export(filename: str):
     """Export the configuration file"""
-    daemon = get_daemon(abort=False)
-    if daemon:
-        daemon.config_export(filename)
-    elif USER_CONFIG_FILE.exists():
+    if USER_CONFIG_FILE.exists():
         shutil.copy(USER_CONFIG_FILE, filename)
     else:
         typer.secho("No configuration file found.", fg=typer.colors.RED)
-        raise typer.Abort()
-
-@config_app.command("save")
-def config_save():
-    """
-    Save the current daemon configuration to the user configuration file.
-    
-    Requires that the background daemon be running.
-    """
-    daemon = get_daemon(suppress_reload_message=True)
-    if daemon:
-        daemon.config_export(str(USER_CONFIG_FILE))
-    else:
-        typer.secho("Save only valid when daemon is running.", fg=typer.colors.RED)
         raise typer.Abort()
 
 ###############################################################################
@@ -210,7 +195,7 @@ def config_save():
 ###############################################################################
 
 start_app = typer.Typer()
-app.add_typer(start_app, name="start", help="Start a nameserver, daemon, or service.")
+app.add_typer(start_app, name="start", help="Start a nameserver or daemon (and its services).")
 
 @start_app.command("nameserver")
 def start_nameserver(name: str):
@@ -233,20 +218,12 @@ def start_daemon(name: str):
 #
 # COMMANDS
 # --------
-# pyrolab stop NAME
 # pyrolab stop nameserver NAME
 # pyrolab stop daemon NAME
 ###############################################################################
 
 stop_app = typer.Typer()
 app.add_typer(stop_app, name="stop")
-
-@stop_app.callback()
-def stop_any(self, name: Optional[str] = typer.Argument(None, help="Name of the service to stop"),):
-    """
-    Stop a nameserver, daemon, or service.
-    """
-    pass
 
 @stop_app.command("nameserver")
 def stop_nameserver(name: Optional[str] = typer.Argument(None, help="Name of the service to stop"),):
@@ -360,11 +337,13 @@ logs_app = typer.Typer()
 #
 # COMMANDS
 # --------
-# pyrolab rename OLDNAME NEWNAME
+# pyrolab rename nameserver OLDNAME NEWNAME
+# pyrolab rename daemon OLDNAME NEWNAME
+# pyrolab rename service OLDNAME NEWNAME
 ###############################################################################
 
 rename_app = typer.Typer()
-app.add_typer(rename_app, name="rename")
+app.add_typer(rename_app, name="rename", help="Rename a nameserver, daemon or service.")
 
 @rename_app.command("nameserver")
 def rename_nameserver(
@@ -374,8 +353,17 @@ def rename_nameserver(
     """
     Rename a nameserver.
     """
-    daemon = get_daemon()
-    daemon.rename_nameserver(old_name, new_name)
+    if USER_CONFIG_FILE.exists():
+        config = PyroLabConfiguration.from_file(USER_CONFIG_FILE)
+        if old_name in config.nameservers:
+            config.nameservers[new_name] = config.nameservers.pop(old_name)
+            export_config(config, USER_CONFIG_FILE)
+        else:
+            typer.secho("Nameserver not found.", fg=typer.colors.RED)
+            raise typer.Exit()
+    else:
+        typer.secho("No user configuration file found.", fg=typer.colors.RED)
+        raise typer.Exit()
 
 @rename_app.command("daemon")
 def rename_daemon(
@@ -385,8 +373,17 @@ def rename_daemon(
     """
     Rename a daemon.
     """
-    daemon = get_daemon()
-    daemon.rename_daemon(old_name, new_name)
+    if USER_CONFIG_FILE.exists():
+        config = PyroLabConfiguration.from_file(USER_CONFIG_FILE)
+        if old_name in config.daemons:
+            config.daemons[new_name] = config.daemons.pop(old_name)
+            export_config(config, USER_CONFIG_FILE)
+        else:
+            typer.secho("Nameserver not found.", fg=typer.colors.RED)
+            raise typer.Exit()
+    else:
+        typer.secho("No user configuration file found.", fg=typer.colors.RED)
+        raise typer.Exit()
 
 @rename_app.command("service")
 def rename_service(
@@ -396,8 +393,17 @@ def rename_service(
     """
     Rename a service.
     """
-    daemon = get_daemon()
-    daemon.rename_service(old_name, new_name)
+    if USER_CONFIG_FILE.exists():
+        config = PyroLabConfiguration.from_file(USER_CONFIG_FILE)
+        if old_name in config.services:
+            config.services[new_name] = config.services.pop(old_name)
+            export_config(config, USER_CONFIG_FILE)
+        else:
+            typer.secho("Nameserver not found.", fg=typer.colors.RED)
+            raise typer.Exit()
+    else:
+        typer.secho("No user configuration file found.", fg=typer.colors.RED)
+        raise typer.Exit()
 
 ###############################################################################
 # pyrolab Restart App
