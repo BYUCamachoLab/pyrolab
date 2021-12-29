@@ -2,6 +2,7 @@ import os
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
+import shutil
 from typing import Any, Dict, NamedTuple, Union
 
 import Pyro5.api as api
@@ -15,9 +16,9 @@ from pyrolab.configure import (
     GlobalConfiguration, 
     NameServerConfiguration, 
     ServiceConfiguration, 
-    update_config, 
-    reset_config, 
-    export_config,
+    # update_config, 
+    # reset_config, 
+    # export_config,
 )
 
 
@@ -88,6 +89,7 @@ class PyroLabDaemon:
         bool
             True if the reload was successful, False otherwise.
         """
+        shutil.copy(USER_CONFIG_FILE, RUNTIME_CONFIG)
         self.gconfig.load_config(RUNTIME_CONFIG)
         return self.manager.reload()
 
@@ -115,23 +117,11 @@ class PyroLabDaemon:
         
         return tabulate(listing, headers=["NAME", "TYPE", "CREATED", "STATUS", "URI"])
 
-    def config_update(self, filename: str):
-        return update_config(filename)
-
-    def config_reset(self):
-        return reset_config()
-
-    def config_export(self, filename: str):
-        return export_config(self.gconfig, filename)
-
     def start_nameserver(self, nameserver: str):
         self.manager.launch_nameserver(nameserver)
 
     def start_daemon(self, daemon: str):
         self.manager.launch_daemon(daemon)
-
-    def start_service(self, service: str):
-        pass
 
     def stop_nameserver(self, nameserver: str):
         self.manager.stop_nameserver(nameserver)
@@ -139,43 +129,16 @@ class PyroLabDaemon:
     def stop_daemon(self, daemon: str):
         self.manager.stop_daemon(daemon)
 
-    def stop_service(self, service: str):
-        pass
-
     # def info(self, name: str):
     #     pass
 
     # def logs(self, name: str):
     #     pass
 
-    def rename_nameserver(self, old_name: str, new_name: str):
-        if old_name in self.gconfig.get_config().nameservers:
-            config = self.gconfig.get_config().nameservers[old_name]
-            del self.gconfig.get_config().nameservers[old_name]
-            self.gconfig.get_config().nameservers[new_name] = config
-            self.gconfig.save_config(RUNTIME_CONFIG)
-
-    def rename_daemon(self, old_name: str, new_name: str):
-        if old_name in self.gconfig.get_config().daemons:
-            config = self.gconfig.get_config().daemons[old_name]
-            del self.gconfig.get_config().daemons[old_name]
-            self.gconfig.get_config().daemons[new_name] = config
-            self.gconfig.save_config(RUNTIME_CONFIG)
-
-    def rename_service(self, old_name: str, new_name: str):
-        if old_name in self.gconfig.get_config().services:
-            config = self.gconfig.get_config().services[old_name]
-            del self.gconfig.get_config().services[old_name]
-            self.gconfig.get_config().services[new_name] = config
-            self.gconfig.save_config(RUNTIME_CONFIG)
-
     def restart_nameserver(self, name: str):
         pass
 
     def restart_daemon(self, name: str):
-        pass
-
-    def restart_service(self, name: str):
         pass
 
     def add_nameserver(self, name: str, config: NameServerConfiguration):
