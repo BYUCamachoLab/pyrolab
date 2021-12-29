@@ -81,6 +81,7 @@ CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
 LOCKFILE = PYROLABD_DATA / "pyrolabd.lock"
 USER_CONFIG_FILE = CONFIG_DIR / "user_configuration.yaml"
+RUNTIME_CONFIG = PYROLABD_DATA / "runtime_config.yaml"
 
 
 # Set up logging to file
