@@ -14,6 +14,7 @@ Wrapped server functions that references PyroLab configuration settings.
 from __future__ import annotations
 import logging
 import inspect
+import getpass
 
 from typing import TYPE_CHECKING, Optional, Callable, Type
 import Pyro5
@@ -244,7 +245,7 @@ class LockableDaemon(Daemon):
         )
         return DynamicLockable
 
-    def _lock(self, pyroId: str, conn: SocketConnection, user: str="") -> bool:
+    def _lock(self, pyroId: str, conn: SocketConnection, user: str=getpass.getuser()) -> bool:
         """
         Logs a "lock" action on a Pyro object.
         
@@ -257,6 +258,11 @@ class LockableDaemon(Daemon):
             The pyroId of the Pyro object.
         conn : SocketConnection
             The socket connection with the client that owns the lock.
+        user : str, optional
+            The user who has locked the device. Useful when a device is locked
+            by a user and another user wants to know who is using it.
+            By default, this is the username of the computer account that
+            obtained the lock.
 
         Returns
         -------
