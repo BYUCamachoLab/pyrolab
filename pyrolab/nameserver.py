@@ -76,11 +76,9 @@ def start_ns_loop(cfg: NameServerConfiguration, loop_condition: Callable=lambda:
     else:
         hostip = daemon.sock.getsockname()[0]
         if daemon.sock.family == socket.AF_INET6:       # ipv6 doesn't have broadcast. We should probably use multicast instead...
-            print("Not starting broadcast server for IPv6.")
             log.info("Not starting NS broadcast server because NS is using IPv6")
             enableBroadcast = False
         elif hostip.startswith("127.") or hostip == "::1":
-            print("Not starting broadcast server for localhost.")
             log.info("Not starting NS broadcast server because NS is bound to localhost")
             enableBroadcast = False
         if enableBroadcast:
@@ -88,18 +86,22 @@ def start_ns_loop(cfg: NameServerConfiguration, loop_condition: Callable=lambda:
             # It is almost always useless to let it return the external uri,
             # because external systems won't be able to talk to this thing anyway.
             bcserver = BroadcastServer(internalUri, bchost, bcport, ipv6=daemon.sock.family == socket.AF_INET6)
-            print("Broadcast server running on %s" % bcserver.locationStr)
+            log.info("Broadcast server running on %s" % bcserver.locationStr)
             bcserver.runInThread()
     existing = daemon.nameserver.count()
     if existing > 1:   # don't count our own nameserver registration
-        print("Persistent store contains %d existing registrations." % existing)
-    print("NS running on %s (%s)" % (daemon.locationStr, hostip))
+        log.info("Persistent store contains %d existing registrations." % existing)
+    log.info("NS running on %s (%s)" % (daemon.locationStr, hostip))
     if daemon.natLocationStr:
-        print("internal URI = %s" % internalUri)
-        print("external URI = %s" % nsUri)
+        log.info("internal URI = %s" % internalUri)
+        log.info("external URI = %s" % nsUri)
     else:
-        print("URI = %s" % nsUri)
-    sys.stdout.flush()
+        log.info("URI = %s" % nsUri)
+    try:
+        # Placed in a try block because this fails with pythonw.exe
+        sys.stdout.flush()
+    except:
+        log.warning("Couldn't flush stdout! (Not a problem if running under pythonw.exe)")
     try:
         daemon.requestLoop(loopCondition=loop_condition)
     finally:
