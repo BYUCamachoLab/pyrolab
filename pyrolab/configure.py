@@ -512,6 +512,11 @@ class GlobalConfiguration:
     """
     A Singleton global configuration object that can read and write configuration files.
 
+    .. warning::
+       The GlobalConfiguration should only be accessed by MainProcess threads.
+       Any spawned or forked processes should simply load the 
+       ``RUNTIME_CONFIG`` using the PyroLabConfiguration parser.
+
     PyroLab configurations are stored in a YAML file. This class provides a
     singleton object that can be used to read and write the configuration file.
     The YAML files contain three sections: ``nameservers``, ``daemons``, and

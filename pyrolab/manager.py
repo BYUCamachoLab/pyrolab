@@ -37,8 +37,9 @@ from typing import TYPE_CHECKING, Dict, NamedTuple, Tuple, Type
 
 from Pyro5.core import locate_ns
 
+from pyrolab import RUNTIME_CONFIG
 from pyrolab.nameserver import start_ns_loop
-from pyrolab.configure import GlobalConfiguration
+from pyrolab.configure import GlobalConfiguration, PyroLabConfiguration
 from pyrolab.utils import bcolors
 
 if TYPE_CHECKING:
@@ -117,6 +118,7 @@ class NameServerRunner(multiprocessing.Process):
         bool
             True if shutdown signal received, False otherwise.
         """
+        log.debug(f"{self.name}: Stay alive='{not self.KILL_SIGNAL}'")
         return not self.KILL_SIGNAL
 
     def run(self) -> None:
@@ -289,23 +291,30 @@ class DaemonRunner(multiprocessing.Process):
         self.daemonconfig.update_pyro_config()
         daemon, uris = self.setup_daemon()
 
-        # TODO: Is this process safe? Check that this is the same object.
-        GLOBAL_CONFIG = GlobalConfiguration.instance()
+        GLOBAL_CONFIG = PyroLabConfiguration.from_file(RUNTIME_CONFIG)
 
         # Register all services with the nameserver
+        log.debug("Registering services with nameserver")
         for sname, sinfo in self.serviceconfigs.items():
             for ns in sinfo.nameservers:
-                nscfg = GLOBAL_CONFIG.get_nameserver_config(ns)
-                ns = locate_ns(nscfg.host, nscfg.ns_port)
-                ns.register(sname, uris[sname], metadata={sinfo.description})
+                nscfg = GLOBAL_CONFIG.nameservers[ns]
+                try:
+                    log.debug("Daemon attempting to connect to nameserver")
+                    ns = locate_ns(nscfg.host, nscfg.ns_port)
+                    ns.register(sname, uris[sname], metadata={sinfo.description})
+                except Exception as e:
+                    log.critical(e)
+                    raise e
+        log.debug("Registration: success")
 
         for ns in self.daemonconfig.nameservers:
-            nscfg = GLOBAL_CONFIG.get_nameserver_config(ns)
+            nscfg = GLOBAL_CONFIG.nameservers[ns]
             ns = locate_ns(nscfg.host, nscfg.ns_port)
             ns.register(self.name, uris[self.name])
 
         # Start the request loop
         self.process_message_queue()
+        log.debug(f"{self.name}: entering requestloop")
         daemon.requestLoop(loopCondition=self.stay_alive)
 
         # Cleanup
@@ -313,7 +322,7 @@ class DaemonRunner(multiprocessing.Process):
         self._timer.cancel()
         for sname, sinfo in self.serviceconfigs.items():
             for ns in sinfo.nameservers:
-                nscfg = GLOBAL_CONFIG.get_nameserver_config(ns)
+                nscfg = GLOBAL_CONFIG.nameservers[ns]
                 try:
                     ns = locate_ns(nscfg.host, nscfg.ns_port)
                     ns.remove(sname)
@@ -388,7 +397,7 @@ class ProcessManager:
         """
         Launch a daemon and all its associated services.
         """
-        log.info(f'Launching server {daemon}')
+        log.info(f'Launching daemon {daemon}')
         daemonconfig = self.GLOBAL_CONFIG.get_daemon_config(daemon)
         serviceconfigs = self.GLOBAL_CONFIG.get_service_configs_for_daemon(daemon)
         messenger = multiprocessing.Queue()
