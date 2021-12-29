@@ -490,30 +490,12 @@ class PyroLabConfiguration(BaseSettings, YAMLMixin):
     of their own name, which can only be given to them by the parent 
     configuration object.
 
-    Equality is defined as the values of each section being equal. Since the
-    keyword "auto" allows for names to be automatically generated, equality
-    ignores names in all cases. Therefore, two configurations that are 
-    essentially identical but have services or nameservices in a different 
-    order from each other will be considered different, while two 
-    configurations that have identical values but different key names will be 
-    considered equal.
     """
     version: str = "1.0"
     nameservers: Dict[str, NameServerConfiguration] = {}
     daemons: Dict[str, DaemonConfiguration] = {}
     services: Dict[str, ServiceConfiguration] = {}
     autolaunch: Dict[str, List[str]] = {"nameservers": [], "services": []}
-
-    def __eq__(self, other: Any) -> bool:
-        this = self.dict()
-        that = other.dict()
-        this['nameservers'] = list(this['nameservers'].values())
-        that['nameservers'] = list(that['nameservers'].values())
-        this['daemons'] = list(this['daemons'].values())
-        that['daemons'] = list(that['daemons'].values())
-        this['services'] = list(this['services'].values())
-        that['services'] = list(that['services'].values())
-        return this == that
 
     def initialize_nameservers(self):
         for name, nscfg in self.nameservers.items():
@@ -705,6 +687,8 @@ def update_config(filename: Union[str, Path]) -> None:
     """
     Updates the internal configuration file with a user configuration file.
 
+    Performs validation on the configuration file before updating.
+
     Parameters
     ----------
     filename : str or Path, optional
@@ -718,9 +702,9 @@ def update_config(filename: Union[str, Path]) -> None:
     filename = Path(filename)
     if not filename.exists():
         raise FileNotFoundError(f"File does not: '{filename}'")
-    with filename.open("r") as fin:
-        with USER_CONFIG_FILE.open("w") as fout:
-            fout.write(fin.read())
+    config = PyroLabConfiguration.from_file(filename)
+    with open(USER_CONFIG_FILE, "w") as f:
+        f.write(config.yaml())
 
 
 def reset_config() -> None:
@@ -732,17 +716,16 @@ def reset_config() -> None:
     """
     USER_CONFIG_FILE.unlink(missing_ok=True)
 
-def export_config(config: GlobalConfiguration, filename: Union[str, Path]) -> None:
+def export_config(config: PyroLabConfiguration, filename: Union[str, Path]) -> None:
     """
     Exports the current configuration to a file.
 
     Parameters
     ----------
-    config : GlobalConfiguration
+    config : PyroLabConfiguration
         The configuration to export.
     filename : str or Path
         The path to the configuration file or directory to export to.
     """
-    config.save_config(USER_CONFIG_FILE)
-    if Path(filename) != USER_CONFIG_FILE:
-        shutil.copy(USER_CONFIG_FILE, filename)
+    with Path(filename).open("w") as f:
+        f.write(config.yaml())
