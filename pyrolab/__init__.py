@@ -102,11 +102,3 @@ logging.debug("PyroLab started (logger configured).")
 # Include remote traceback in local tracebacks
 import Pyro5.errors
 sys.excepthook = Pyro5.errors.excepthook
-
-
-from multiprocessing import current_process
-if current_process().name == 'MainProcess':
-    PID = str(os.getpid()) + '_main'
-    os.environ["PYROLAB_TOPLEVEL_PID"] = PID
-else:
-    PID = str(os.getpid()) + '_child'
