@@ -33,14 +33,13 @@ import multiprocessing
 import logging
 from multiprocessing import current_process
 from multiprocessing.queues import Queue
-from typing import TYPE_CHECKING, Dict, NamedTuple, Tuple, Type
+from typing import TYPE_CHECKING, Dict, List, Tuple, Type
 
 from Pyro5.core import locate_ns
 
 from pyrolab import RUNTIME_CONFIG
 from pyrolab.nameserver import start_ns_loop
 from pyrolab.configure import GlobalConfiguration, PyroLabConfiguration
-from pyrolab.utils import bcolors
 
 if TYPE_CHECKING:
     from Pyro5.core import URI
@@ -105,7 +104,7 @@ class NameServerRunner(multiprocessing.Process):
                 log.info(f"{self.name} recived KILL")
                 self.KILL_SIGNAL = True
 
-    def stay_alive(self):
+    def stay_alive(self) -> bool:
         """
         A callback listener; if the sentinel value ``None`` is placed in the
         message queue, returns True signifying a shutdown signal has been
@@ -129,8 +128,6 @@ class NameServerRunner(multiprocessing.Process):
         its registration from the nameserver.
         """
         log.info(f"Starting '{self.name}'")
-        # TOPLEVEL_PID = os.environ["PYROLAB_TOPLEVEL_PID"]
-        # print("Toplevel PID:", TOPLEVEL_PID)
     
         self.nsconfig.update_pyro_config()
         self.process_message_queue()
@@ -261,7 +258,7 @@ class DaemonRunner(multiprocessing.Process):
                 log.info(f"{self.name} recived KILL")
                 self.KILL_SIGNAL = True
 
-    def stay_alive(self):
+    def stay_alive(self) -> bool:
         """
         A callback listener; if the sentinel value ``None`` is placed in the
         message queue, returns True signifying a shutdown signal has been
@@ -284,8 +281,6 @@ class DaemonRunner(multiprocessing.Process):
         its registration from the nameserver.
         """
         log.info(f"Starting '{self.name}'")
-        # TOPLEVEL_PID = os.environ["PYROLAB_TOPLEVEL_PID"]
-        # print("Toplevel PID:", TOPLEVEL_PID)
 
         # Set Pyro5 settings for daemon
         self.daemonconfig.update_pyro_config()
@@ -330,10 +325,14 @@ class DaemonRunner(multiprocessing.Process):
                     log.error(e)
 
 
-class ProcessGroup(NamedTuple):
-    process: multiprocessing.Process
-    msg_queue: Queue
-    created: datetime
+class ProcessGroup:
+    def __init__(self, 
+                 process: multiprocessing.Process, 
+                 msg_queue: Queue, 
+                 created: datetime) -> None:
+        self.process = process
+        self.msg_queue = msg_queue
+        self.created = created
 
 
 class NameServerProcessGroup(ProcessGroup):
@@ -359,7 +358,7 @@ class ProcessManager:
         raise RuntimeError("Cannot directly instantiate singleton, call ``instance()`` instead.")
 
     @classmethod
-    def instance(cls):
+    def instance(cls) -> "ProcessManager":
         if current_process().name != 'MainProcess':
             raise Exception("ProcessManager should only be accessed by the main process.")
         if cls._instance is None:
@@ -370,7 +369,7 @@ class ProcessManager:
             cls._instance = inst
         return cls._instance
 
-    def launch_nameserver(self, nameserver: str):
+    def launch_nameserver(self, nameserver: str) -> bool:
         """
         Launch a nameserver.
         """
@@ -385,15 +384,42 @@ class ProcessManager:
         )
         self.nameservers[nameserver] = NameServerProcessGroup(runner, messenger, datetime.now())
         runner.start()
+        return True
 
-    def get_nameserver_process(self, nameserver: str) -> NameServerProcessGroup:
+    def get_nameserver_process_info(self, nameserver: str) -> Dict[str, str]:
         """
-        Return the process group for a nameserver.
+        Gets info on a nameserver process.
+
+        Parameters
+        ----------
+        nameserver : str
+            The name of the nameserver.
+
+        Returns
+        -------
+        Dict[str, str]
+            A dictionary of information about the nameserver. Keys are:
+            ``created``, ``status``, ``uri``.
         """
         if nameserver in self.nameservers:
-            return self.nameservers[nameserver]
+            pgroup = self.nameservers[nameserver]
+            if pgroup.process.is_alive():
+                status = running_time_human_readable(pgroup.created)
+            else:
+                status = "Died"
+            return {
+                "created": pgroup.created.strftime("%Y-%m-%d %H:%M:%S"),
+                "status": status,
+                "uri": "",
+            }
+        else:
+            return {
+                "created": "",
+                "status": "Stopped",
+                "uri": "",
+            }
 
-    def launch_daemon(self, daemon: str):
+    def launch_daemon(self, daemon: str) -> bool:
         """
         Launch a daemon and all its associated services.
         """
@@ -410,43 +436,59 @@ class ProcessManager:
         )
         self.daemons[daemon] = DaemonProcessGroup(runner, messenger, datetime.now())
         runner.start()
+        return True
 
-    def get_daemon_process(self, daemon: str) -> DaemonProcessGroup:
+    def get_daemon_process_info(self, daemon: str) -> Dict[str, str]:
         """
         Return the process group for a daemon.
         """
         if daemon in self.daemons:
-            return self.daemons[daemon]
+            pgroup = self.daemons[daemon]
+            if pgroup.process.is_alive():
+                status = running_time_human_readable(pgroup.created)
+            else:
+                status = "Died"
+            return {
+                "created": pgroup.created.strftime("%Y-%m-%d %H:%M:%S"),
+                "status": status,
+                "uri": "",
+            }
+        else:
+            return {
+                "created": "",
+                "status": "Stopped",
+                "uri": "",
+            }
 
-    # def launch_all(self):
-    #     """
-    #     Launch all servers.
-    #     """
-    #     pass
+    def checkup(self) -> List[bool]:
+        results = []
+        for ns in self.nameservers:
+            results.append(self.nameservers[ns].process.is_alive())
+        for daemon in self.daemons:
+            results.append(self.daemons[daemon].process.is_alive())
+        return results
 
-    def shutdown_nameserver(self, nameserver: str) -> None:
-        print(f"  Shutting down '{nameserver}'...", end="")
+    def shutdown_nameserver(self, nameserver: str) -> bool:
+        log.info(f"Shutting down nameserver '{nameserver}'")
         group = self.nameservers[nameserver]
         polling = group.process.msg_polling
         group.msg_queue.put(None)
         time.sleep(polling)
         del self.nameservers[nameserver]
-        print(f"{bcolors.OKGREEN}done{bcolors.ENDC}")
+        return True
 
-    def shutdown_daemon(self, daemon: str) -> None:
-        print(f"  Shutting down '{daemon}'...", end="")
+    def shutdown_daemon(self, daemon: str) -> bool:
+        print(f"Shutting down daemon '{daemon}'")
         group = self.daemons[daemon]
         polling = group.process.msg_polling
         group.msg_queue.put(None)
         time.sleep(polling)
         del self.daemons[daemon]
-        print(f"{bcolors.OKGREEN}done{bcolors.ENDC}")
+        return True
 
     def reload(self) -> bool:
         """
-        Reload all servers.
-
-        TODO: Implement this.
+        Reload all entities.
         """
         running_nameservers = list(self.nameservers.keys())
         running_daemons = list(self.daemons.keys())
@@ -457,10 +499,10 @@ class ProcessManager:
             self.shutdown_daemon(name)
 
         for name in running_nameservers:
-            if name in self.GLOBAL_CONFIG.nameservers:
+            if name in self.GLOBAL_CONFIG.config.nameservers:
                 self.launch_nameserver(name)
         for name in running_daemons:
-            if name in self.GLOBAL_CONFIG.daemons:
+            if name in self.GLOBAL_CONFIG.config.daemons:
                 self.launch_daemon(name)
 
         return True
@@ -471,12 +513,34 @@ class ProcessManager:
         for nameserver in list(self.nameservers.keys()):
             self.shutdown_nameserver(nameserver)
 
-    # def wait_for_interrupt(self) -> None:
-    #     try:
-    #         while True:
-    #             time.sleep(1)
-    #     except KeyboardInterrupt:
-    #         print("Shutting down all...")
-    #         self.shutdown_all()
-    #         print(f"{bcolors.OKGREEN}DONE{bcolors.ENDC}")
-    #         raise
+
+def running_time_human_readable(start: datetime, end: datetime=None) -> str:
+    """
+    Return the time delta of two times (or one and now) in plain English.
+
+    Parameters
+    ----------
+    start : datetime
+        The start time.
+    end : datetime, optional
+        The end time. Defaults to now.
+
+    Returns
+    -------
+    str
+        The time delta in plain English.
+    """
+    if end:
+        delta = end - start
+    else:
+        delta = datetime.now() - start
+    if delta.days > 0:
+        return f"Up {delta.days} days"
+    elif delta.seconds > 3600:
+        return f"Up {delta.seconds // 3600} hours"
+    elif delta.seconds > 120:
+        return f"Up {delta.seconds // 60} minutes"
+    elif delta.seconds > 60:
+        return f"Up 1 minute"
+    else:
+        return f"Up {delta.seconds} seconds"
