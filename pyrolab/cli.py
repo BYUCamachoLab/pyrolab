@@ -5,19 +5,28 @@
 # (see pyrolab/__init__.py for details)
 
 """
+======================
 Command Line Interface
-=======================
+======================
+
+Usage: pyrolab [OPTIONS] COMMAND [ARGS]...
+Try 'pyrolab --help' for help.
+
+Where did my instances go?
+--------------------------
 
 You should be able to find all background pyrolab daemons by running (on Unix):
 
-```
+```bash
 ps aux | grep pyrolabd
 ```
 
+Potential future features
+-------------------------
 
-Autoreload when watching a directory? 
-* watchdog
-* watchgod
+```
+pyrolab move <service> <new_daemon>
+```
 """
 import shutil
 import subprocess
@@ -44,7 +53,7 @@ def get_daemon(abort=True, suppress_reload_message=False) -> PyroLabDaemon:
         if not suppress_reload_message and RUNTIME_CONFIG.exists():
             if RUNTIME_CONFIG.stat().st_mtime < USER_CONFIG_FILE.stat().st_mtime:
                 typer.secho(
-                    "The configuration file has been updated. Run `pyrolab reload` for changes to take effect.",
+                    "The configuration file has been updated. Run 'pyrolab reload' for changes to take effect.",
                     fg=typer.colors.RED
                 )
         return DAEMON
@@ -60,8 +69,8 @@ def get_daemon(abort=True, suppress_reload_message=False) -> PyroLabDaemon:
 # 
 # COMMANDS
 # --------
-# pyrolab launch
-# pyrolab shutdown
+# pyrolab up
+# pyrolab down
 # pyrolab reload
 # pyrolab ps
 # pyrolab --version
@@ -150,16 +159,8 @@ def ps():
     daemon = get_daemon()
     typer.echo(daemon.ps())
 
-
 ###############################################################################
-# pyrolab Config App
-#
-# COMMANDS
-# --------
-# pyrolab config update FILENAME
-# pyrolab config reset
-# pyrolab config export FILENAME
-## pyrolab config save
+# pyrolab config
 ###############################################################################
 
 config_app = typer.Typer()
@@ -190,12 +191,7 @@ def config_export(filename: str):
         raise typer.Abort()
 
 ###############################################################################
-# pyrolab Start App
-#
-# COMMANDS
-# --------
-# pyrolab start nameserver NAME
-# pyrolab start daemon NAME
+# pyrolab start
 ###############################################################################
 
 start_app = typer.Typer()
@@ -218,12 +214,7 @@ def start_daemon(name: str):
     daemon.start_daemon(name)
 
 ###############################################################################
-# pyrolab Stop App
-#
-# COMMANDS
-# --------
-# pyrolab stop nameserver NAME
-# pyrolab stop daemon NAME
+# pyrolab stop
 ###############################################################################
 
 stop_app = typer.Typer()
@@ -246,13 +237,7 @@ def stop_daemon(name: Optional[str] = typer.Argument(None, help="Name of the ser
     daemon.stop_daemon(name)
 
 ###############################################################################
-# pyrolab Info App
-#
-# COMMANDS
-# --------
-# pyrolab info nameserver NAME --verbose
-# pyrolab info daemon NAME --verbose
-# pyrolab info service NAME --verbose
+# pyrolab info
 ###############################################################################
 
 info_app = typer.Typer()
@@ -326,24 +311,14 @@ def info_service(
         raise typer.Exit()
 
 ###############################################################################
-# pyrolab Logs App
-#
-# COMMANDS
-# --------
-# pyrolab logs NAME
+# pyrolab logs
 ###############################################################################
 
 logs_app = typer.Typer()
 # app.add_typer(logs_app, name="logs")
 
 ###############################################################################
-# pyrolab Rename App
-#
-# COMMANDS
-# --------
-# pyrolab rename nameserver OLDNAME NEWNAME
-# pyrolab rename daemon OLDNAME NEWNAME
-# pyrolab rename service OLDNAME NEWNAME
+# pyrolab rename
 ###############################################################################
 
 rename_app = typer.Typer()
@@ -410,35 +385,21 @@ def rename_service(
         raise typer.Exit()
 
 ###############################################################################
-# pyrolab Restart App
-#
-# COMMANDS
-# --------
-# pyrolab restart NAME
+# pyrolab restart
 ###############################################################################
 
 restart_app = typer.Typer()
 # app.add_typer(restart_app, name="restart")
 
 ###############################################################################
-# pyrolab Remove App
-#
-# COMMANDS
-# --------
-# pyrolab rm NAME
+# pyrolab rm
 ###############################################################################
 
 rm_app = typer.Typer()
 # app.add_typer(rm_app, name="rm")
 
 ###############################################################################
-# pyrolab Add App
-#
-# COMMANDS
-# --------
-# pyrolab add nameserver NAME
-# pyrolab add daemon NAME
-# pyrolab add service NAME
+# pyrolab add
 ###############################################################################
 
 add_app = typer.Typer()
