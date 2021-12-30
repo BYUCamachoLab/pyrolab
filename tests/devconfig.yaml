@@ -28,6 +28,8 @@ daemons:
     nathost: null
     natport: 0
     servertype: thread
+    nameservers: 
+    - default
   localthread:
     module: pyrolab.daemon
     classname: Daemon
@@ -37,6 +39,8 @@ daemons:
     nathost: null
     natport: 0
     servertype: thread
+    nameservers: 
+    - default
 
 services:
   auto 1:
@@ -70,5 +74,7 @@ services:
     - default
     
 autolaunch:
-  nameservers: []
-  services: []
+  nameservers: 
+  - default
+  daemons: 
+  - lockable

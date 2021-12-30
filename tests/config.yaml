@@ -92,8 +92,6 @@ services:
 autolaunch:
   nameservers:
   - production  
-  services:
-  - asgard.wolverine
-  - asgard.hulk
-  - asgard.captainamerica
+  daemons:
+  - lockable
   
