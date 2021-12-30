@@ -1,6 +1,6 @@
 .. _user_guide:
 
-==========
+
 User Guide
 ==========
 
@@ -8,11 +8,15 @@ User Guide
    :maxdepth: 2
    :hidden:
 
+   pyro5_concepts
    nameservers
-   servers
+   daemons
    clients
+   services
+   configuration
+   deployment
    
-A few notes on simply starting Pyrolab. When launched from the terminal,
+A few notes on simply starting PyroLab. When launched from the terminal,
 PyroLab reads a few environment variables for convenient configuration.
 
 .. todo::
@@ -30,3 +34,7 @@ This can be very helpful when debugging to see how the program is progressing,
 and when the program is being too verbose, it's easy to silence. Note that
 including debugging will also include log statements from all of PyroLab's
 dependencies.
+
+Nameservers, daemons, or services (known as PyroLab "entities") can be
+configured in a few ways. The most common (and easiest) way is to use a
+PyroLab configuration YAML file.
