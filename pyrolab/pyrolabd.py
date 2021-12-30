@@ -76,7 +76,8 @@ class PyroLabDaemon:
        As a Pyro5 object, no method of the daemon should return any types other
        than Python builtins, due to serialization issues.
     """
-    def __init__(self):        
+    def __init__(self):
+        log.info("Starting PyroLab daemon.")
         self.manager = ProcessManager.instance()
 
         if USER_CONFIG_FILE.exists():
@@ -86,11 +87,13 @@ class PyroLabDaemon:
         else:
             self.gconfig = GlobalConfiguration.instance()
 
+        log.info("Autolaunching Pyrolab entities.")
         autodetails = self.gconfig.config.autolaunch
-        for ns in autodetails['nameservers']:
+        for ns in autodetails.nameservers:
             self.start_nameserver(ns)
-        for daemon in autodetails['daemons']:
+        for daemon in autodetails.daemons:
             self.start_daemon(daemon)
+        log.info("PyroLab daemon started.")
 
     def reload(self) -> bool:
         """

@@ -476,6 +476,11 @@ class ServiceConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
     nameservers: List[str] = []
 
 
+class AutolaunchSettings(BaseSettings, YAMLMixin):
+    nameservers: List[str] = []
+    daemons: List[str] = []
+
+
 class PyroLabConfiguration(BaseSettings, YAMLMixin):
     """
     Global configuration options for PyroLab.
@@ -495,7 +500,7 @@ class PyroLabConfiguration(BaseSettings, YAMLMixin):
     nameservers: Dict[str, NameServerConfiguration] = {}
     daemons: Dict[str, DaemonConfiguration] = {}
     services: Dict[str, ServiceConfiguration] = {}
-    autolaunch: Dict[str, List[str]] = {"nameservers": [], "daemons": []}
+    autolaunch: AutolaunchSettings = AutolaunchSettings()
 
     def initialize_nameservers(self):
         for name, nscfg in self.nameservers.items():
