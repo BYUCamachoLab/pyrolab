@@ -1,9 +1,20 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright © PyroLab Project Contributors
+# Licensed under the terms of the GNU GPLv3+ License
+# (see pyrolab/__init__.py for details)
+
+"""
+PyroLab Daemon
+--------------
+
+Submodule defining the background PyroLab daemon.
+"""
+
 import os
 import logging
-from datetime import datetime, timedelta
-from pathlib import Path
 import shutil
-from typing import Any, Dict, NamedTuple, Union
+from typing import NamedTuple
 
 import Pyro5.api as api
 from pydantic import BaseModel
@@ -11,12 +22,7 @@ from tabulate import tabulate
 
 from pyrolab import LOCKFILE, USER_CONFIG_FILE, RUNTIME_CONFIG
 from pyrolab.manager import ProcessManager
-from pyrolab.configure import (
-    DaemonConfiguration, 
-    GlobalConfiguration, 
-    NameServerConfiguration, 
-    ServiceConfiguration, 
-)
+from pyrolab.configure import GlobalConfiguration
 
 
 log = logging.getLogger(__name__)
@@ -27,42 +33,49 @@ class InstanceInfo(BaseModel):
     uri: str
 
 
-class PSInfo(NamedTuple):
+class NameServerInfo(NamedTuple):
     name: str
-    ptype: str
-    created: datetime
+    created: str
     status: str
     uri: str
 
 
-def parse_process(process) -> Dict[str, Any]:
-    if process:
-        created = process.created
-        if datetime.now() - created > timedelta(seconds=86400):
-            days = (datetime.now() - created).seconds / 86400
-            status = f"Up {int(days)} hours"
-        elif datetime.now() - created > timedelta(seconds=3600):
-            hrs = (datetime.now() - created).seconds / 3600
-            status = f"Up {int(hrs)} hours"
-        elif datetime.now() - created > timedelta(seconds=120):
-            mins = (datetime.now() - created).seconds / 60
-            status = f"Up {int(mins)} minutes"
-        elif datetime.now() - created > timedelta(seconds=60):
-            status = f"Up 1 minute"
-        else:
-            status = f"Up {(datetime.now() - created).seconds} seconds"
-        uri = ""
-        created = created.strftime("%Y-%m-%d %H:%M:%S")
-    else:
-        created = ""
-        status = "Stopped"
-        uri = ""
-    return {"created": created, "status": status, "uri": uri}
+class DaemonInfo(NamedTuple):
+    name: str
+    created: str
+    status: str
+    uri: str
 
 
 @api.expose
 @api.behavior(instance_mode="single")
 class PyroLabDaemon:
+    """
+    The PyroLab daemon runs continuously in the background.
+    
+    The daemon and controls all PyroLab entities through the PyroLabManager
+    singleton. The main purpose of the daemon is to listen for requests and
+    commands, usually sent through the command line interface (CLI).
+
+    No script should ever need to import or instantiate the PyroLabDaemon.
+    To preserve its "single instance" nature, the daemon should only be created
+    and run through the CLI (which in turn, runs this file as a script). 
+    Limiting daemon manipulation to the CLI guarantees that only one daemon
+    will be running at any given time (courtesy of the Lockfile this script
+    creates and checks).
+
+    By default, the daemon will load the user configuration file (manipulatable
+    via the CLI) and write a runtime configuration file (not manipulatable via
+    the CLI). The daemon will not change its configuration unless a call to the
+    reload() method is made, usually by the CLI. Even if the user configuration
+    file is changed, the daemon will not reload unless explictly instructed to
+    do so. It is therefore of the utmost importance that the runtime 
+    configuration file be managed solely by the daemon! No touchy!
+
+    .. note::
+       As a Pyro5 object, no method of the daemon should return any types other
+       than Python builtins, due to serialization issues.
+    """
     def __init__(self):        
         self.manager = ProcessManager.instance()
 
@@ -72,6 +85,12 @@ class PyroLabDaemon:
             self.gconfig.save_config(RUNTIME_CONFIG)
         else:
             self.gconfig = GlobalConfiguration.instance()
+
+        autodetails = self.gconfig.config.autolaunch
+        for ns in autodetails['nameservers']:
+            self.start_nameserver(ns)
+        for daemon in autodetails['daemons']:
+            self.start_daemon(daemon)
 
     def reload(self) -> bool:
         """
@@ -87,10 +106,13 @@ class PyroLabDaemon:
         self.gconfig.load_config(RUNTIME_CONFIG)
         return self.manager.reload()
 
-    def whoami(self):
+    def whoami(self) -> str:
+        """
+        Returns the object ID of the daemon, and it's PID number.
+        """
         return f"{id(self)} at {os.getpid()}"
 
-    def ps(self):
+    def ps(self) -> str:
         """
         List all known processes grouped as nameservers, daemons, and services.
 
@@ -99,17 +121,20 @@ class PyroLabDaemon:
         """
         listing = []
         for ns in self.gconfig.get_config().nameservers.keys():
-            process = self.manager.get_nameserver_process(ns)
-            results = parse_process(process)
-            listing.append(PSInfo(ns, "nameserver", **results))
+            info = self.manager.get_nameserver_process_info(ns)
+            listing.append(NameServerInfo(name=ns, **info))
+        nsstring = tabulate(listing, headers=['NAMESERVER', 'CREATED', 'STATUS', 'URI'])
+
+        listing = []
         for daemon in self.gconfig.get_config().daemons.keys():
-            process = self.manager.get_daemon_process(daemon)
-            results = parse_process(process)
-            listing.append(PSInfo(daemon, "daemon", **results))
-        for service in self.gconfig.get_config().services.keys():
-            listing.append(PSInfo(service, "service", "", "", ""))
+            info = self.manager.get_daemon_process_info(daemon)
+            listing.append(DaemonInfo(name=daemon, **info))
+        daemonstring = tabulate(listing, headers=['DAEMON', 'CREATED', 'STATUS', 'URI'])
         
-        return tabulate(listing, headers=["NAME", "TYPE", "CREATED", "STATUS", "URI"])
+        # for service in self.gconfig.get_config().services.keys():
+        #     listing.append(PSInfo(service, "service", "", "", ""))
+        
+        return f"\n{nsstring}\n\n{daemonstring}\n"
 
     def start_nameserver(self, nameserver: str):
         self.manager.launch_nameserver(nameserver)
@@ -130,43 +155,15 @@ class PyroLabDaemon:
     #     pass
 
     def restart_nameserver(self, name: str):
-        pass
+        self.manager.shutdown_nameserver(name)
+        self.manager.launch_nameserver(name)
 
     def restart_daemon(self, name: str):
-        pass
-
-    def add_nameserver(self, name: str, config: NameServerConfiguration):
-        if name not in self.gconfig.get_config().nameservers:
-            self.gconfig.get_config().nameservers[name] = config
-            self.gconfig.save_config(RUNTIME_CONFIG)
-
-    def rm_nameserver(self, name: str):
-        if name in self.gconfig.get_config().nameservers:
-            del self.gconfig.get_config().nameservers[name]
-            self.gconfig.save_config(RUNTIME_CONFIG)
-
-    def add_daemon(self, name: str, config: DaemonConfiguration):
-        if name not in self.gconfig.get_config().daemons:
-            self.gconfig.get_config().daemons[name] = config
-            self.gconfig.save_config(RUNTIME_CONFIG)
-
-    def rm_daemon(self, name: str):
-        if name in self.gconfig.get_config().daemons:
-            del self.gconfig.get_config().daemons[name]
-            self.gconfig.save_config(RUNTIME_CONFIG)
-
-    def add_service(self, name: str, config: ServiceConfiguration):
-        if name not in self.gconfig.get_config().services:
-            self.gconfig.get_config().services[name] = config
-            self.gconfig.save_config(RUNTIME_CONFIG)
-
-    def rm_service(self, name: str):
-        if name in self.gconfig.get_config().services:
-            del self.gconfig.get_config().services[name]
-            self.gconfig.save_config(RUNTIME_CONFIG)
+        self.manager.shutdown_daemon(name)
+        self.manager.launch_daemon(name)
 
     @api.oneway
-    def shutdown(self):
+    def shutdown(self) -> None:
         self._pyroDaemon.shutdown()
 
 
