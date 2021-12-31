@@ -708,6 +708,8 @@ def update_config(filename: Union[str, Path]) -> None:
     ------
     FileNotFoundError
         If the configuration file does not exist.
+    ValidationError
+        If the configuration file is invalid.
     """
     filename = Path(filename)
     if not filename.exists():
