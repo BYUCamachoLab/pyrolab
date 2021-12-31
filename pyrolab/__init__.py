@@ -84,8 +84,8 @@ PYROLABD_DATA.mkdir(parents=True, exist_ok=True)
 NAMESERVER_STORAGE = PYROLAB_DATA_DIR / "nameservers"
 NAMESERVER_STORAGE.mkdir(parents=True, exist_ok=True)
 
-LOGFILES_DIR = PYROLAB_DATA_DIR / "logs"
-LOGFILES_DIR.mkdir(parents=True, exist_ok=True)
+# LOGFILES_DIR = PYROLAB_DATA_DIR / "logs"
+# LOGFILES_DIR.mkdir(parents=True, exist_ok=True)
 
 LOCKFILE = PYROLABD_DATA / "pyrolabd.lock"
 USER_CONFIG_FILE = CONFIG_DIR / "user_configuration.yaml"
