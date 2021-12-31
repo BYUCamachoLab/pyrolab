@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright © 2020 PyroLab Project Contributors and others (see AUTHORS.txt).
+# Copyright © 2020- PyroLab Project Contributors and others (see AUTHORS.txt).
 # The resources, libraries, and some source files under other terms (see NOTICE.txt).
 #
 # This file is part of PyroLab.
