@@ -25,6 +25,7 @@ def get_ip() -> str:
     return ip
 
 
+# TODO: Remove
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
