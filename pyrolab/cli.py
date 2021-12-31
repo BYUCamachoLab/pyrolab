@@ -135,7 +135,7 @@ def down():
     """
     daemon = get_daemon(suppress_reload_message=True)
     daemon.shutdown()
-    typer.secho("PyroLab daemon shutdown", fg=typer.colors.GREEN)
+    typer.secho("PyroLab daemon shutdown.", fg=typer.colors.GREEN)
 
 @app.command()
 def reload():
@@ -154,7 +154,7 @@ def reload():
 @app.command()
 def ps():
     """
-    List all running PyroLab nameservers, daemons, and services.
+    Process status: list all running PyroLab nameservers, daemons, and services.
     """
     daemon = get_daemon()
     typer.echo(daemon.ps())
