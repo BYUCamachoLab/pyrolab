@@ -25,7 +25,6 @@ Python ``multiprocessing`` module.
 """
 
 from __future__ import annotations
-import os
 import importlib
 import time
 import threading
@@ -95,7 +94,6 @@ class NameServerRunner(multiprocessing.Process):
         self.msg_polling = msg_polling
         self.nsconfig = nsconfig
         self.KILL_SIGNAL = False
-        # self.log = log
         self.log = self.configure_logger()
     
     def configure_logger(self) -> logging.Logger:
@@ -116,8 +114,6 @@ class NameServerRunner(multiprocessing.Process):
         filehandler.setFormatter(formatter)
 
         loglevel = get_loglevel()
-
-        loglevel = logging.DEBUG # TODO: Remove this line
 
         logger.setLevel(loglevel)
         logger.addHandler(filehandler)
@@ -225,7 +221,6 @@ class DaemonRunner(multiprocessing.Process):
         self.daemonconfig = daemonconfig
         self.serviceconfigs = serviceconfigs
         self.KILL_SIGNAL = False
-        # self.log = log
         self.log = self.configure_logger()
     
     def configure_logger(self) -> logging.Logger:
@@ -246,8 +241,6 @@ class DaemonRunner(multiprocessing.Process):
         filehandler.setFormatter(formatter)
 
         loglevel = get_loglevel()
-
-        loglevel = logging.DEBUG # TODO: Remove this line
 
         logger.setLevel(loglevel)
         logger.addHandler(filehandler)
