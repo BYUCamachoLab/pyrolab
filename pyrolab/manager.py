@@ -327,7 +327,8 @@ class DaemonRunner(multiprocessing.Process):
         for ns in self.daemonconfig.nameservers:
             nscfg = GLOBAL_CONFIG.nameservers[ns]
             ns = locate_ns(nscfg.host, nscfg.ns_port)
-            ns.register(self.name, uris[self.name])
+            description = f"Daemon for {', '.join([str(sname) for sname in self.serviceconfigs])}"
+            ns.register(self.name, uris[self.name], metadata={description})
 
         # Start the request loop
         self.process_message_queue()
@@ -346,6 +347,13 @@ class DaemonRunner(multiprocessing.Process):
                     ns.remove(sname)
                 except Exception as e:
                     log.exception(e)
+        for ns in self.daemonconfig.nameservers:
+            nscfg = GLOBAL_CONFIG.nameservers[ns]
+            try:
+                ns = locate_ns(nscfg.host, nscfg.ns_port)
+                ns.remove(self.name)
+            except Exception as e:
+                log.exception(e)
 
 
 class ProcessGroup:
