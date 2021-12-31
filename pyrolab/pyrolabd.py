@@ -192,14 +192,15 @@ if __name__ == "__main__":
     if LOCKFILE.exists():
         raise RuntimeError(f"Lockfile already exists. Is another instance running?")
     else:
-        import sys
-        if len(sys.argv) > 1:
-            port = int(sys.argv[1])
-        else:
-            port = 0
-
         try:
             LOCKFILE.touch(exist_ok=False)
+
+            import sys
+            if len(sys.argv) > 1:
+                port = int(sys.argv[1])
+            else:
+                port = 0
+
             daemon = api.Daemon(port=port)
             pyrolabd = PyroLabDaemon()
             uri = daemon.register(pyrolabd, "pyrolabd")
