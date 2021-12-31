@@ -5,8 +5,7 @@ from pyrolab.configure import NameServerConfiguration
 from pyrolab.api import locate_ns
 
 
-HOST = "camacholab.ee.byu.edu"
-# HOST = "localhost"
+HOST = "localhost"
 PORT = 9090
 
 ns = locate_ns(host=HOST, port=PORT)
