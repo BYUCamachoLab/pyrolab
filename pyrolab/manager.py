@@ -400,8 +400,26 @@ class ProcessManager:
             inst.nameservers = {}
             inst.daemons = {}
             inst.GLOBAL_CONFIG = GlobalConfiguration.instance()
+            inst.start_checkup_timer()
             cls._instance = inst
         return cls._instance
+
+    def start_checkup_timer(self, duration: float=30.0) -> None:
+        """
+        Starts a timer to check up on the processes every n seconds (default 30).
+        """
+        self._timer = threading.Timer(duration, self.checkup)
+        self._timer.daemon = True
+        log.debug("Starting checkup timer")
+        self._timer.start()
+
+    def stop_checkup_timer(self) -> None:
+        """
+        Stops the checkup timer.
+        """
+        log.debug("Stopping checkup timer")
+        if hasattr(self, "_timer"):
+            self._timer.cancel()
 
     def launch_nameserver(self, nameserver: str) -> bool:
         """
@@ -496,34 +514,50 @@ class ProcessManager:
                 "uri": "",
             }
 
-    def checkup(self) -> List[bool]:
+    def checkup(self, continuous: bool=True) -> None:
         """
         Checkup the processes.
         """
         log.debug("Entering checkup()")
-        results = []
-        for ns in self.nameservers:
-            results.append(self.nameservers[ns].process.is_alive())
-        for daemon in self.daemons:
-            results.append(self.daemons[daemon].process.is_alive())
-        return results
+
+        for ns in list(self.nameservers.keys()):
+            if not self.nameservers[ns].process.is_alive():
+                log.warning(f"Nameserver '{ns}' died, attempting to restart process.")
+                try:
+                    self.nameservers[ns].process.join()
+                    log.debug(f"Nameserver '{ns}' joined processes.")
+                    del self.nameservers[ns]
+                    self.launch_nameserver(ns)
+                except Exception as e:
+                    log.exception(e)
+        for daemon in list(self.daemons.keys()):
+            if not self.daemons[daemon].process.is_alive():
+                log.warning(f"Daemon '{daemon}' died, attempting to restart process.")
+                try:
+                    self.daemons[daemon].process.join()
+                    log.debug(f"Daemon '{daemon}' joined processes.")
+                    del self.daemons[daemon]
+                    self.launch_daemon(daemon)
+                except Exception as e:
+                    log.exception(e)
+
+        if continuous:
+            self.start_checkup_timer()
 
     def shutdown_nameserver(self, nameserver: str) -> bool:
         log.info(f"Shutting down nameserver '{nameserver}'")
-        group = self.nameservers[nameserver]
+        group = self.nameservers.pop(nameserver)
         polling = group.process.msg_polling
         group.msg_queue.put(None)
         time.sleep(2*polling)
-        del self.nameservers[nameserver]
         return True
 
     def shutdown_daemon(self, daemon: str) -> bool:
         log.info(f"Shutting down daemon '{daemon}'")
-        group = self.daemons[daemon]
+        group = self.daemons.pop(daemon)
         polling = group.process.msg_polling
         group.msg_queue.put(None)
         time.sleep(2*polling)
-        del self.daemons[daemon]
         return True
 
     def reload(self) -> bool:
@@ -533,6 +567,8 @@ class ProcessManager:
         log.info("Reloading all running entities.")
         running_nameservers = list(self.nameservers.keys())
         running_daemons = list(self.daemons.keys())
+
+        self.stop_checkup_timer()
 
         for name in running_daemons:
             self.shutdown_daemon(name)
@@ -546,6 +582,8 @@ class ProcessManager:
             if name in self.GLOBAL_CONFIG.config.daemons:
                 self.launch_daemon(name)
 
+        self.start_checkup_timer()
+
         return True
 
     def shutdown_all(self) -> None:
@@ -553,10 +591,14 @@ class ProcessManager:
         Shutdown all entities.
         """
         log.info("Shutting down all running entities.")
+        
+        self.stop_checkup_timer()
+
         for daemon in list(self.daemons.keys()):
             self.shutdown_daemon(daemon)
         for nameserver in list(self.nameservers.keys()):
             self.shutdown_nameserver(nameserver)
+
         log.info("Shutting down all running entities: Complete.")
 
 
