@@ -158,12 +158,6 @@ class PyroLabDaemon:
         log.info(f"Stopping daemon '{daemon}'.")
         self.manager.shutdown_daemon(daemon)
 
-    # def info(self, name: str):
-    #     pass
-
-    # def logs(self, name: str):
-    #     pass
-
     def restart_nameserver(self, name: str):
         log.info(f"Restarting nameserver '{name}'.")
         self.manager.shutdown_nameserver(name)
