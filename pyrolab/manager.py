@@ -25,19 +25,20 @@ Python ``multiprocessing`` module.
 """
 
 from __future__ import annotations
-from datetime import datetime
+import os
 import importlib
 import time
 import threading
 import multiprocessing
 import logging
+from datetime import datetime
 from multiprocessing import current_process
 from multiprocessing.queues import Queue
 from typing import TYPE_CHECKING, Dict, List, Tuple, Type
 
 from Pyro5.core import locate_ns
 
-from pyrolab import RUNTIME_CONFIG
+from pyrolab import LOGFILES_DIR, RUNTIME_CONFIG
 from pyrolab.nameserver import start_ns_loop
 from pyrolab.configure import GlobalConfiguration, PyroLabConfiguration
 
@@ -49,6 +50,7 @@ if TYPE_CHECKING:
     from pyrolab.configure import NameServerConfiguration, DaemonConfiguration, ServiceConfiguration
 
 
+# The main process logger, not used by subprocesses.
 log = logging.getLogger(__name__)
 
 
@@ -63,12 +65,15 @@ class NameServerRunner(multiprocessing.Process):
 
     Parameters
     ----------
-    nameservercfg : dict
-        The NameServerConfiguration as a dictionary (use ``to_dict()``) that 
-        holds parameters necessary for constructing and running a server.
+    name : str
+        The name of the nameserver being run.
+    nsconfig : NameServerConfiguration
+        The configuration for the nameserver.
     msg_queue : multiprocessing.Queue
         A message queue. ResourceRunner listens for when ``None`` is placed
         in the queue, which is a sentinel value to shutdown the process.
+    msg_polling : float, optional
+        The time in seconds between polling the message queue.
     """
     def __init__(self, 
                  *args, 
@@ -79,13 +84,49 @@ class NameServerRunner(multiprocessing.Process):
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
         if not name:
-            self.name = multiprocessing.current_process().name
-        else:
-            self.name = f"{multiprocessing.current_process().name}: {name}"
+            raise ValueError("NameServerRunner requires a name")
+        if not nsconfig:
+            raise ValueError("NameServerRunner requires a NameServerConfiguration")
+        if not msg_queue:
+            raise ValueError("NameServerRunner requires a message queue")
+        
+        self.name = name
         self.msg_queue: Queue = msg_queue
         self.msg_polling = msg_polling
         self.nsconfig = nsconfig
         self.KILL_SIGNAL = False
+
+        self.log = self.configure_logger()
+        self.log.debug("Logger configured.")
+
+    def configure_logger(self) -> logging.Logger:
+        """
+        Sets up a logger that writes to a file named "nameserver_<name>.log".
+
+        Returns
+        -------
+        logging.Logger
+            The logger.
+        """
+        logfile = LOGFILES_DIR / f"nameserver_{self.name}.log"
+
+        logger = logging.getLogger(f"{self.name}")
+
+        formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+        
+        filehandler = logging.FileHandler(str(logfile), mode='a')
+        filehandler.setFormatter(formatter)
+
+        loglevel = os.getenv("PYROLAB_LOGLEVEL", "INFO")
+        try:
+            loglevel = getattr(logging, loglevel.upper())
+        except AttributeError:
+            loglevel = logging.INFO
+
+        logger.setLevel(logging.DEBUG)
+        logger.addHandler(filehandler)
+
+        return logger
 
     def process_message_queue(self) -> None:
         """
@@ -100,8 +141,9 @@ class NameServerRunner(multiprocessing.Process):
 
         if not self.msg_queue.empty():
             msg = self.msg_queue.get()
+            self.log.debug(f"Message received: {msg}")
             if msg is None:
-                log.info(f"{self.name} recived KILL")
+                self.log.info(f"{self.name} recived KILL")
                 self.KILL_SIGNAL = True
 
     def stay_alive(self) -> bool:
@@ -117,7 +159,7 @@ class NameServerRunner(multiprocessing.Process):
         bool
             True if shutdown signal received, False otherwise.
         """
-        log.debug(f"{self.name}: Stay alive='{not self.KILL_SIGNAL}'")
+        self.log.debug(f"Stay alive='{not self.KILL_SIGNAL}'")
         return not self.KILL_SIGNAL
 
     def run(self) -> None:
@@ -127,10 +169,13 @@ class NameServerRunner(multiprocessing.Process):
         When the kill signal is received, gracefully shuts down and removes
         its registration from the nameserver.
         """
-        log.info(f"Starting '{self.name}'")
+        self.log.info(f"Starting '{self.name}'")
     
+        # Configure the Pyro5 environment
         self.nsconfig.update_pyro_config()
+        # Start the thread that checks for messages
         self.process_message_queue()
+        # Begin looping
         start_ns_loop(self.nsconfig, loop_condition=self.stay_alive)
 
 
@@ -148,31 +193,74 @@ class DaemonRunner(multiprocessing.Process):
 
     Parameters
     ----------
-    info : ResourceInfo
-        The ResourceInfo dataclass that holds parameters necessary for 
-        constructing and running a server.
+    name : str
+        The name of the daemon being run.
+    daemonconfig : DaemonConfiguration
+        The configuration for the daemon.
+    serviceconfigs : Dict[str, ServiceConfiguration]
+        The configuration for the services belonging to the given daemon.
     msg_queue : multiprocessing.Queue
-        A message queue. ResourceRunner only listens for when "None" is placed
+        A message queue. ResourceRunner listens for when "None" is placed
         in the queue, which is a sentinel value to shutdown the process.
+    msg_polling : float, optional
+        The time in seconds between polling the message queue.
     """
     def __init__(self, 
                  *args, 
                  name: str="",
                  daemonconfig: DaemonConfiguration=None, 
-                 serviceconfigs: Dict[ServiceConfiguration]=None,
+                 serviceconfigs: Dict[str, ServiceConfiguration]=None,
                  msg_queue: Queue=None, 
                  msg_polling: float=1.0,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
         if not name:
-            self.name = multiprocessing.current_process().name
-        else:
-            self.name = f"{multiprocessing.current_process().name}: {name}"
+            raise ValueError("DaemonRunner requires a name")
+        if not daemonconfig:
+            raise ValueError("DaemonRunner requires a DaemonConfiguration")
+        if not serviceconfigs:
+            raise ValueError("DaemonRunner requires ServiceConfigurations")
+        if not msg_queue:
+            raise ValueError("DaemonRunner requires a message queue")
+
+        self.name = name
         self.msg_queue: Queue = msg_queue
         self.msg_polling = msg_polling
         self.daemonconfig = daemonconfig
         self.serviceconfigs = serviceconfigs
         self.KILL_SIGNAL = False
+
+        self.log = self.configure_logger()
+        self.log.debug("Logger configured.")
+
+    def configure_logger(self) -> logging.Logger:
+        """
+        Sets up a logger that writes to a file named "nameserver_<name>.log".
+
+        Returns
+        -------
+        logging.Logger
+            The logger.
+        """
+        logfile = LOGFILES_DIR / f"daemon_{self.name}.log"
+
+        logger = logging.getLogger(f"{self.name}")
+
+        formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+        
+        filehandler = logging.FileHandler(str(logfile), mode='a')
+        filehandler.setFormatter(formatter)
+
+        loglevel = os.getenv("PYROLAB_LOGLEVEL", "INFO")
+        try:
+            loglevel = getattr(logging, loglevel.upper())
+        except AttributeError:
+            loglevel = logging.INFO
+
+        logger.setLevel(logging.DEBUG)
+        logger.addHandler(filehandler)
+
+        return logger
 
     def get_daemon(self) -> Type[Daemon]:
         """
@@ -227,7 +315,7 @@ class DaemonRunner(multiprocessing.Process):
 
         uris = {}
         for sname, sconfig in self.serviceconfigs.items():
-            log.info(f"{self.name} registering service {sname}")
+            self.log.info(f"{self.name} registering service {sname}")
             service = self.get_service(sconfig)
 
             service = daemon.prepare_class(service)
@@ -255,7 +343,7 @@ class DaemonRunner(multiprocessing.Process):
         if not self.msg_queue.empty():
             msg = self.msg_queue.get()
             if msg is None:
-                log.info(f"{self.name} recived KILL")
+                self.log.info(f"{self.name} recived KILL")
                 self.KILL_SIGNAL = True
 
     def stay_alive(self) -> bool:
@@ -280,7 +368,7 @@ class DaemonRunner(multiprocessing.Process):
         When the kill signal is received, gracefully shuts down and removes
         its registration from the nameserver.
         """
-        log.info(f"Starting '{self.name}'")
+        self.log.info(f"Starting '{self.name}'")
 
         # Set Pyro5 settings for daemon
         self.daemonconfig.update_pyro_config()
@@ -289,18 +377,18 @@ class DaemonRunner(multiprocessing.Process):
         GLOBAL_CONFIG = PyroLabConfiguration.from_file(RUNTIME_CONFIG)
 
         # Register all services with the nameserver
-        log.debug("Registering services with nameserver")
+        self.log.debug("Registering services with nameserver")
         for sname, sinfo in self.serviceconfigs.items():
             for ns in sinfo.nameservers:
                 nscfg = GLOBAL_CONFIG.nameservers[ns]
                 try:
-                    log.debug("Daemon attempting to connect to nameserver")
+                    self.log.debug(f"Attempting to register '{sname}' with nameserver '{ns}' at {nscfg.host}:{nscfg.ns_port}")
                     ns = locate_ns(nscfg.host, nscfg.ns_port)
                     ns.register(sname, uris[sname], metadata={sinfo.description})
                 except Exception as e:
-                    log.critical(e)
+                    self.log.exception(e)
                     raise e
-        log.debug("Registration: success")
+        self.log.debug("All registrations completed")
 
         for ns in self.daemonconfig.nameservers:
             nscfg = GLOBAL_CONFIG.nameservers[ns]
@@ -309,12 +397,12 @@ class DaemonRunner(multiprocessing.Process):
 
         # Start the request loop
         self.process_message_queue()
-        log.debug(f"{self.name}: entering requestloop")
+        self.log.debug(f"{self.name}: entering requestloop")
         daemon.requestLoop(loopCondition=self.stay_alive)
-        log.debug(f"{self.name}: requestloop exited")
+        self.log.debug(f"{self.name}: requestloop exited")
 
         # Cleanup
-        log.info(f"Shutting down '{self.name}'")
+        self.log.info(f"Shutting down '{self.name}'")
         self._timer.cancel()
         for sname, sinfo in self.serviceconfigs.items():
             for ns in sinfo.nameservers:
@@ -323,7 +411,7 @@ class DaemonRunner(multiprocessing.Process):
                     ns = locate_ns(nscfg.host, nscfg.ns_port)
                     ns.remove(sname)
                 except Exception as e:
-                    log.error(e)
+                    self.log.exception(e)
 
 
 class ProcessGroup:
@@ -360,12 +448,12 @@ class ProcessManager:
 
     @classmethod
     def instance(cls) -> "ProcessManager":
-        log.debug("ProcessManager instance requested.")
+        log.debug("ProcessManager instance requested")
         if current_process().name != 'MainProcess':
-            log.critical("ProcessManager instance requested from non-main process.")
+            log.critical("ProcessManager instance requested from non-main process")
             raise Exception("ProcessManager should only be accessed by the main process.")
         if cls._instance is None:
-            log.debug("ProcessManager instance did not exist, created.")
+            log.debug("ProcessManager instance did not exist, created")
             inst = cls.__new__(cls)
             inst.nameservers = {}
             inst.daemons = {}
@@ -483,16 +571,16 @@ class ProcessManager:
         group = self.nameservers[nameserver]
         polling = group.process.msg_polling
         group.msg_queue.put(None)
-        time.sleep(polling)
+        time.sleep(1.5*polling)
         del self.nameservers[nameserver]
         return True
 
     def shutdown_daemon(self, daemon: str) -> bool:
-        print(f"Shutting down daemon '{daemon}'")
+        log.info(f"Shutting down daemon '{daemon}'")
         group = self.daemons[daemon]
         polling = group.process.msg_polling
         group.msg_queue.put(None)
-        time.sleep(polling)
+        time.sleep(1.5*polling)
         del self.daemons[daemon]
         return True
 
@@ -504,10 +592,10 @@ class ProcessManager:
         running_nameservers = list(self.nameservers.keys())
         running_daemons = list(self.daemons.keys())
 
-        for name in running_nameservers:
-            self.shutdown_nameserver(name)
         for name in running_daemons:
             self.shutdown_daemon(name)
+        for name in running_nameservers:
+            self.shutdown_nameserver(name)
 
         for name in running_nameservers:
             if name in self.GLOBAL_CONFIG.config.nameservers:
