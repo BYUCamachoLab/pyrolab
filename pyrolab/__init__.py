@@ -94,13 +94,17 @@ RUNTIME_CONFIG = PYROLABD_DATA / "runtime_config.yaml"
 
 # Set up logging to file
 import logging
+
+def get_loglevel() -> int:
+    loglevel = os.getenv("PYROLAB_LOGLEVEL", "INFO")
+    try:
+        loglevel = getattr(logging, loglevel.upper())
+    except AttributeError:
+        loglevel = logging.INFO
+    return loglevel
+
 logfile = os.getenv("PYROLAB_LOGFILE", PYROLAB_DATA_DIR / "pyrolab.log")
-loglevel = os.getenv("PYROLAB_LOGLEVEL", "INFO")
-try:
-    loglevel = getattr(logging, loglevel.upper())
-except AttributeError:
-    loglevel = logging.INFO
-logging.basicConfig(level=loglevel,
+logging.basicConfig(level=get_loglevel(),
                     format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                     filename=str(logfile),
                     filemode='a')
