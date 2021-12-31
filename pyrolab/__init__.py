@@ -90,6 +90,7 @@ LOGFILES_DIR.mkdir(parents=True, exist_ok=True)
 LOCKFILE = PYROLABD_DATA / "pyrolabd.lock"
 USER_CONFIG_FILE = CONFIG_DIR / "user_configuration.yaml"
 RUNTIME_CONFIG = PYROLABD_DATA / "runtime_config.yaml"
+PYROLAB_LOGFILE = PYROLAB_DATA_DIR / "pyrolab.log"
 
 
 # Set up logging to file
@@ -101,9 +102,10 @@ def get_loglevel() -> int:
         loglevel = getattr(logging, loglevel.upper())
     except AttributeError:
         loglevel = logging.INFO
+    loglevel = logging.DEBUG
     return loglevel
 
-logfile = os.getenv("PYROLAB_LOGFILE", PYROLAB_DATA_DIR / "pyrolab.log")
+logfile = os.getenv("PYROLAB_LOGFILE", PYROLAB_LOGFILE)
 logging.basicConfig(level=get_loglevel(),
                     format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                     filename=str(logfile),

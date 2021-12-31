@@ -38,7 +38,7 @@ from typing import TYPE_CHECKING, Dict, List, Tuple, Type
 
 from Pyro5.core import locate_ns
 
-from pyrolab import RUNTIME_CONFIG
+from pyrolab import LOGFILES_DIR, RUNTIME_CONFIG, get_loglevel
 from pyrolab.nameserver import start_ns_loop
 from pyrolab.configure import GlobalConfiguration, PyroLabConfiguration
 
@@ -95,8 +95,34 @@ class NameServerRunner(multiprocessing.Process):
         self.msg_polling = msg_polling
         self.nsconfig = nsconfig
         self.KILL_SIGNAL = False
-        self.log = log
-        # self.log = get_subprocess_logger(self.name, f"ns_{self.name}.log")
+        # self.log = log
+        self.log = self.configure_logger()
+    
+    def configure_logger(self) -> logging.Logger:
+        """
+        Sets up a logger that writes to a file named "nameserver_<name>.log".
+        Returns
+        -------
+        logging.Logger
+            The logger.
+        """
+        logfile = LOGFILES_DIR / f"ns_{self.name}.log"
+
+        logger = logging.getLogger(f"ns_{self.name}")
+
+        formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+        
+        filehandler = logging.FileHandler(str(logfile), mode='a')
+        filehandler.setFormatter(formatter)
+
+        loglevel = get_loglevel()
+
+        loglevel = logging.DEBUG # TODO: Remove this line
+
+        logger.setLevel(loglevel)
+        logger.addHandler(filehandler)
+
+        return logger
 
     def process_message_queue(self) -> None:
         """
@@ -199,8 +225,34 @@ class DaemonRunner(multiprocessing.Process):
         self.daemonconfig = daemonconfig
         self.serviceconfigs = serviceconfigs
         self.KILL_SIGNAL = False
-        self.log = log
-        # self.log = get_subprocess_logger(self.name, f"d_{self.name}.log")
+        # self.log = log
+        self.log = self.configure_logger()
+    
+    def configure_logger(self) -> logging.Logger:
+        """
+        Sets up a logger that writes to a file named "nameserver_<name>.log".
+        Returns
+        -------
+        logging.Logger
+            The logger.
+        """
+        logfile = LOGFILES_DIR / f"d_{self.name}.log"
+
+        logger = logging.getLogger(f"d_{self.name}")
+
+        formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+        
+        filehandler = logging.FileHandler(str(logfile), mode='a')
+        filehandler.setFormatter(formatter)
+
+        loglevel = get_loglevel()
+
+        loglevel = logging.DEBUG # TODO: Remove this line
+
+        logger.setLevel(loglevel)
+        logger.addHandler(filehandler)
+
+        return logger
 
     def get_daemon(self) -> Type[Daemon]:
         """
