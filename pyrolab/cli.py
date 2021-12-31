@@ -33,6 +33,7 @@ import subprocess
 import platform
 import sys
 import textwrap
+import time
 from typing import Optional
 import pkg_resources
 from pathlib import Path
@@ -40,7 +41,7 @@ from tabulate import tabulate
 
 import typer
 
-from pyrolab import USER_CONFIG_FILE, RUNTIME_CONFIG, LOCKFILE
+from pyrolab import LOGFILES_DIR, USER_CONFIG_FILE, RUNTIME_CONFIG, LOCKFILE
 from pyrolab.api import Proxy
 from pyrolab.configure import PyroLabConfiguration, export_config, update_config, reset_config
 from pyrolab.pyrolabd import PyroLabDaemon, InstanceInfo
@@ -135,6 +136,8 @@ def down():
     """
     daemon = get_daemon(suppress_reload_message=True)
     daemon.shutdown()
+    while LOCKFILE.exists():
+        time.sleep(0.1)
     typer.secho("PyroLab daemon shutdown.", fg=typer.colors.GREEN)
 
 @app.command()
@@ -315,7 +318,42 @@ def info_service(
 ###############################################################################
 
 logs_app = typer.Typer()
-# app.add_typer(logs_app, name="logs")
+app.add_typer(logs_app, name="logs")
+
+@logs_app.command("clean")
+def logs_clean():
+    """
+    Deletes all log files.
+    """
+    for log in LOGFILES_DIR.glob("*.log"):
+        log.unlink()
+
+logs_export_app = typer.Typer()
+logs_app.add_typer(logs_export_app, name="export")
+
+@logs_export_app.command("nameserver")
+def logs_export_nameserver(nameserver: str, filename: str):
+    """
+    Export the nameserver's log file.
+    """
+    logfile = LOGFILES_DIR / f"nameserver_{nameserver}.log"
+    if logfile.exists():
+        shutil.copy(logfile, filename)
+    else:
+        typer.secho(f"No log file found for '{nameserver}'.", fg=typer.colors.RED)
+        raise typer.Exit()
+
+@logs_export_app.command("daemon")
+def logs_export_daemon(daemon: str, filename: str):
+    """
+    Export the daemon's log file.
+    """
+    logfile = LOGFILES_DIR / f"daemon_{daemon}.log"
+    if logfile.exists():
+        shutil.copy(logfile, filename)
+    else:
+        typer.secho(f"No log file found for '{daemon}'.", fg=typer.colors.RED)
+        raise typer.Exit()
 
 ###############################################################################
 # pyrolab rename
