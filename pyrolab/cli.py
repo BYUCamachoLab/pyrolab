@@ -41,7 +41,7 @@ from tabulate import tabulate
 
 import typer
 
-from pyrolab import LOGFILES_DIR, PYROLAB_LOGFILE, USER_CONFIG_FILE, RUNTIME_CONFIG, LOCKFILE
+from pyrolab import PYROLAB_LOGFILE, USER_CONFIG_FILE, RUNTIME_CONFIG, LOCKFILE
 from pyrolab.api import Proxy
 from pyrolab.configure import PyroLabConfiguration, export_config, update_config, reset_config
 from pyrolab.pyrolabd import PyroLabDaemon, InstanceInfo
@@ -325,53 +325,18 @@ def logs_clean():
     """
     Deletes all log files.
     """
-    for log in LOGFILES_DIR.glob("*.log"):
-        log.unlink()
     PYROLAB_LOGFILE.unlink(missing_ok=True)
 
-logs_export_app = typer.Typer()
-logs_app.add_typer(logs_export_app, name="export")
-
-@logs_export_app.command("nameserver")
-def logs_export_nameserver(nameserver: str, filename: str):
+@logs_app.command("export")
+def logs_export(filename: str):
     """
-    Export the nameserver's log file (UNIX only).
-    """
-    if sys.platform == "Windows":
-        typer.secho("Logs are not available on Windows.", fg=typer.colors.RED)
-        raise typer.Exit()
-    logfile = LOGFILES_DIR / f"nameserver_{nameserver}.log"
-    if logfile.exists():
-        shutil.copy(logfile, filename)
-    else:
-        typer.secho(f"No log file found for '{nameserver}'.", fg=typer.colors.RED)
-        raise typer.Exit()
-
-@logs_export_app.command("daemon")
-def logs_export_daemon(daemon: str, filename: str):
-    """
-    Export the daemon's log file (UNIX only).
-    """
-    if sys.platform == "Windows":
-        typer.secho("Logs are not available on Windows.", fg=typer.colors.RED)
-        raise typer.Exit()
-    logfile = LOGFILES_DIR / f"daemon_{daemon}.log"
-    if logfile.exists():
-        shutil.copy(logfile, filename)
-    else:
-        typer.secho(f"No log file found for '{daemon}'.", fg=typer.colors.RED)
-        raise typer.Exit()
-
-@logs_export_app.command("master")
-def logs_export_master(filename: str):
-    """
-    Export the master log file.
+    Exports the log file to a file.
     """
     if PYROLAB_LOGFILE.exists():
         shutil.copy(PYROLAB_LOGFILE, filename)
     else:
         typer.secho("No log file found.", fg=typer.colors.RED)
-        raise typer.Exit()
+        raise typer.Abort()
 
 ###############################################################################
 # pyrolab rename
