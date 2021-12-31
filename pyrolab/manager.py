@@ -311,6 +311,7 @@ class DaemonRunner(multiprocessing.Process):
         self.process_message_queue()
         log.debug(f"{self.name}: entering requestloop")
         daemon.requestLoop(loopCondition=self.stay_alive)
+        log.debug(f"{self.name}: requestloop exited")
 
         # Cleanup
         log.info(f"Shutting down '{self.name}'")
@@ -359,9 +360,12 @@ class ProcessManager:
 
     @classmethod
     def instance(cls) -> "ProcessManager":
+        log.debug("ProcessManager instance requested.")
         if current_process().name != 'MainProcess':
+            log.critical("ProcessManager instance requested from non-main process.")
             raise Exception("ProcessManager should only be accessed by the main process.")
         if cls._instance is None:
+            log.debug("ProcessManager instance did not exist, created.")
             inst = cls.__new__(cls)
             inst.nameservers = {}
             inst.daemons = {}
@@ -401,6 +405,7 @@ class ProcessManager:
             A dictionary of information about the nameserver. Keys are:
             ``created``, ``status``, ``uri``.
         """
+        log.debug("Entering get_nameserver_process_info()")
         if nameserver in self.nameservers:
             pgroup = self.nameservers[nameserver]
             if pgroup.process.is_alive():
@@ -442,6 +447,7 @@ class ProcessManager:
         """
         Return the process group for a daemon.
         """
+        log.debug("Entering get_daemon_process_info()")
         if daemon in self.daemons:
             pgroup = self.daemons[daemon]
             if pgroup.process.is_alive():
@@ -461,6 +467,10 @@ class ProcessManager:
             }
 
     def checkup(self) -> List[bool]:
+        """
+        Checkup the processes.
+        """
+        log.debug("Entering checkup()")
         results = []
         for ns in self.nameservers:
             results.append(self.nameservers[ns].process.is_alive())
@@ -490,6 +500,7 @@ class ProcessManager:
         """
         Reload all entities.
         """
+        log.info("Reloading all running entities.")
         running_nameservers = list(self.nameservers.keys())
         running_daemons = list(self.daemons.keys())
 
@@ -508,10 +519,15 @@ class ProcessManager:
         return True
 
     def shutdown_all(self) -> None:
+        """
+        Shutdown all entities.
+        """
+        log.info("Shutting down all running entities.")
         for daemon in list(self.daemons.keys()):
             self.shutdown_daemon(daemon)
         for nameserver in list(self.nameservers.keys()):
             self.shutdown_nameserver(nameserver)
+        log.info("Shutting down all running entities: Complete.")
 
 
 def running_time_human_readable(start: datetime, end: datetime=None) -> str:

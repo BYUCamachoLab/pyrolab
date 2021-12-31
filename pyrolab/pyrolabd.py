@@ -25,7 +25,7 @@ from pyrolab.manager import ProcessManager
 from pyrolab.configure import GlobalConfiguration
 
 
-log = logging.getLogger(__name__)
+log = logging.getLogger("pyrolabd")
 
 
 class InstanceInfo(BaseModel):
@@ -105,6 +105,7 @@ class PyroLabDaemon:
         bool
             True if the reload was successful, False otherwise.
         """
+        log.info("Daemon reload requested.")
         shutil.copy(USER_CONFIG_FILE, RUNTIME_CONFIG)
         self.gconfig.load_config(RUNTIME_CONFIG)
         return self.manager.reload()
@@ -122,6 +123,8 @@ class PyroLabDaemon:
         Lists process names, status (i.e. running, stopped, etc.), start time,
         URI/ports, etc.
         """
+        log.info("Daemon process listing requested.")
+
         listing = []
         for ns in self.gconfig.get_config().nameservers.keys():
             info = self.manager.get_nameserver_process_info(ns)
@@ -140,15 +143,19 @@ class PyroLabDaemon:
         return f"\n{nsstring}\n\n{daemonstring}\n"
 
     def start_nameserver(self, nameserver: str):
+        log.info(f"Starting nameserver '{nameserver}'.")
         self.manager.launch_nameserver(nameserver)
 
     def start_daemon(self, daemon: str):
+        log.info(f"Starting daemon '{daemon}'.")
         self.manager.launch_daemon(daemon)
 
     def stop_nameserver(self, nameserver: str):
+        log.info(f"Stopping nameserver '{nameserver}'.")
         self.manager.shutdown_nameserver(nameserver)
 
     def stop_daemon(self, daemon: str):
+        log.info(f"Stopping daemon '{daemon}'.")
         self.manager.shutdown_daemon(daemon)
 
     # def info(self, name: str):
@@ -158,16 +165,27 @@ class PyroLabDaemon:
     #     pass
 
     def restart_nameserver(self, name: str):
+        log.info(f"Restarting nameserver '{name}'.")
         self.manager.shutdown_nameserver(name)
         self.manager.launch_nameserver(name)
 
     def restart_daemon(self, name: str):
+        log.info(f"Restarting daemon '{name}'.")
         self.manager.shutdown_daemon(name)
         self.manager.launch_daemon(name)
 
     @api.oneway
     def shutdown(self) -> None:
+        """
+        Shuts down the daemon. 
+
+        This method does not return a confirmation since, by nature of the 
+        shutdown request, the daemon will not be able to respond.
+        """
+        log.info("Daemon shutdown requested.")
+        self.manager.shutdown_all()
         self._pyroDaemon.shutdown()
+        log.info("Daemon shutdown complete.")
 
 
 if __name__ == "__main__":
