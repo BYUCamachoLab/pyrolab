@@ -95,6 +95,7 @@ PYROLAB_LOGFILE = PYROLAB_DATA_DIR / "pyrolab.log"
 
 # Set up logging to file
 import logging
+import logging.handlers
 
 def get_loglevel() -> int:
     loglevel = os.getenv("PYROLAB_LOGLEVEL", "INFO")
@@ -102,15 +103,21 @@ def get_loglevel() -> int:
         loglevel = getattr(logging, loglevel.upper())
     except AttributeError:
         loglevel = logging.INFO
-    loglevel = logging.DEBUG
     return loglevel
 
-logfile = os.getenv("PYROLAB_LOGFILE", PYROLAB_LOGFILE)
-logging.basicConfig(level=get_loglevel(),
-                    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                    filename=str(logfile),
-                    filemode='a')
-logging.debug("PyroLab started (logger configured).")
+if len(logging.root.handlers) == 0:
+    #     datefmt="%Y-%m-%d %H:%M:%S",
+    #     format="[%(asctime)s.%(msecs)03d,%(name)s,%(levelname)s] %(message)s"
+    
+    # This is not multiprocess safe, but it's not critical
+    logfile = os.getenv("PYROLAB_LOGFILE", PYROLAB_LOGFILE)
+
+    root = logging.getLogger()
+    h = logging.handlers.RotatingFileHandler(logfile, 'a', 30000, 10)
+    f = logging.Formatter('%(asctime)s %(process)d %(processName)-10s %(name)-12s %(levelname)-8s %(message)s', datefmt="%Y-%m-%d %H:%M:%S")
+    h.setFormatter(f)
+    root.addHandler(h)
+    root.setLevel(get_loglevel())
 
 
 # Include remote traceback in local tracebacks
