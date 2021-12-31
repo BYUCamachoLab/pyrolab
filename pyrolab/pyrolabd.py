@@ -105,7 +105,7 @@ class PyroLabDaemon:
         bool
             True if the reload was successful, False otherwise.
         """
-        log.info("Daemon reload requested.")
+        log.debug("Daemon reload requested.")
         shutil.copy(USER_CONFIG_FILE, RUNTIME_CONFIG)
         self.gconfig.load_config(RUNTIME_CONFIG)
         return self.manager.reload()
@@ -123,7 +123,7 @@ class PyroLabDaemon:
         Lists process names, status (i.e. running, stopped, etc.), start time,
         URI/ports, etc.
         """
-        log.info("Daemon process listing requested.")
+        log.debug("Daemon process listing requested.")
 
         listing = []
         for ns in self.gconfig.get_config().nameservers.keys():
@@ -143,28 +143,28 @@ class PyroLabDaemon:
         return f"\n{nsstring}\n\n{daemonstring}\n"
 
     def start_nameserver(self, nameserver: str):
-        log.info(f"Starting nameserver '{nameserver}'.")
+        log.debug(f"Starting nameserver '{nameserver}'.")
         self.manager.launch_nameserver(nameserver)
 
     def start_daemon(self, daemon: str):
-        log.info(f"Starting daemon '{daemon}'.")
+        log.debug(f"Starting daemon '{daemon}'.")
         self.manager.launch_daemon(daemon)
 
     def stop_nameserver(self, nameserver: str):
-        log.info(f"Stopping nameserver '{nameserver}'.")
+        log.debug(f"Stopping nameserver '{nameserver}'.")
         self.manager.shutdown_nameserver(nameserver)
 
     def stop_daemon(self, daemon: str):
-        log.info(f"Stopping daemon '{daemon}'.")
+        log.debug(f"Stopping daemon '{daemon}'.")
         self.manager.shutdown_daemon(daemon)
 
     def restart_nameserver(self, name: str):
-        log.info(f"Restarting nameserver '{name}'.")
+        log.debug(f"Restarting nameserver '{name}'.")
         self.manager.shutdown_nameserver(name)
         self.manager.launch_nameserver(name)
 
     def restart_daemon(self, name: str):
-        log.info(f"Restarting daemon '{name}'.")
+        log.debug(f"Restarting daemon '{name}'.")
         self.manager.shutdown_daemon(name)
         self.manager.launch_daemon(name)
 
