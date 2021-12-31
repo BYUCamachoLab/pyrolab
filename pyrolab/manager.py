@@ -513,7 +513,7 @@ class ProcessManager:
         group = self.nameservers[nameserver]
         polling = group.process.msg_polling
         group.msg_queue.put(None)
-        time.sleep(1.5*polling)
+        time.sleep(2*polling)
         del self.nameservers[nameserver]
         return True
 
@@ -522,7 +522,7 @@ class ProcessManager:
         group = self.daemons[daemon]
         polling = group.process.msg_polling
         group.msg_queue.put(None)
-        time.sleep(1.5*polling)
+        time.sleep(2*polling)
         del self.daemons[daemon]
         return True
 
