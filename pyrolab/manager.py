@@ -38,7 +38,7 @@ from typing import TYPE_CHECKING, Dict, List, Tuple, Type
 
 from Pyro5.core import locate_ns
 
-from pyrolab import LOGFILES_DIR, RUNTIME_CONFIG, get_loglevel
+from pyrolab import RUNTIME_CONFIG
 from pyrolab.nameserver import start_ns_loop
 from pyrolab.configure import GlobalConfiguration, PyroLabConfiguration
 
@@ -51,7 +51,7 @@ if TYPE_CHECKING:
 
 
 # The main process logger, not used by subprocesses.
-# log = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 class NameServerRunner(multiprocessing.Process):
@@ -95,36 +95,8 @@ class NameServerRunner(multiprocessing.Process):
         self.msg_polling = msg_polling
         self.nsconfig = nsconfig
         self.KILL_SIGNAL = False
-
-        self.log = self.configure_logger()
-        self.log.debug("Logger configured.")
-
-    def configure_logger(self) -> logging.Logger:
-        """
-        Sets up a logger that writes to a file named "nameserver_<name>.log".
-
-        Returns
-        -------
-        logging.Logger
-            The logger.
-        """
-        # logfile = LOGFILES_DIR / f"nameserver_{self.name}.log"
-
-        # logger = logging.getLogger(f"{self.name}")
-
-        # formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
-        
-        # filehandler = logging.FileHandler(str(logfile), mode='a')
-        # filehandler.setFormatter(formatter)
-
-        # loglevel = get_loglevel()
-
-        # logger.setLevel(loglevel)
-        # logger.addHandler(filehandler)
-
-        logger = logging.getLogger(f"nameserver_{self.name}")
-
-        return logger
+        self.log = log
+        # self.log = get_subprocess_logger(self.name, f"ns_{self.name}.log")
 
     def process_message_queue(self) -> None:
         """
@@ -227,36 +199,8 @@ class DaemonRunner(multiprocessing.Process):
         self.daemonconfig = daemonconfig
         self.serviceconfigs = serviceconfigs
         self.KILL_SIGNAL = False
-
-        self.log = self.configure_logger()
-        self.log.debug("Logger configured.")
-        self.log.info("Info level log.")
-
-    def configure_logger(self) -> logging.Logger:
-        """
-        Sets up a logger that writes to a file named "nameserver_<name>.log".
-
-        Returns
-        -------
-        logging.Logger
-            The logger.
-        """
-        # logfile = LOGFILES_DIR / f"daemon_{self.name}.log"
-
-        # logger = logging.getLogger(f"{self.name}")
-
-        # formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
-        
-        # filehandler = logging.FileHandler(str(logfile), mode='a')
-        # filehandler.setFormatter(formatter)
-
-        # loglevel = get_loglevel()
-
-        # logger.setLevel(loglevel)
-        # logger.addHandler(filehandler)
-        logger = logging.getLogger(f"nameserver_{self.name}")
-
-        return logger
+        self.log = log
+        # self.log = get_subprocess_logger(self.name, f"d_{self.name}.log")
 
     def get_daemon(self) -> Type[Daemon]:
         """
@@ -364,8 +308,6 @@ class DaemonRunner(multiprocessing.Process):
         When the kill signal is received, gracefully shuts down and removes
         its registration from the nameserver.
         """
-        print(getattr(self, 'log'))
-        self.log.critical(getattr(self, 'log'))
         self.log.info(f"Starting '{self.name}'")
 
         # Set Pyro5 settings for daemon
@@ -440,7 +382,7 @@ class ProcessManager:
     _instance = None
     nameservers: Dict[str, NameServerProcessGroup] = {}
     daemons: Dict[str, DaemonProcessGroup] = {}
-    log = logging.getLogger(__name__)
+    log = log
 
     def __init__(self) -> None:
         raise RuntimeError("Cannot directly instantiate singleton, call ``instance()`` instead.")

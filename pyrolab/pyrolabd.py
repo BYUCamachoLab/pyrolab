@@ -25,7 +25,7 @@ from pyrolab.manager import ProcessManager
 from pyrolab.configure import GlobalConfiguration
 
 
-log = logging.getLogger("pyrolabd")
+log = logging.getLogger("pyrolab.pyrolabd")
 
 
 class InstanceInfo(BaseModel):
