@@ -32,6 +32,7 @@ from serial.tools import list_ports
 
 from pyrolab.api import behavior, expose
 from pyrolab.drivers.lasers import Laser
+from pyrolab.errors import CommunicationError
 
 log = logging.getLogger(__name__)
 
@@ -177,10 +178,9 @@ class TSL550(Laser):
         """
         log.debug("Entering connect()")
         try:
-            self.device = serial.Serial(address, baudrate=baudrate, timeout=timeout)
+            self.device = serial.Serial(port, baudrate=baudrate, timeout=timeout)
         except serial.SerialException as e:
             raise CommunicationError("Could not connect to laser on port " + port)
-            raise e
         self.device.flushInput()
         self.device.flushOutput()
         self.query_delay = query_delay
@@ -200,7 +200,7 @@ class TSL550(Laser):
         # Set sweep mode to continuous, two-way, trigger off
         self.sweep_set_mode()
 
-        log.info(f"Connected to laser at {address}")
+        log.info(f"Connected to laser at {port}")
         return self.device.is_open
 
     def close(self) -> None:
@@ -365,9 +365,8 @@ class TSL550(Laser):
         >>> laser.wavelength(1560.123)
         """
         if val is not None:
-            if(val < MINIMUM_WAVELENGTH or val > MAXIMUM_WAVELENGTH):
-                raise ValueError("Inputed wavelength not in acceptable range "
-                + str(MINIMUM_WAVELENGTH) + " to " + str(MAXIMUM_WAVELENGTH))
+            if(val < self.MINIMUM_WAVELENGTH or val > self.MAXIMUM_WAVELENGTH):
+                raise ValueError(f"Wavelength outside of allowed range ({self.MINIMUM_WAVELENGTH} - {self.MAXIMUM_WAVELENGTH} nm)")
             log.info(f"Setting wavelength to {val} nm")
             self._set_var("WA", 4, val)
             return
@@ -398,9 +397,8 @@ class TSL550(Laser):
         >>> laser.frequency(192.0000)
         """
         if val is not None:
-            if(val < MINIMUM_FREQUENCY or val > MAXIMUM_FREQUENCY):
-                raise ValueError("Inputed frequency not in acceptable range "
-                + str(MINIMUM_FREQUENCY) + " to " + str(MAXIMUM_FREQUENCY))
+            if(val < self.MINIMUM_FREQUENCY or val > self.MAXIMUM_FREQUENCY):
+                raise ValueError(f"Frequency outside of allowed range ({self.MINIMUM_FREQUENCY} - {self.MAXIMUM_FREQUENCY} THz)")
             log.info(f"Setting frequency to {val} THz")
             self._set_var("FQ", 5, val)
             return
@@ -432,9 +430,8 @@ class TSL550(Laser):
         >>> laser.power_mW(10)
         """
         if val is not None:
-            if(val < MINIMUM_POWER_MW or val > MAXIMUM_POWER_MW):
-                raise ValueError("Inputed power not in acceptable range "
-                + str(MINIMUM_POWER_MW) + " to " + str(MAXIMUM_POWER_MW))
+            if(val < self.MINIMUM_POWER_MW or val > self.MAXIMUM_POWER_MW):
+                raise ValueError(f"Power outside of allowed range ({self.MINIMUM_POWER_MW} - {self.MAXIMUM_POWER_MW} mW)")
             log.info(f"Setting power to {val} mW")
             self._set_var("LP", 2, val)
             return
@@ -472,9 +469,8 @@ class TSL550(Laser):
         >>> laser.power_dBm(3)
         """
         if val is not None:
-            if(val < MINIMUM_POWER_DBM or val > MAXIMUM_POWER_DBM):
-                raise ValueError("Inputed power not in acceptable range "
-                + str(MINIMUM_POWER_DBM) + " to " + str(MAXIMUM_POWER_DBM))
+            if(val < self.MINIMUM_POWER_DBM or val > self.MAXIMUM_POWER_DBM):
+                raise ValueError(f"Power outside of allowed range ({self.MINIMUM_POWER_DBM} - {self.MAXIMUM_POWER_DBM} dBm)")
             log.info(f"Setting power to {val} dBm")
             self._set_var("OP", 2, val)
             return
@@ -512,9 +508,8 @@ class TSL550(Laser):
         >>> laser.power_att(28)
         """
         if val is not None:
-            if(val < MINIMUM_POWER_ATTENUATION or val > MAXIMUM_POWER_ATTENUATION):
-                raise ValueError("Inputed attenuation not in acceptable range "
-                + str(MINIMUM_POWER_ATTENUATION) + " to " + str(MAXIMUM_POWER_ATTENUATION))
+            if(val < self.MINIMUM_POWER_ATTENUATION or val > self.MAXIMUM_POWER_ATTENUATION):
+                raise ValueError(f"Attenuation outside allowed range ({self.MINIMUM_POWER_ATTENUATION} - {self.MAXIMUM_POWER_ATTENUATION} dBm)")
             log.info(f"Setting power to {val} dBm")
             self._set_var("AT", 2, val)
             return
