@@ -12,8 +12,8 @@ Driver for Pure Photonic Tunable Lasers
 
 .. note::
 
-   The Pure Photonic drivers, which among other things, makes the USB 
-   connection appear as a serial port, must be installed.
+   The Pure Photonic drivers---which among other things, makes the USB 
+   connection appear as a serial port---must be installed.
 
 .. admonition:: Dependencies
    :class: note
@@ -24,6 +24,7 @@ Driver for Pure Photonic Tunable Lasers
 import array
 import threading
 import time
+from typing import List
 
 import serial
 import numpy as np
@@ -31,7 +32,7 @@ from Pyro5.api import expose
 from scipy.constants import speed_of_light as C_SPEED
 
 from pyrolab.drivers.lasers import Laser
-from pyrolab.errors import CommunicationException
+from pyrolab.errors import CommunicationError
 
 ITLA_NOERROR=0x00
 ITLA_EXERROR=0x01
@@ -90,6 +91,7 @@ REG_Cjumpoffset=0xE6
 WRITE_ONLY=0
 WRITE_READ=1
 
+
 @expose
 class PurePhotonicsTunableLaser(Laser):
     """
@@ -123,7 +125,7 @@ class PurePhotonicsTunableLaser(Laser):
     MAXIMUM_POWER_MW = 10**(MAXIMUM_POWER_DBM/10)
 
     def connect(self, port: str="", baudrate: int=9600) -> None:
-        """"
+        """
         Connects to and initializes the laser. All parameters are keyword arguments.
 
         Parameters
@@ -144,7 +146,7 @@ class PurePhotonicsTunableLaser(Laser):
                 parity=serial.PARITY_NONE) #attempt connection with given baudrate
         except serial.SerialException as e:
             self.device.close()
-            raise CommunicationException("Could not connect to laser on port " + port
+            raise CommunicationError("Could not connect to laser on port " + port
             + " with baudrate " + str(baudrate))
             raise e
 
@@ -156,7 +158,7 @@ class PurePhotonicsTunableLaser(Laser):
         self.device.close()
     
     def power_mW(self,power: float) -> int:
-        """"
+        """
         Set the power on the laser.
 
         Parameters
@@ -179,7 +181,7 @@ class PurePhotonicsTunableLaser(Laser):
         return response
 
     def power_dBm(self,power: float) -> int:
-        """"
+        """
         Set the power on the laser.
 
         Parameters
@@ -201,7 +203,7 @@ class PurePhotonicsTunableLaser(Laser):
         return response
 
     def set_channel(self,channel: int) -> int:
-        """"
+        """
         Set the channel (should always be 1)
 
         Parameters
@@ -421,13 +423,13 @@ class PurePhotonicsTunableLaser(Laser):
     """
     Function sends message of four bytes to the laser.
     """
-    def _send(self,message: list[int]) -> None:
+    def _send(self,message: List[int]) -> None:
         """
         Sends message of four bytes to the laser after calculating the checksum
 
         Parameters
         ----------
-        message : list[int]
+        message : List[int]
             Message that will be sent to the laser
         """
         message[0] = message[0] | int(self._checksum(message))*16    #calculate checksum
@@ -436,13 +438,13 @@ class PurePhotonicsTunableLaser(Laser):
         send_bytes = array.array('B',message).tobytes()  
         self.device.write(send_bytes)  #write the bytes on the serial connection
 
-    def _receive(self) -> list[int]:
+    def _receive(self) -> List[int]:
         """
         Receives and verifies message from the laser with checksum
         
         Returns
         -------
-        list[int]
+        List[int]
             Bytes of message received.
 
         Raises
@@ -462,20 +464,20 @@ class PurePhotonicsTunableLaser(Laser):
                 message.append(b)   #construct array of bytes from the message
             message = message[0:4]
         except:
-            raise CommunicationException("No response from laser")
+            raise CommunicationError("No response from laser")
         if self._checksum(message) == message[0] >> 4: # ensure the checksum is correct
             return(message) #return the message received
         else:
             #if the checksum is wrong, log a CS error
-            raise CommunicationException("Incorrect checksum returned")
+            raise CommunicationError("Incorrect checksum returned")
 
-    def _checksum(self,message: list[int]) -> int:     #calculate checksum
+    def _checksum(self,message: List[int]) -> int:     #calculate checksum
         """
         Calculate the checksum of a message
 
         Parameters
         ----------
-        message : list[int]
+        message : List[int]
             Four-byte message that will be used to produce a checksum
         
         Returns
@@ -518,7 +520,7 @@ class PPCL550(PurePhotonicsTunableLaser):
 
 
 @expose
-class PPCL550(PurePhotonicsTunableLaser):
+class PPCL551(PurePhotonicsTunableLaser):
     """
     Driver for a Pure Photonic PPCL551 series laser.
 
