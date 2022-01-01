@@ -6,7 +6,7 @@ The PyroLab Project Contributors are composed of:
 
 * Sequoia Ploeg <sequoia.ploeg@ieee.org> (Main PyroLab author)
 * All other developers that have contributed to the PyroLab repository:
-  <https://github.com/sequoiap/pyrolab/graphs/contributors>
+  <https://github.com/BYUCamachoLab/pyrolab/graphs/contributors>
 
 Additionally, some assets and code were originally sourced from third-party
 authors or projects, including:
@@ -17,4 +17,4 @@ authors or projects, including:
 For information about the sources and authors of other third-party code
 and other resources used, please see the NOTICE.txt file, located in the
 root of the PyroLab repository or online at:
-<https://github.com/sequoiap/pyrolab/blob/master/NOTICE.txt>
+<https://github.com/BYUCamachoLab/pyrolab/blob/master/NOTICE.txt>
