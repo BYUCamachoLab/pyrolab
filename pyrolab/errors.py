@@ -6,19 +6,18 @@
 
 """
 Errors
-------
+======
 
 Custom errors for PyroLab.
 """
 
-from Pyro5.errors import PyroError
 
-
-class PyroLabException(PyroError):
+class PyroLabError(Exception):
     """Base class for all PyroLab exceptions."""
     pass
 
-class CommunicationException(PyroLabException):
+
+class CommunicationError(PyroLabError):
     """
     Error raised when there is a problem communicating with device
     """
