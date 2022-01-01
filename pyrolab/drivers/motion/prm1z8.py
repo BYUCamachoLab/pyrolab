@@ -5,10 +5,14 @@
 # (see pyrolab/__init__.py for details)
 
 """
-PRM1Z8
-======
+Motorized Precision Rotation Stage
+==================================
 
-Submodule containing drivers for the ThorLabs PRM1Z8 rotational stage.
+Submodule containing drivers for the ThorLabs PRM1Z8 rotational stage, driven
+by the KDC101 motor controller.
+
+.. attention::
+   Windows only (requires ThorLabs Kinesis).
 """
 
 from pyrolab.api import behavior, expose
@@ -31,8 +35,4 @@ class PRM1Z8(KDC101, HomingMixin):
     home : bool
         True tells the device to home when initializing
     """
-    # def __init__(self, serialno: str, polling=200, home=False):
-    #     super().__init__(serialno, polling, home)
-
-
-    
+    pass
