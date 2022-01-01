@@ -16,7 +16,7 @@ Supported OS:
 """
 
 from numpy import interp
-from Pyro5.api import expose, behavior
+from Pyro5.api import behavior, expose
 
 from pyrolab.drivers.motion import Motion
 from pyrolab.drivers.motion.kinesis.bpc303 import BPC303

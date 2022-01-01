@@ -4,8 +4,9 @@
 # Licensed under the terms of the GNU GPLv3+ License
 # (see pyrolab/__init__.py for details)
 
-import socket
 import secrets
+import socket
+
 import pkg_resources
 
 
@@ -41,7 +42,6 @@ def generate_random_name(count: int=3) -> str:
     str
         A hyphenated string of ``count`` random words.
     """
-    import random
     from pathlib import Path
 
     path = Path(pkg_resources.resource_filename('pyrolab', "data/wordlist.txt"))

@@ -11,8 +11,8 @@ PyroLab Daemon
 Submodule defining the background PyroLab daemon.
 """
 
-import os
 import logging
+import os
 import shutil
 from typing import NamedTuple
 
@@ -20,9 +20,9 @@ import Pyro5.api as api
 from pydantic import BaseModel
 from tabulate import tabulate
 
-from pyrolab import LOCKFILE, USER_CONFIG_FILE, RUNTIME_CONFIG
-from pyrolab.manager import ProcessManager
+from pyrolab import LOCKFILE, RUNTIME_CONFIG, USER_CONFIG_FILE
 from pyrolab.configure import GlobalConfiguration
+from pyrolab.manager import ProcessManager
 
 
 log = logging.getLogger("pyrolab.pyrolabd")

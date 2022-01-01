@@ -27,17 +27,18 @@ Based on code provided by Pure Photonics: https://www.pure-photonics.com/s/ITLA_
    pyserial
 """
 
-import time
-import threading
 import array
+import threading
+import time
 
 import serial
-from scipi.constants import speed_of_light as C
 from numpy import log10
-
-from pyrolab.errors import CommunicationException
 from Pyro5.api import expose
-import pyrolab.lasers.Laser
+from scipy.constants import speed_of_light as C
+
+from pyrolab.drivers.lasers import Laser
+from pyrolab.errors import CommunicationException
+
 
 ITLA_NOERROR=0x00
 ITLA_EXERROR=0x01

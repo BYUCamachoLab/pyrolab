@@ -28,23 +28,27 @@ Potential future features
 pyrolab move <service> <new_daemon>
 ```
 """
+import platform
 import shutil
 import subprocess
-import platform
 import sys
 import textwrap
 import time
-from typing import Optional
-import pkg_resources
 from pathlib import Path
-from tabulate import tabulate
+from typing import Optional
 
+import pkg_resources
 import typer
 
-from pyrolab import PYROLAB_LOGFILE, USER_CONFIG_FILE, RUNTIME_CONFIG, LOCKFILE
+from pyrolab import LOCKFILE, PYROLAB_LOGFILE, RUNTIME_CONFIG, USER_CONFIG_FILE
 from pyrolab.api import Proxy
-from pyrolab.configure import PyroLabConfiguration, export_config, update_config, reset_config
-from pyrolab.pyrolabd import PyroLabDaemon, InstanceInfo
+from pyrolab.configure import (
+    PyroLabConfiguration,
+    export_config,
+    reset_config,
+    update_config,
+)
+from pyrolab.pyrolabd import InstanceInfo, PyroLabDaemon
 
 
 def get_daemon(abort=True, suppress_reload_message=False) -> PyroLabDaemon:

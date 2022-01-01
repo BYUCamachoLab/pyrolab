@@ -12,8 +12,9 @@ Submodule defining interfaces for PyroLab services.
 """
 
 from __future__ import annotations
+
 import logging
-from typing import Optional, Callable
+from typing import Callable, Optional
 
 
 log = logging.getLogger(__name__)

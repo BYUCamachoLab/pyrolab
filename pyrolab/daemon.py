@@ -12,17 +12,19 @@ Wrapped server functions that references PyroLab configuration settings.
 """
 
 from __future__ import annotations
-import logging
-import inspect
-import getpass
 
-from typing import TYPE_CHECKING, Optional, Callable, Type
+import getpass
+import inspect
+import logging
+from typing import TYPE_CHECKING, Callable, Optional, Type
+
 import Pyro5
 from Pyro5.core import URI
-from Pyro5.server import expose, behavior, oneway, serve
+from Pyro5.server import behavior, expose, oneway, serve
 
 if TYPE_CHECKING:
     from Pyro5.socketutil import SocketConnection
+
     from pyrolab.drivers import Instrument
     from pyrolab.service import Service
 

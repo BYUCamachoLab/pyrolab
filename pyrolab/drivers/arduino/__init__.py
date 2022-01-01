@@ -13,5 +13,6 @@ Submodule containing drivers for each supported arduino type.
 
 from pyrolab.drivers import Instrument
 
+
 class Arduino(Instrument):
     pass

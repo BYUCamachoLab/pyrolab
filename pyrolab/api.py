@@ -11,29 +11,20 @@ API
 A single module that centralizes the most frequently used objects from PyroLab.
 """
 
-from Pyro5.core import locate_ns
 from Pyro5.client import Proxy
+from Pyro5.core import locate_ns
 
-from pyrolab.nameserver import (
-    start_ns, 
-    start_ns_loop
-)
-from pyrolab.daemon import (
-    Daemon, 
+from pyrolab.configure import GlobalConfiguration, reset_config, update_config
+from pyrolab.daemon import (  # serve,
+    Daemon,
     LockableDaemon,
-    expose,
     behavior,
+    change_behavior,
+    expose,
     oneway,
-    # serve,
-    change_behavior
 )
-from pyrolab.configure import (
-    GlobalConfiguration,
-    update_config,
-    reset_config
-)
+from pyrolab.nameserver import start_ns, start_ns_loop
 from pyrolab.service import Service
-
 
 config = GlobalConfiguration.instance()
 

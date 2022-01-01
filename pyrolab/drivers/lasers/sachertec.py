@@ -1,10 +1,13 @@
 import os
+
 os.environ['PATH'] = ("C:\\Program Files\\SacherLasertechnik\\MotorMotion 2.1\\data"
 + ";" + os.environ['PATH'])
 
-from sacher_tec import epos_motor as epm
 from ctypes import *
-from sacher_tec._utils import c_word, c_dword
+
+from sacher_tec import epos_motor as epm
+from sacher_tec._utils import c_dword, c_word
+
 
 name = create_string_buffer(("EPOS2").encode('utf-8'))
 protocol = create_string_buffer(("MAXON SERIAL V2").encode('utf-8'))

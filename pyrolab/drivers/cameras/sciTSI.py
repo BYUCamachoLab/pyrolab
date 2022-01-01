@@ -14,15 +14,17 @@ Contributors
  * David Hill (https://github.com/hillda3141)
 """
 
-from Pyro5.errors import PyroError
-from pyrolab.api import expose
-from thorlabs_kinesis import thor_science_camera as tc
-import socket
 import pickle
-import time
+import socket
 import threading
-import numpy as np
 from ctypes import *
+
+import numpy as np
+from Pyro5.errors import PyroError
+from thorlabs_kinesis import thor_science_camera as tc
+
+from pyrolab.api import expose
+
 
 @expose
 class SCICAM:

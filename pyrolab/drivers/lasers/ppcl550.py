@@ -22,8 +22,10 @@ Based on code provided by Pure Photonics: https://www.pure-photonics.com/s/ITLA_
    connection appear as a serial port, must be installed.
 """
 
-from pyrolab.laser.pplaser import PurePhotonicsTunableLaser
 from Pyro5.api import expose
+
+from pyrolab.laser.pplaser import PurePhotonicsTunableLaser
+
 
 @expose
 class PPCL550(PurePhotonicsTunableLaser):

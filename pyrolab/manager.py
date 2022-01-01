@@ -25,11 +25,12 @@ Python ``multiprocessing`` module.
 """
 
 from __future__ import annotations
+
 import importlib
-import time
-import threading
-import multiprocessing
 import logging
+import multiprocessing
+import threading
+import time
 from datetime import datetime
 from multiprocessing import current_process
 from multiprocessing.queues import Queue
@@ -38,15 +39,19 @@ from typing import TYPE_CHECKING, Dict, List, Tuple, Type
 from Pyro5.core import locate_ns
 
 from pyrolab import RUNTIME_CONFIG
-from pyrolab.nameserver import start_ns_loop
 from pyrolab.configure import GlobalConfiguration, PyroLabConfiguration
+from pyrolab.nameserver import start_ns_loop
 
 if TYPE_CHECKING:
     from Pyro5.core import URI
 
+    from pyrolab.configure import (
+        DaemonConfiguration,
+        NameServerConfiguration,
+        ServiceConfiguration,
+    )
     from pyrolab.daemon import Daemon
     from pyrolab.service import Service
-    from pyrolab.configure import NameServerConfiguration, DaemonConfiguration, ServiceConfiguration
 
 
 log = logging.getLogger(__name__)

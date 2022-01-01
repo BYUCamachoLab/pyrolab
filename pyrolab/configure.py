@@ -54,17 +54,18 @@ configuration settings.
 """
 
 from __future__ import annotations
+
 import logging
 from pathlib import Path
-import shutil
 from typing import IO, Any, Dict, List, Optional, Union
 
 import Pyro5
 from pydantic import BaseModel, BaseSettings, validator
 from pydantic.fields import PrivateAttr
-from yaml import load, dump
+from yaml import dump, load
 from yaml.constructor import ConstructorError
 from yaml.nodes import MappingNode
+
 try:
     from yaml import CLoader as Loader
 except ImportError:
@@ -72,7 +73,6 @@ except ImportError:
 
 from pyrolab import NAMESERVER_STORAGE, USER_CONFIG_FILE
 from pyrolab.utils import generate_random_name, get_ip
-
 
 log = logging.getLogger(__name__)
 

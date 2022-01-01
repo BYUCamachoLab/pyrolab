@@ -12,13 +12,13 @@ This file implements some simple, sample services for testing whether a server
 is working properly.
 """
 
-import time
 import logging
+import time
 from typing import Union
 
-from pyrolab.api import expose, behavior
-from pyrolab.service import Service
+from pyrolab.api import behavior, expose
 from pyrolab.drivers import Instrument
+from pyrolab.service import Service
 
 
 log = logging.getLogger(__name__)

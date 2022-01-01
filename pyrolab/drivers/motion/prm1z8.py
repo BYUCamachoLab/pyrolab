@@ -15,9 +15,9 @@ Contributors
  * Christian Carver (https://github.com/cjcarver)
 """
 
+from pyrolab.api import behavior, expose
 from pyrolab.drivers.motion import Motion
 from pyrolab.drivers.motion.kinesis.kdc101 import KDC101, HomingMixin
-from pyrolab.api import expose, behavior
 
 
 @behavior(instance_mode="single")

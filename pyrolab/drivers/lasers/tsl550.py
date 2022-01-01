@@ -21,19 +21,17 @@ Driver for the Santec TSL-550 Tunable Laser.
    pyserial
 """
 
-import sys
-import time
-import struct
 import logging
+import struct
+import time
 from typing import Any, Dict, List
 
 import serial
+from scipy.constants import speed_of_light as C
 from serial.tools import list_ports
 
-from pyrolab.api import expose, behavior
+from pyrolab.api import behavior, expose
 from pyrolab.drivers.lasers import Laser
-from pyrolab.errors import CommunicationException
-from scipy.constants import speed_of_light as C
 
 
 log = logging.getLogger(__name__)

@@ -22,13 +22,13 @@ travel for that channel will be defaulted.
 """
 
 import time
-from ctypes import c_short, c_char_p, c_int
+from ctypes import c_char_p, c_int, c_short
 
+from Pyro5.server import oneway
 from thorlabs_kinesis import benchtop_piezo as bp
 
-from pyrolab.drivers.motion.kinesis import KinesisInstrument
 from pyrolab.api import expose
-from Pyro5.server import oneway
+from pyrolab.drivers.motion.kinesis import KinesisInstrument
 
 
 MAX_C_SHORT = 32767

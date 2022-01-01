@@ -13,3 +13,5 @@ appnope
 pydantic
 typer
 colorama
+black
+isort

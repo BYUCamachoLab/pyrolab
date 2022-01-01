@@ -11,15 +11,15 @@ Nameserver
 Wrapped nameserver functions that references PyroLab configuration settings.
 """
 
-import sys
-import socket
 import logging
+import socket
+import sys
 from typing import Callable
 
-from Pyro5.nameserver import NameServerDaemon, BroadcastServer, start_ns
-from pyrolab.configure import NameServerConfiguration
+from Pyro5.nameserver import BroadcastServer, NameServerDaemon, start_ns
 
 from pyrolab import PYROLAB_DATA_DIR
+from pyrolab.configure import NameServerConfiguration
 
 
 log = logging.getLogger(__name__)

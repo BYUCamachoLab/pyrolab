@@ -24,10 +24,10 @@ PyroLab
 A framework for using remote lab instruments as local resources built on Pyro5 
 """
 
+import os
 import pathlib
 import platform
 import sys
-import os
 
 if sys.version_info < (3, 7, 0):
     raise Exception(
@@ -50,6 +50,7 @@ __website_url__ = "https://camacholab.byu.edu/"
 
 
 import warnings
+
 warnings.filterwarnings("default", category=DeprecationWarning)
 if "PYROLAB_HUSH_DEPRECATION" in os.environ:
     warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -63,6 +64,7 @@ with warnings.catch_warnings():
 
 
 from appdirs import AppDirs
+
 _dirs = AppDirs(__name__, __author__)
 
 # Data Directories
@@ -97,6 +99,7 @@ PYROLAB_LOGFILE = PYROLAB_DATA_DIR / "pyrolab.log"
 import logging
 import logging.handlers
 
+
 def get_loglevel() -> int:
     loglevel = os.getenv("PYROLAB_LOGLEVEL", "INFO")
     try:
@@ -122,4 +125,5 @@ if len(logging.root.handlers) == 0:
 
 # Include remote traceback in local tracebacks
 import Pyro5.errors
+
 sys.excepthook = Pyro5.errors.excepthook

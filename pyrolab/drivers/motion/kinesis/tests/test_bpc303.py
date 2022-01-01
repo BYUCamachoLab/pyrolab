@@ -12,7 +12,6 @@ import pytest
 
 from pyrolab.drivers.motion.kinesis import bpc303 as bp
 
-
 if sys.version_info < (3, 8, 0):
     os.environ['PATH'] = "C:\\Program Files\\Thorlabs\\Kinesis" + ";" + os.environ['PATH']
 else:

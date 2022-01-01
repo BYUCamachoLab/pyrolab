@@ -24,11 +24,11 @@ Code also stored locally in pyrolab/arduino/arduino_code/StandardFirmata.ino
    pyfirmata
 """
 
-from pyfirmata import Arduino, ArduinoMega, ArduinoDue, ArduinoNano, util
+from pyfirmata import Arduino, ArduinoDue, ArduinoMega, ArduinoNano, util
 from Pyro5.api import expose
 
-from pyrolab.errors import PyroLabException
 from pyrolab.drivers.arduino import Arduino
+from pyrolab.errors import PyroLabException
 
 
 class UnknownBoardException(PyroLabException):
