@@ -31,7 +31,7 @@ Lasers
    :toctree: api/
 
    tsl550
-   ppcl550
+   ppcl55x
 
 Scopes
 ------
@@ -49,11 +49,11 @@ Motion
    :toctree: api/
    :recursive:
 
-   nanomax300
+   max31x
    prm1z8
-   z825b
+   z8xx
 
-Microcontrollers/processors
+Microcontrollers/Processors
 ----------------------------
 .. currentmodule:: pyrolab.drivers.arduino
 .. autosummary::
