@@ -9,6 +9,9 @@ Thorlabs UC480 Scientific Camera
 ================================
 
 Driver for a Thorlabs Microscope.
+
+.. attention::
+   Windows only (requires ThorLabs Kinesis).
 """
 
 import pickle
