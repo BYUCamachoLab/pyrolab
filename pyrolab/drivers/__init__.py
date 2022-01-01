@@ -6,7 +6,7 @@
 
 """
 Drivers
--------
+=======
 
 Submodule containing drivers for each supported instrument type.
 """

@@ -6,7 +6,7 @@
 
 """
 Santec Tunable Semiconductor Laser 550 (TSL550)
------------------------------------------------
+===============================================
 
 Driver for the Santec TSL-550 Tunable Laser.
 

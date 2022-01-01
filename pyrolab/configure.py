@@ -6,13 +6,13 @@
 
 """
 Configuration Settings
-----------------------
+======================
 
 Default configuration settings for PyroLab and methods for persisting 
 configurations between settings or using YAML files.
 
 Server Configuration
-====================
+--------------------
 
 Note the difference between the two ``servertypes``:
 
@@ -31,7 +31,7 @@ Note the difference between the two ``servertypes``:
 
 
 Service Registry
-=================
+----------------
 
 The registry saves previously discovered or registered devices on a local
 server machine. 

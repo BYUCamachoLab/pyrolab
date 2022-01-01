@@ -5,10 +5,10 @@
 # (see pyrolab/__init__.py for details)
 
 """
-Server
-------
+Daemon
+======
 
-Wrapped server functions that references PyroLab configuration settings.
+Wrapped daemon functions that references PyroLab configuration settings.
 """
 
 from __future__ import annotations

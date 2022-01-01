@@ -6,19 +6,14 @@
 
 """
 Thorlabs 3-Channel 150V Benchtop Piezo Controller with USB (BPC303)
--------------------------------------------------------------------
+===================================================================
 
 Driver for the Thorlabs BPC-303 Benchtop Piezo.
 
-Contributors
- * David Hill (https://github.com/hillda3141)  
- * Sequoia Ploeg (https://github.com/sequoiap)
-
-Warning
--------
-Not all controllers support getting the maximum position. The default maximum
-position is 20 micrometers and when 0 is returned by a device the maximum
-travel for that channel will be defaulted.
+.. warning::
+   Not all controllers support getting the maximum position. The default maximum
+   position is 20 micrometers and when 0 is returned by a device the maximum
+   travel for that channel will be defaulted.
 """
 
 import time

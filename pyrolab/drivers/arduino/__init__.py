@@ -6,7 +6,7 @@
 
 """
 Firmata
--------
+=======
 
 Submodule containing drivers for each supported arduino type.
 """

@@ -6,7 +6,7 @@
 
 """
 API
----
+===
 
 A single module that centralizes the most frequently used objects from PyroLab.
 """

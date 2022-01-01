@@ -6,7 +6,7 @@
 
 """
 NanoMax 300
------------
+===========
 
 Submodule containing drivers for the ThorLabs NanoMax 300 piezo controlled
 motion stage.
@@ -18,7 +18,6 @@ Supported OS:
 from numpy import interp
 from Pyro5.api import behavior, expose
 
-from pyrolab.drivers.motion import Motion
 from pyrolab.drivers.motion.kinesis.bpc303 import BPC303
 
 SHORT_MAX = 32767
@@ -26,7 +25,7 @@ SHORT_MAX = 32767
 
 @behavior(instance_mode="single")
 @expose
-class NanoMax300(Motion, BPC303):
+class NanoMax300(BPC303):
     """
     A NanoMax 300 stage controlled by a BPC303 piezo controller.
 

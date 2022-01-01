@@ -6,7 +6,7 @@
 
 """
 Motion
-------
+======
 
 Submodule containing drivers for each supported motor type.
 """

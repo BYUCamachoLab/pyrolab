@@ -5,7 +5,6 @@
 # (see pyrolab/__init__.py for details)
 
 """
-======================
 Command Line Interface
 ======================
 

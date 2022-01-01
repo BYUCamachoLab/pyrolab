@@ -6,12 +6,9 @@
 
 """
 Thorlabs Scientific Camera
---------------------------
+==========================
 
 Driver for a Thorlabs Microscope.
-
-Contributors
- * David Hill (https://github.com/hillda3141)
 """
 
 import pickle

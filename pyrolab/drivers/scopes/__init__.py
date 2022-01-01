@@ -6,7 +6,7 @@
 
 """
 Oscilloscopes
--------------
+=============
 
 Submodule containing drivers for each supported scope type.
 """

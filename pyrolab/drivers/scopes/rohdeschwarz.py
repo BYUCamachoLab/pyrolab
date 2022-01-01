@@ -6,7 +6,7 @@
 
 """
 Rohde & Schwarz Digital Oscilloscopes
--------------------------------------
+=====================================
 
 Submodule containing drivers for each supported laser type.
 
@@ -37,7 +37,7 @@ sure to install the separate dependency ``pyvisa-py``, which is not included
 with PyroLab. NI VISA is available for Mac, Windows, and Linux.
 
 Common Issues
-=============
+-------------
 1. Note that if a trigger is set and you try to acquire data but end up with
 a timeout warning, it's possible that the acquisition never began because the
 trigger level was never reached. The scope will still be waiting to begin

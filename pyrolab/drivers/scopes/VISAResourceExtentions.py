@@ -5,6 +5,9 @@
 # (see pyrolab/__init__.py for details)
 
 """
+VISA Resource ExtensionS
+========================
+
 PyVISA Visa.Resource class extension methods and 2 new exception types
 
 Version 1.0.0

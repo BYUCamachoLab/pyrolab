@@ -21,7 +21,7 @@
 PyroLab
 =======
 
-A framework for using remote lab instruments as local resources built on Pyro5 
+A framework for using remote lab instruments as local resources built on Pyro5.
 """
 
 import os

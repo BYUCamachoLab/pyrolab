@@ -5,13 +5,10 @@
 # (see pyrolab/__init__.py for details)
 
 """
-Arduino Parent Driver
----------------------
+Arduino Driver
+==============
 
-Driver for Arduino that is running firmata code
-
-Contributors
- * David Hill (https://github.com/hillda3141)
+Driver for Arduino that is running firmata code.
 
 Arduino should be running example code found under standard Arduino examples:
 Examples/Firmata/StandardFirmata or similar code if the device memory is not 

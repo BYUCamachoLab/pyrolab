@@ -6,7 +6,7 @@
 
 """
 Pure Photonics Tunable Laser Driver
------------------------------------
+===================================
 
 Driver for Pure Photonic Tunable Lasers
 

@@ -6,7 +6,7 @@
 
 """
 Lasers
-------
+======
 
 Submodule containing drivers for each supported laser type.
 """

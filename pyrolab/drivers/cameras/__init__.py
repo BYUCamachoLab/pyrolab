@@ -6,7 +6,7 @@
 
 """
 Cameras
--------
+=======
 
 Submodule containing drivers for each supported camera type.
 """

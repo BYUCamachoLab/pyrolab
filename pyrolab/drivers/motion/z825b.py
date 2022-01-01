@@ -6,16 +6,12 @@
 
 """
 Z825B
------
+=====
 
 Submodule containing drivers for the ThorLabs Z825B linear stage.
-
-Contributors
- * Benjamin Arnesen (https://github.com/BenA8)  
- * Christian Carver (https://github.com/cjcarver)
 """
+
 from pyrolab.api import behavior, expose
-from pyrolab.drivers.motion import Motion
 from pyrolab.drivers.motion.kinesis.kdc101 import KDC101, HomingMixin
 
 

@@ -6,7 +6,7 @@
 
 """
 Service
--------
+=======
 
 Submodule defining interfaces for PyroLab services.
 """

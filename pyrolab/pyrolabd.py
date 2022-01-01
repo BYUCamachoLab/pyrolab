@@ -6,7 +6,7 @@
 
 """
 PyroLab Daemon
---------------
+===============
 
 Submodule defining the background PyroLab daemon.
 """

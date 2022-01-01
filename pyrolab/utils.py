@@ -4,6 +4,13 @@
 # Licensed under the terms of the GNU GPLv3+ License
 # (see pyrolab/__init__.py for details)
 
+"""
+Utils
+=====
+
+Convenience functions for working with the pyrolab package.
+"""
+
 import secrets
 import socket
 

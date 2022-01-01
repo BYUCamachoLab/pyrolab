@@ -6,7 +6,7 @@
 
 """
 KDC101
-------
+======
 
 Submodule that implements the basic functionality of the KCube DC Servo.
 

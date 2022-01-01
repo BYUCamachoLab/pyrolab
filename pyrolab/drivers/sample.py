@@ -6,7 +6,7 @@
 
 """
 Sample Service
---------------
+==============
 
 This file implements some simple, sample services for testing whether a server
 is working properly.

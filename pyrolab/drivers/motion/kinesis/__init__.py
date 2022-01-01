@@ -6,7 +6,7 @@
 
 """
 Kinesis
--------
+=======
 
 Hidden submodule that ensures ThorLabs Kinesis software is available.
 """
