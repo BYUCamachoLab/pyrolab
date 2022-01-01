@@ -25,10 +25,10 @@ from pyfirmata import Arduino, ArduinoDue, ArduinoMega, ArduinoNano, util
 from Pyro5.api import expose
 
 from pyrolab.drivers.arduino import Arduino
-from pyrolab.errors import PyroLabException
+from pyrolab.errors import PyroLabError
 
 
-class UnknownBoardException(PyroLabException):
+class UnknownBoardException(PyroLabError):
     """
     Error raised when the arduino board name is unknown or not supported
     """
