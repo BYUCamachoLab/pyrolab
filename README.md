@@ -51,6 +51,7 @@ pip install pyrolab[tsl550, oscope]
 The full list of supported extras is:
 - tsl550
 - oscope
+- arduino
 
 You can also clone the repository, navigate to the toplevel, and install in 
 editable mode (make sure you have pip >= 21.1):
