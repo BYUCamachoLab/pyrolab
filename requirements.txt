@@ -12,6 +12,7 @@ pyyaml
 appnope
 pydantic
 typer
+tabulate
 colorama
 black
-isort
+isort>=5.0.0

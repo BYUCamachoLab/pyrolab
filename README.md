@@ -53,7 +53,7 @@ The full list of supported extras is:
 - oscope
 
 You can also clone the repository, navigate to the toplevel, and install in 
-editable mode:
+editable mode (make sure you have pip >= 21.1):
 
 ```
 pip install -e .
