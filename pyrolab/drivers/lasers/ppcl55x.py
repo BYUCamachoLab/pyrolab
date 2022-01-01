@@ -5,16 +5,10 @@
 # (see pyrolab/__init__.py for details)
 
 """
-Pure Photonics Tunable Laser Parent Driver
---------------------------------
+Pure Photonics Tunable Laser Driver
+-----------------------------------
 
 Driver for Pure Photonic Tunable Lasers
-
-Contributors
- * David Hill (https://github.com/hillda3141)
-
-Original repo: https://github.com/BYUCamachoLab/pyrolab
-Based on code provided by Pure Photonics: https://www.pure-photonics.com/s/ITLA_v3-CUSTOMER.PY
 
 .. note::
 
@@ -32,9 +26,9 @@ import threading
 import time
 
 import serial
-from numpy import log10
+import numpy as np
 from Pyro5.api import expose
-from scipy.constants import speed_of_light as C
+from scipy.constants import speed_of_light as C_SPEED
 
 from pyrolab.drivers.lasers import Laser
 from pyrolab.errors import CommunicationException
@@ -123,8 +117,8 @@ class PurePhotonicsTunableLaser(Laser):
     MINIMUM_POWER_DBM = 7
     MAXIMUM_POWER_DBM = 13.5
 
-    MINIMUM_FREQUENCY = C/MAXIMUM_WAVELENGTH
-    MAXIMUM_FREQUENCY = C/MINIMUM_WAVELENGTH
+    MINIMUM_FREQUENCY = C_SPEED / MAXIMUM_WAVELENGTH
+    MAXIMUM_FREQUENCY = C_SPEED / MINIMUM_WAVELENGTH
     MINIMUM_POWER_MW = 10**(MINIMUM_POWER_DBM/10)
     MAXIMUM_POWER_MW = 10**(MAXIMUM_POWER_DBM/10)
 
@@ -175,11 +169,11 @@ class PurePhotonicsTunableLaser(Laser):
         int
             Integer representing error message, 0 if no error.
         """
-        if(power < MINIMUM_POWER_MW or power > MAXIMUM_POWER_MW):
+        if(power < self.MINIMUM_POWER_MW or power > self.MAXIMUM_POWER_MW):
              raise ValueError("Inputed power not in acceptable range "
-             + str(MINIMUM_POWER_MW) + " to " + str(MAXIMUM_POWER_MW))
+             + str(self.MINIMUM_POWER_MW) + " to " + str(self.MAXIMUM_POWER_MW))
 
-        sendPower = int(log10(power) * 1000)  #scale the power inputed
+        sendPower = int(np.log10(power) * 1000)  #scale the power inputed
         #on the REG_Power register, send the power
         response = self._communicate(REG_Power,sendPower,1)
         return response
@@ -198,9 +192,9 @@ class PurePhotonicsTunableLaser(Laser):
         int
             Integer representing error message, 0 if no error.
         """
-        if(power < MINIMUM_POWER_DBM or power > MAXIMUM_POWER_DBM):
+        if(power < self.MINIMUM_POWER_DBM or power > self.MAXIMUM_POWER_DBM):
              raise ValueError("Inputed power not in acceptable range "
-             + str(MINIMUM_POWER_DBM) + " to " + str(MAXIMUM_POWER_DBM))
+             + str(self.MINIMUM_POWER_DBM) + " to " + str(self.MAXIMUM_POWER_DBM))
         sendPower = int(power*100)  #scale the power inputed
         #on the REG_Power register, send the power
         response = self._communicate(REG_Power,sendPower,1)  
@@ -266,9 +260,9 @@ class PurePhotonicsTunableLaser(Laser):
         """
 
         #if the wavelength is not in the allowed range
-        if(frequency < MINIMUM_FREQUENCY or frequency > MAXIMUM_FREQUENCY):
+        if(frequency < self.MINIMUM_FREQUENCY or frequency > self.MAXIMUM_FREQUENCY):
             raise ValueError("Inputed frequency not in acceptable range "
-            + str(MINIMUM_FREQUENCY) + " to " + str(MAXIMUM_FREQUENCY))
+            + str(self.MINIMUM_FREQUENCY) + " to " + str(self.MAXIMUM_FREQUENCY))
         
         freq_t = int(frequency/1000)
         #convert the wavelength to frequency for each register
@@ -310,9 +304,9 @@ class PurePhotonicsTunableLaser(Laser):
         """
         
         #if the wavelength is not in the allowed range
-        if(wavelength < MINIMUM_WAVELENGTH or wavelength > MAXIMUM_WAVELENGTH):
+        if(wavelength < self.MINIMUM_WAVELENGTH or wavelength > self.MAXIMUM_WAVELENGTH):
             raise ValueError("Inputed wavelength not in acceptable range "
-            + str(MINIMUM_WAVELENGTH) + " to " + str(MAXIMUM_WAVELENGTH))
+            + str(self.MINIMUM_WAVELENGTH) + " to " + str(self.MAXIMUM_WAVELENGTH))
         
         frequency = C_SPEED/wavelength
         freq_t = int(frequency/1000)
@@ -411,12 +405,12 @@ class PurePhotonicsTunableLaser(Laser):
             lock.release()
             error_message = int(received_message[0] & 0x03)
             return(error_message)
-        else if write_read == WRITE_READ:   #if only write
+        elif write_read == WRITE_READ:   #if only write
             data_byte_0 = int(data/256)
             data_byte_1 = int(data - data_byte_0*256)
-            message = [write_read,register,byte2,byte3]
+            message = [write_read,register,data_byte_0,data_byte_1] # TODO: Used to be byte2, byte3 (not defined), changed to data_byte_0, data_byte_1
             self._send(message)
-            recveived_message = self._receive()    #receive message
+            received_message = self._receive()    #receive message
             # print("received")
             lock.acquire()
             self.queue.pop(0)
@@ -493,3 +487,59 @@ class PurePhotonicsTunableLaser(Laser):
         bip_8=(message[0] & 0x0f) ^ message[1] ^ message[2] ^ message[3]
         bip_4=((bip_8 & 0xf0) >> 4) ^ (bip_8 & 0x0f)
         return bip_4
+
+
+@expose
+class PPCL550(PurePhotonicsTunableLaser):
+    """
+    Driver for a Pure Photonic PPCL550 series laser.
+
+    The laser must already be physically powered and connected to a USB port
+    of some host computer, whether that be a local machine or one hosted by 
+    a PyroLab server. Methods such as :py:func:`on` and :py:func:`off` will 
+    simply turn the laser diode on and off, not the laser itself.
+
+    Attributes
+    ----------
+    MINIMUM_WAVELENGTH : float
+        The minimum wavelength of the laser in nanometers (value 1529).
+    MAXIMUM_WAVELENGTH : float
+        The maximum wavelength of the laser in nanometers (value 1566).
+    MINIMUM_POWER_DBM : float
+        The minimum power of the laser in dBm (value 7).
+    MAXIMUM_POWER_DBM : float
+        The maximum power of the laser in dBm (value 13.5).
+    """
+
+    MINIMUM_WAVELENGTH = 1529
+    MAXIMUM_WAVELENGTH = 1566
+    MINIMUM_POWER_DBM = 7
+    MAXIMUM_POWER_DBM = 13.5
+
+
+@expose
+class PPCL550(PurePhotonicsTunableLaser):
+    """
+    Driver for a Pure Photonic PPCL551 series laser.
+
+    The laser must already be physically powered and connected to a USB port
+    of some host computer, whether that be a local machine or one hosted by 
+    a PyroLab server. Methods such as :py:func:`on` and :py:func:`off` will 
+    simply turn the laser diode on and off, not the laser itself.
+
+    Attributes
+    ----------
+    MINIMUM_WAVELENGTH : float
+        The minimum wavelength of the laser in nanometers (value 1572).
+    MAXIMUM_WAVELENGTH : float
+        The maximum wavelength of the laser in nanometers (value 1609).
+    MINIMUM_POWER_DBM : float
+        The minimum power of the laser in dBm (value 7).
+    MAXIMUM_POWER_DBM : float
+        The maximum power of the laser in dBm (value 13.5).
+    """
+
+    MINIMUM_WAVELENGTH = 1572
+    MAXIMUM_WAVELENGTH = 1609
+    MINIMUM_POWER_DBM = 7
+    MAXIMUM_POWER_DBM = 13.5
