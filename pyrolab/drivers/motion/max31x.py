@@ -5,14 +5,14 @@
 # (see pyrolab/__init__.py for details)
 
 """
-NanoMax 300
-===========
+ThorLabs 3-Axis NanoMax Flexure Stages
+======================================
 
 Submodule containing drivers for the ThorLabs NanoMax 300 piezo controlled
 motion stage.
 
-Supported OS:
-- Windows
+.. attention::
+   Windows only (requires ThorLabs Kinesis).
 """
 
 from numpy import interp
@@ -25,18 +25,24 @@ SHORT_MAX = 32767
 
 @behavior(instance_mode="single")
 @expose
-class NanoMax300(BPC303):
+class MAX31X(BPC303):
     """
-    A NanoMax 300 stage controlled by a BPC303 piezo controller.
+    A 3-Axis NanoMax stage controlled by a BPC303 piezo controller.
 
     Assumes that the following physical mappings of the devices are true:
-        x-axis: Channel 1
-        y-axis: Channel 2
-        z-axis: Channel 3
+
+    .. table::
+   
+        ==== =======
+        Axis Channel
+        ==== =======
+        x    1
+        y    2
+        z    3
+        ==== =======
 
     Sets a default home position at the halfway point of the full travel for 
     each channel.
-
 
     Parameters
     ----------
@@ -53,21 +59,12 @@ class NanoMax300(BPC303):
     
     Attributes
     ----------
-    x_max : int
+    X_MAX : int
         Maximum travel for the first channel (nm)
-    y_max : int
+    Y_MAX : int
         Maximum travel for the second channel (nm)
-    z_max : int
+    Z_MAX : int
         Maximum travel for the third channel (nm)
-
-    Methods
-    -------
-    close()
-        Disconnects and closes the device, releasing the resource.
-    identify(channel)
-        Asks some channel of a device to identify itself.
-    zero(channel=None, block=True)
-        Zeroes a channel (or all). Automatically sets closed loop mode.
 
     Notes
     -----
@@ -90,15 +87,15 @@ class NanoMax300(BPC303):
         self.max_pos = [val / 10 for val in self.max_travel]
 
     @property
-    def x_max(self):
+    def X_MAX(self):
         return self.max_pos[0]
 
     @property
-    def y_max(self):
+    def Y_MAX(self):
         return self.max_pos[1]
 
     @property
-    def z_max(self):
+    def Z_MAX(self):
         return self.max_pos[2]
 
     def _position_to_du(self, channel: int, pos: float) -> int:
