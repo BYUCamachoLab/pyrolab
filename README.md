@@ -161,6 +161,7 @@ instruments?**
     make the drivers standalone capable.
 
 ## For Developers
+
 Since the passing of data is, by definition, between hosts and over IP, PyroLab
 avoids the use of complex Python objects for return values that will be 
 transmitted to remote machines. Since serialization is complicated, and
@@ -175,6 +176,10 @@ bumpversion major
 bumpversion minor
 bumpversion patch
 ```
+
+For code quality, please run isort and black before committing (note that the
+latest release of isort may not work through VSCode's integrated terminal, and
+it's safest to run it separately through another terminal).
 
 Releases are automatically created when git tags matching the "v*" pattern
 are created.
