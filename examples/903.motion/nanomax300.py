@@ -1,12 +1,12 @@
 import os
 os.add_dll_directory("C:\\Program Files\\Thorlabs\\Kinesis")
-from pyrolab.drivers.motion.nanomax300 import NanoMax300
+from pyrolab.drivers.motion.max31x import MAX31X
 import time
 
 SER_NUM = 71874833
 
 print(f"connecting to {SER_NUM}...")
-nm = NanoMax300(str(SER_NUM), closed_loop=True)
+nm = MAX31X(str(SER_NUM), closed_loop=True)
 print("connected")
 print("zeroing all channels...")
 nm.zero()

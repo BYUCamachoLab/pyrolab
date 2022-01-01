@@ -4,7 +4,7 @@
 import os
 os.add_dll_directory("C:\\Program Files\\Thorlabs\\Kinesis")
 
-from pyrolab.drivers.motion.z825b import Z825B
+from pyrolab.drivers.motion.z8xx import Z825B
 # Look at the connected KCube for correct serial num
 linear = Z825B("27504851", home=False) 
 
