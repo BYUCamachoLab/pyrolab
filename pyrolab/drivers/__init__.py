@@ -17,7 +17,6 @@ from typing import Any, Dict, List
 from pyrolab.api import expose
 from pyrolab.service import Service
 
-
 log = logging.getLogger(__name__)
 
 

@@ -8,7 +8,6 @@ from ctypes import *
 from sacher_tec import epos_motor as epm
 from sacher_tec._utils import c_dword, c_word
 
-
 name = create_string_buffer(("EPOS2").encode('utf-8'))
 protocol = create_string_buffer(("MAXON SERIAL V2").encode('utf-8'))
 interface = create_string_buffer(("USB").encode('utf-8'))

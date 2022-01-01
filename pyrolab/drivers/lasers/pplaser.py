@@ -39,7 +39,6 @@ from scipy.constants import speed_of_light as C
 from pyrolab.drivers.lasers import Laser
 from pyrolab.errors import CommunicationException
 
-
 ITLA_NOERROR=0x00
 ITLA_EXERROR=0x01
 ITLA_AEERROR=0x02

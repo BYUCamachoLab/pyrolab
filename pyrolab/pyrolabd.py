@@ -24,7 +24,6 @@ from pyrolab import LOCKFILE, RUNTIME_CONFIG, USER_CONFIG_FILE
 from pyrolab.configure import GlobalConfiguration
 from pyrolab.manager import ProcessManager
 
-
 log = logging.getLogger("pyrolab.pyrolabd")
 
 

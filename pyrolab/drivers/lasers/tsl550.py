@@ -33,7 +33,6 @@ from serial.tools import list_ports
 from pyrolab.api import behavior, expose
 from pyrolab.drivers.lasers import Laser
 
-
 log = logging.getLogger(__name__)
 
 

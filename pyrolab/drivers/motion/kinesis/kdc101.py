@@ -53,7 +53,6 @@ from pyrolab.drivers.motion.kinesis.exceptions import (
     KinesisMotorError,
 )
 
-
 log = logging.getLogger(__name__)
 
 

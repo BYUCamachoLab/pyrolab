@@ -20,7 +20,6 @@ from pyrolab.api import behavior, expose
 from pyrolab.drivers import Instrument
 from pyrolab.service import Service
 
-
 log = logging.getLogger(__name__)
 log.debug("Sample module loaded")
 

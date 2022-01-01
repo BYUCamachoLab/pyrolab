@@ -21,7 +21,6 @@ from Pyro5.api import behavior, expose
 from pyrolab.drivers.motion import Motion
 from pyrolab.drivers.motion.kinesis.bpc303 import BPC303
 
-
 SHORT_MAX = 32767
 
 

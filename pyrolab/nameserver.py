@@ -21,7 +21,6 @@ from Pyro5.nameserver import BroadcastServer, NameServerDaemon, start_ns
 from pyrolab import PYROLAB_DATA_DIR
 from pyrolab.configure import NameServerConfiguration
 
-
 log = logging.getLogger(__name__)
 
 
