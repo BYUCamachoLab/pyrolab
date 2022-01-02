@@ -8,13 +8,13 @@
  *
  * https://github.com/firmata/arduino#firmata-client-libraries
  */
-​
+
 /* Supports as many digital inputs and outputs as possible.
  *
  * This example code is in the public domain.
  */
 #include <Firmata.h>
-​
+
 int lamp_pin = 13;
 int button_pin = 7;
 bool count = 0;
@@ -22,7 +22,7 @@ unsigned long timer = 0;
 unsigned long auto_turnoff = 3600000;
 byte previousPIN[TOTAL_PORTS];  // PIN means PORT for input
 byte previousPORT[TOTAL_PORTS];
-​
+
 void outputPort(byte portNumber, byte portValue)
 {
   // only send the data when it changes, otherwise you get too many messages!
@@ -31,18 +31,18 @@ void outputPort(byte portNumber, byte portValue)
     previousPIN[portNumber] = portValue;
   }
 }
-​
+
 void setPinModeCallback(byte pin, int mode) {
   if (IS_PIN_DIGITAL(pin)) {
     pinMode(PIN_TO_DIGITAL(pin), mode);
   }
 }
-​
+
 void digitalWriteCallback(byte port, int value)
 {
   byte i;
   byte currentPinValue, previousPinValue;
-​
+
   if (port < TOTAL_PORTS && value != previousPORT[port]) {
     for (i = 0; i < 8; i++) {
       currentPinValue = (byte) value & (1 << i);
@@ -54,7 +54,7 @@ void digitalWriteCallback(byte port, int value)
     previousPORT[port] = value;
   }
 }
-​
+
 void setup()
 {
   Firmata.setFirmwareVersion(FIRMATA_FIRMWARE_MAJOR_VERSION, FIRMATA_FIRMWARE_MINOR_VERSION);
@@ -63,15 +63,15 @@ void setup()
   Firmata.begin(57600);
   pinMode(button_pin, INPUT);
 }
-​
+
 void loop()
 {
   byte i;
-​
+
   for (i = 0; i < TOTAL_PORTS; i++) {
     outputPort(i, readPort(i, 0xff));
   }
-​
+
   while (Firmata.available()) {
     Firmata.processInput();
   }
@@ -82,7 +82,7 @@ void loop()
     digitalWrite(lamp_pin, count);
   }
 }
-​
+
 void buttonSwitch()
 {
   if(digitalRead(button_pin)){
