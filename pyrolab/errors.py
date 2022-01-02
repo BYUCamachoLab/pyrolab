@@ -9,6 +9,10 @@ Errors
 ======
 
 Custom errors for PyroLab.
+
+PyroLab will only ever raise Python builtin exceptions or the errors listed
+here. Remote tracebacks, however, may contain other exceptions. See each 
+service's documentation for exceptions that may be raised by that service.
 """
 
 

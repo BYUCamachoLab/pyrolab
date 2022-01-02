@@ -67,7 +67,7 @@ class PyroLabDaemon:
 
     No script should ever need to import or instantiate the PyroLabDaemon.
     To preserve its "single instance" nature, the daemon should only be created
-    and run through the CLI (which in turn, runs this file as a script). 
+    and run through the CLI (which in turn, runs this module as a script). 
     Limiting daemon manipulation to the CLI guarantees that only one daemon
     will be running at any given time (courtesy of the Lockfile this script
     creates and checks).
@@ -75,10 +75,10 @@ class PyroLabDaemon:
     By default, the daemon will load the user configuration file (manipulatable
     via the CLI) and write a runtime configuration file (not manipulatable via
     the CLI). The daemon will not change its configuration unless a call to the
-    reload() method is made, usually by the CLI. Even if the user configuration
-    file is changed, the daemon will not reload unless explictly instructed to
-    do so. It is therefore of the utmost importance that the runtime 
-    configuration file be managed solely by the daemon! No touchy!
+    :py:func:`reload` method is made, usually by the CLI. Even if the user 
+    configuration file is changed, the daemon will not reload unless explictly 
+    instructed to do so. It is therefore of the utmost importance that the 
+    runtime configuration file be managed solely by the daemon! No touchy!
 
     .. note::
        As a Pyro5 object, no method of the daemon should return any types other

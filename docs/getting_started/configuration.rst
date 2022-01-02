@@ -1,3 +1,3 @@
-Configuration
-=============
+Combined YAML Configuration
+===========================
 
