@@ -15,6 +15,7 @@ User Guide
    services
    configuration
    deployment
+   libraries
    
 A few notes on simply starting PyroLab. When launched from the terminal,
 PyroLab reads a few environment variables for convenient configuration.
