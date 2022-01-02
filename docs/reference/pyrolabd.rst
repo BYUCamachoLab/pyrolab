@@ -2,4 +2,4 @@
 .. autosummary::
    :toctree: api/
 
-   nameserver
+   pyrolabd

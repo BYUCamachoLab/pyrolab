@@ -1,8 +1,7 @@
 .. _api.drivers:
 
-=======
-Drivers
-=======
+pyrolab.drivers
+===============
 .. currentmodule:: pyrolab
 
 Base Instrument
@@ -61,3 +60,20 @@ Microcontrollers/Processors
    :recursive:
 
    arduino
+
+Mixins
+------
+.. currentmodule:: pyrolab.daemon
+.. autosummary::
+   :toctree: api/
+
+   Lockable
+
+Debugging/Sample Services
+-------------------------
+.. currentmodule:: pyrolab.drivers
+.. autosummary::
+   :toctree: api/
+   :recursive:
+
+   sample
