@@ -75,6 +75,9 @@ PYROLAB_DATA_DIR.mkdir(parents=True, exist_ok=True)
 PYROLAB_CONFIG_DIR = pathlib.Path(_dirs.user_config_dir)
 PYROLAB_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
+# Note that on Windows, PYROLAB_DATA_DIR might be the same as
+# PYROLAB_CONFIG_DIR! Plan filenames accordingly.
+
 # User config file directory
 CONFIG_DIR = PYROLAB_CONFIG_DIR / "config"
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
