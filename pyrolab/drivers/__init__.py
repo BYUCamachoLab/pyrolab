@@ -24,6 +24,10 @@ class Instrument(Service):
     """
     Abstract base class provides a common interface for services and instruments.
 
+    While not a true abstract base class (it *can* be instantiated), all the
+    essential functions raise NotImplementedErrors when run. They are therefore
+    required to be overridden by derived classes.
+
     Note that, in order to support autoconnect within the PyroLab framework,
     the ``__init__`` method is never used to set up or connect to the 
     instrument. This is because when objects are hosted by a PyroLab server,

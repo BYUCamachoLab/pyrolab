@@ -28,11 +28,17 @@ log = logging.getLogger("pyrolab.pyrolabd")
 
 
 class InstanceInfo(BaseModel):
+    """
+    Model for storing information about a running instance.
+    """
     pid: int
     uri: str
 
 
 class NameServerInfo(NamedTuple):
+    """
+    Named tuple for storing information about a running nameserver.
+    """
     name: str
     created: str
     status: str
@@ -40,6 +46,9 @@ class NameServerInfo(NamedTuple):
 
 
 class DaemonInfo(NamedTuple):
+    """
+    Named tuple for storing information about a running daemon.
+    """
     name: str
     created: str
     status: str
@@ -141,28 +150,76 @@ class PyroLabDaemon:
         
         return f"\n{nsstring}\n\n{daemonstring}\n"
 
-    def start_nameserver(self, nameserver: str):
+    def start_nameserver(self, nameserver: str) -> None:
+        """
+        Starts a nameserver.
+        
+        Parameters
+        ----------
+        nameserver : str
+            The name of the nameserver to start.
+        """
         log.debug(f"Starting nameserver '{nameserver}'.")
         self.manager.launch_nameserver(nameserver)
 
-    def start_daemon(self, daemon: str):
+    def start_daemon(self, daemon: str) -> None:
+        """
+        Starts a daemon.
+        
+        Parameters
+        ----------
+        daemon : str
+            The name of the daemon to start.
+        """
         log.debug(f"Starting daemon '{daemon}'.")
         self.manager.launch_daemon(daemon)
 
-    def stop_nameserver(self, nameserver: str):
+    def stop_nameserver(self, nameserver: str) -> None:
+        """
+        Stops a nameserver.
+
+        Parameters
+        ----------
+        nameserver : str
+            The name of the nameserver to stop.
+        """
         log.debug(f"Stopping nameserver '{nameserver}'.")
         self.manager.shutdown_nameserver(nameserver)
 
-    def stop_daemon(self, daemon: str):
+    def stop_daemon(self, daemon: str) -> None:
+        """
+        Stops a daemon.
+
+        Parameters
+        ----------
+        daemon : str
+            The name of the daemon to stop.
+        """
         log.debug(f"Stopping daemon '{daemon}'.")
         self.manager.shutdown_daemon(daemon)
 
-    def restart_nameserver(self, name: str):
+    def restart_nameserver(self, name: str) -> None:
+        """
+        Restarts a nameserver.
+
+        Parameters
+        ----------
+        name : str
+            The name of the nameserver to restart.
+        """
         log.debug(f"Restarting nameserver '{name}'.")
         self.manager.shutdown_nameserver(name)
         self.manager.launch_nameserver(name)
 
-    def restart_daemon(self, name: str):
+    def restart_daemon(self, name: str) -> None:
+        """
+        Restarts a daemon.
+
+        Parameters
+        ----------
+        name : str
+            The name of the daemon to restart.
+        """
         log.debug(f"Restarting daemon '{name}'.")
         self.manager.shutdown_daemon(name)
         self.manager.launch_daemon(name)

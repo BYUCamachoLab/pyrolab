@@ -13,7 +13,6 @@ Wrapped daemon functions that references PyroLab configuration settings.
 
 from __future__ import annotations
 
-import getpass
 import inspect
 import logging
 from typing import TYPE_CHECKING, Callable, Optional, Type
@@ -81,6 +80,11 @@ class Lockable:
     
     Rejects new connections at the Daemon level when locked. Daemon stores the 
     user who locked the device for reference.
+
+    This mixin only makes sense in the context of a Daemon. It is not intended
+    for use with local instruments. Additionally, any service registered with
+    a :py:class:`LockableDaemon` will automatically have this mixin added to 
+    it.
     """
     def lock(self, user: str="") -> bool:
         """
@@ -137,7 +141,7 @@ class Daemon(Pyro5.server.Daemon):
         port.
     unixsocket : str, optional
         The name of a Unix domain socket to use instead of a TCP/IP socket. 
-        Default is None (don’t use).
+        Default is None (don't use).
     nathost : str, optional
         hostname to use in published addresses (useful when running behind a 
         NAT firewall/router). Default is None which means to just use the 
@@ -247,7 +251,7 @@ class LockableDaemon(Daemon):
         )
         return DynamicLockable
 
-    def _lock(self, pyroId: str, conn: SocketConnection, user: str=getpass.getuser()) -> bool:
+    def _lock(self, pyroId: str, conn: SocketConnection, user: str="") -> bool:
         """
         Logs a "lock" action on a Pyro object.
         
@@ -263,8 +267,6 @@ class LockableDaemon(Daemon):
         user : str, optional
             The user who has locked the device. Useful when a device is locked
             by a user and another user wants to know who is using it.
-            By default, this is the username of the computer account that
-            obtained the lock.
 
         Returns
         -------

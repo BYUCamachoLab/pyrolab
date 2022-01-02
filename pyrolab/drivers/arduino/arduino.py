@@ -10,10 +10,15 @@ Arduino Driver
 
 Driver for Arduino that is running firmata code.
 
-Arduino should be running example code found under standard Arduino examples:
-Examples/Firmata/StandardFirmata or similar code if the device memory is not 
-large enough. 
-Code also stored locally in pyrolab/arduino/arduino_code/StandardFirmata.ino
+Arduino should be running example code found under standard `Arduino Firmata
+examples`_, or similar code if the device memory is not large enough. See:
+
+* SimpleDigitalFirmata
+* StandardFirmata
+
+.. _Arduino Firmata examples: https://github.com/firmata/arduino
+
+Code also available in the PyroLab repository under ``/extras/arduino``.
 
 .. admonition:: Dependencies
    :class: note

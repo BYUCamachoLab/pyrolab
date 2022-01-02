@@ -5,15 +5,17 @@
 # (see pyrolab/__init__.py for details)
 
 """
-Pure Photonics Tunable Laser Driver
-===================================
+Pure Photonics Tunable Laser
+============================
 
-Driver for Pure Photonic Tunable Lasers
+Driver for Pure Photonic tunable lasers.
 
 .. note::
 
-   The Pure Photonic drivers---which among other things, makes the USB 
-   connection appear as a serial port---must be installed.
+   Pure Photonic offers GUI controllers, a command line interface, and 
+   DLL/driver downloads on their 
+   `website <https://www.pure-photonics.com/downloads1>`_. These are not
+   required by PyroLab, however.
 
 .. admonition:: Dependencies
    :class: note
@@ -93,26 +95,25 @@ WRITE_READ=1
 
 
 @expose
-class PurePhotonicsTunableLaser(Laser):
+class PPCL55xBase(Laser):
     """
-    Driver for a generic Pure Photonics Tunable Laser.
+    Base class for a generic Pure Photonics Tunable Laser. Do not instantiate.
 
     The laser must already be physically powered and connected to a USB port
     of some host computer, whether that be a local machine or one hosted by 
     a PyroLab server. Methods such as :py:func:`on` and :py:func:`off` will 
     simply turn the laser diode on and off, not the laser itself.
-
-    Attributes
-    ----------
-    MINIMUM_WAVELENGTH : float
-        The minimum wavelength of the laser in nanometers (value 1500).
-    MAXIMUM_WAVELENGTH : float
-        The maximum wavelength of the laser in nanometers (value 1600).
-    MINIMUM_POWER_DBM : float
-        The minimum power of the laser in dBm (value 7).
-    MAXIMUM_POWER_DBM : float
-        The maximum power of the laser in dBm (value 13.5).
     """
+    # Attributes
+    # ----------
+    # MINIMUM_WAVELENGTH : float
+    #     The minimum wavelength of the laser in nanometers (value 1500).
+    # MAXIMUM_WAVELENGTH : float
+    #     The maximum wavelength of the laser in nanometers (value 1600).
+    # MINIMUM_POWER_DBM : float
+    #     The minimum power of the laser in dBm (value 7).
+    # MAXIMUM_POWER_DBM : float
+    #     The maximum power of the laser in dBm (value 13.5).
 
     MINIMUM_WAVELENGTH = 1500
     MAXIMUM_WAVELENGTH = 1600
@@ -492,7 +493,7 @@ class PurePhotonicsTunableLaser(Laser):
 
 
 @expose
-class PPCL550(PurePhotonicsTunableLaser):
+class PPCL550(PPCL55xBase):
     """
     Driver for a Pure Photonic PPCL550 series laser.
 
@@ -520,7 +521,7 @@ class PPCL550(PurePhotonicsTunableLaser):
 
 
 @expose
-class PPCL551(PurePhotonicsTunableLaser):
+class PPCL551(PPCL55xBase):
     """
     Driver for a Pure Photonic PPCL551 series laser.
 

@@ -22,6 +22,9 @@ log = logging.getLogger(__name__)
 class Service:
     """
     Abstract base class provides a common interface for services and instruments.
+
+    Not a true abstract base class, but adds some necessary and convenient 
+    functions inherited by any class that would like to be a PyroLab service.
     """
     @classmethod
     def set_behavior(cls, instance_mode: str="session", instance_creator: Optional[Callable]=None) -> None:

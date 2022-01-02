@@ -12,7 +12,24 @@ Submodule containing drivers for the ThorLabs NanoMax 300 piezo controlled
 motion stage.
 
 .. attention::
-   Windows only (requires ThorLabs Kinesis).
+
+   Windows only.
+
+   Requires ThorLabs Kinesis software. Download it at `thorlabs.com`_.
+
+   .. _thorlabs.com: https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=10285
+
+.. admonition:: Dependencies
+   :class: note
+
+   thorlabs_kinesis (:ref:`installation instructions <Thorlabs Kinesis Package>`)
+
+.. tip::
+
+   If you are using the remote functionalities of PyroLab, you may see the
+   error ``RuntimeError: FT_DeviceNotFound`` when calling functions on objects
+   inheriting from KDC101. This sometimes occus when you forget to call
+   ``autoconnect()`` before trying to use the device.
 """
 
 from numpy import interp

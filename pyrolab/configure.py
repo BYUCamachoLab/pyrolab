@@ -17,40 +17,20 @@ Server Configuration
 Note the difference between the two ``servertypes``:
 
 1. Threaded server
-    Every proxy on a client that connects to the daemon will be assigned to a 
-    thread to handle the remote method calls. This way multiple calls can 
-    potentially be processed concurrently. This means your Pyro object may have 
-    to be made thread-safe! 
+
+   Every proxy on a client that connects to the daemon will be assigned to a 
+   thread to handle the remote method calls. This way multiple calls can 
+   potentially be processed concurrently. This means your Pyro object may have 
+   to be made thread-safe! 
 
 2. Multiplexed server
-    This server uses a connection multiplexer to process all remote method 
-    calls sequentially. No threads are used in this server. It means only one 
-    method call is running at a time, so if it takes a while to complete, all 
-    other calls are waiting for their turn (even when they are from different 
-    proxies).
 
+   This server uses a connection multiplexer to process all remote method 
+   calls sequentially. No threads are used in this server. It means only one 
+   method call is running at a time, so if it takes a while to complete, all 
+   other calls are waiting for their turn (even when they are from different 
+   proxies).
 
-Service Registry
-----------------
-
-The registry saves previously discovered or registered devices on a local
-server machine. 
-
-It maintains a data directory with paths corresponding to different 
-nameservers. Instruments are stored in a single text file, by default named
-``instrument_registry.yaml``.
-
-The device.instr file specification is a yaml file, a list with the following 
-fields:
-    name: string for nameserver registration name
-    module: string representing the object's module in the pyrolab library
-    class_name: string representing the object's class in the pyrolab library
-    connect_params: dictionary of key-value pairs, autoconnection parameters 
-        for the given instrument.
-
-The registry automatically saves its state every time PyroLab is closed.
-This behavior can be altered by setting the flag TODO in PyroLab's 
-configuration settings.
 """
 
 from __future__ import annotations
@@ -146,9 +126,9 @@ class PyroConfigMixin:
         Sets all key-value attributes that are Pyro5 configuration options.
 
         Pyro5 attributes that this function automatically translates:
-        * HOST: "public" is translated to the machine's ip address
-        * NS_HOST: "public" is translated to the machine's ip address
-        * NS_BCHOST: "public" is translated to the machine's ip address
+        | * HOST: "public" is translated to the machine's ip address
+        | * NS_HOST: "public" is translated to the machine's ip address
+        | * NS_BCHOST: "public" is translated to the machine's ip address
 
         Parameters
         ----------
@@ -224,7 +204,7 @@ class YAMLMixin:
     @classmethod
     def from_file(cls, filename: Union[str, Path]) -> PyroLabConfiguration:
         """
-        Loads a configuration file.
+        Loads a configuration from a YAML file.
 
         .. warning::
            The YAML ``load`` function can run arbitrary code on your machine. Only
@@ -263,7 +243,9 @@ class NameServerConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
     Parameters
     ----------
     host : str, optional
-        The hostname of the nameserver. Defaults to "localhost".
+        The hostname of the nameserver. Defaults to "localhost" for security.
+        Can be set to "public", which is dynamically translated to the 
+        machine's ip address when the nameserver is started.
     ns_port : int, optional
         The port of the nameserver. Defaults to 9090.
     broadcast : bool, optional
@@ -278,34 +260,35 @@ class NameServerConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
     storage : str, optional
         A Pyro5-style storage string. You have several options:
 
-        * ``memory``: Fast, volatile in-memory database. This is the default.
+        * ``memory``: Fast, volatile in-memory database. This is the default.  
         * ``dbm[:dbfile]``: Persistent database using dbm. Optionally provide 
-        the filename to use (ignore for PyroLab to create automatically). This 
-        storage type does not support metadata.
+          the filename to use (ignore for PyroLab to create automatically). This 
+          storage type does not support metadata.  
         * ``sql[:dbfile]``: Persistent database using sqlite. Optionally 
-        provide the filename to use (ignore for PyroLab to create 
-        automatically).
+          provide the filename to use (ignore for PyroLab to create 
+          automatically).
 
     Examples
     --------
-    The following is an example of a valid configuration file "nameservers" 
-    section. Keys not defined assume the default values.
+    The following are examples of valid YAML configurations for nameservers.
+    Keys not defined assume the default values.
 
     .. code-block:: yaml
-        nameservers:
-            default:
-                host: localhost
-                ns_port: 9090
-                ns_autoclean: 0.0
-                storage: memory
-            production:
-                host: public
-                ns_port: 9100
-                broadcast: false
-                ns_bchost: null
-                ns_bcport: 9091
-                ns_autoclean: 15.0
-                storage: sql
+
+        host: localhost
+        ns_port: 9090
+        ns_autoclean: 0.0
+        storage: memory
+    
+    .. code-block:: yaml
+
+        host: public
+        ns_port: 9100
+        broadcast: false
+        ns_bchost: null
+        ns_bcport: 9091
+        ns_autoclean: 15.0
+        storage: sql
     """
     host: str = "localhost"
     ns_port: int = 9090
@@ -383,6 +366,7 @@ class DaemonConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
     section. Keys not defined assume the default values.
 
     .. code-block:: yaml
+
         daemons:
             lockable:
                 classname: LockableDaemon
@@ -445,6 +429,7 @@ class ServiceConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
     section. Keys not defined assume the default values.
 
     .. code-block:: yaml
+
         services:
             asgard.wolverine:
                 module: pyrolab.drivers.motion.prm1z8
