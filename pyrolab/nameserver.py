@@ -65,8 +65,9 @@ def start_ns_loop(cfg: NameServerConfiguration, loop_condition: Callable=lambda:
     bchost = cfg.ns_bchost
     bcport = cfg.ns_bcport
     storage = cfg.get_storage_location()
+    cfg.update_pyro_config()
 
-    daemon = NameServerDaemon(host, port, unixsocket, nathost=nathost, natport=natport, storage=storage)
+    daemon = NameServerDaemon(unixsocket, nathost=nathost, natport=natport, storage=storage)
     nsUri = daemon.uriFor(daemon.nameserver)
     internalUri = daemon.uriFor(daemon.nameserver, nat=False)
     bcserver = None
