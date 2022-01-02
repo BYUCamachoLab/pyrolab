@@ -12,8 +12,9 @@ Driver for the Santec TSL-550 Tunable Laser.
 
 .. note::
 
-   The Santec TSL-550 drivers, which among other things, makes the USB 
-   connection appear as a serial port, must be installed.
+   The Santec TSL-550 has proprietary drivers loaded on a DVD that should be
+   included with your laser. These drivers---which among other things, makes 
+   the USB connection appear as a serial port---may need to be installed first.
 
 .. admonition:: Dependencies
    :class: note
