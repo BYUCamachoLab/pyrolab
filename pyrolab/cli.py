@@ -9,23 +9,8 @@ Command Line Interface
 ======================
 
 Usage: pyrolab [OPTIONS] COMMAND [ARGS]...
+
 Try 'pyrolab --help' for help.
-
-Where did my instances go?
---------------------------
-
-You should be able to find all background pyrolab daemons by running (on Unix):
-
-```bash
-ps aux | grep pyrolabd
-```
-
-Potential future features
--------------------------
-
-```
-pyrolab move <service> <new_daemon>
-```
 """
 import platform
 import shutil
@@ -82,15 +67,22 @@ def get_daemon(abort=True, suppress_reload_message=False) -> PyroLabDaemon:
 
 app = typer.Typer()
 
-def _version_callback(value: bool) -> None:
+def _version_callback(value: bool=True) -> None:
     if value:
         from pyrolab import __version__
         typer.echo(f"PyroLab {__version__}")
         raise typer.Exit()
 
+def _show_data_dir() -> None:
+    from pyrolab import PYROLAB_DATA_DIR, PYROLAB_CONFIG_DIR
+    typer.echo(f"DATA: {PYROLAB_DATA_DIR}")
+    typer.echo(f"CONFIG: {PYROLAB_CONFIG_DIR}")
+    raise typer.Exit()
+
 @app.callback()
 def main(
-    version: bool = typer.Option(False, "--version", "-v", help="Show the version and exit.", callback=_version_callback, is_eager=True)
+    version: bool = typer.Option(False, "--version", "-v", help="Show the version and exit.", callback=_version_callback, is_eager=True),
+    show_data_dir: bool = typer.Option(False, "--show-data-dir", help="Show the data directories and exit.", callback=_show_data_dir, is_eager=True),
 ):
     return
 
