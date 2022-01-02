@@ -72,7 +72,7 @@ Key Features
 
     +++
 
-    .. link-button:: api
+    .. link-button:: api_reference
             :type: ref
             :text: To the reference guide
             :classes: btn-block btn-secondary stretched-link
