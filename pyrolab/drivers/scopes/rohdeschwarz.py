@@ -56,6 +56,10 @@ acquisition, but you'll be left without data and with a bad connection.
 # https://www.google.com/search?channel=tus5&client=firefox-b-1-d&q=pyvisa+hislip
 # https://github.com/pyvisa/pyvisa-py/issues/58
 
+# Even though VISAResourceExtensions is not used in this module, the act of 
+# importing it alone performs some monkey-patching on the pyvisa module, 
+# required by RTO. Don't remove this seemingly unused import!
+
 import time
 
 import pyvisa as visa
