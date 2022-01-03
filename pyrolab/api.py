@@ -15,7 +15,7 @@ from Pyro5.client import Proxy
 from Pyro5.core import locate_ns
 
 from pyrolab.configure import GlobalConfiguration, reset_config, update_config
-from pyrolab.daemon import (  # serve,
+from pyrolab.server import (  # serve,
     Daemon,
     LockableDaemon,
     behavior,

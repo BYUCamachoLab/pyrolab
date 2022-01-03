@@ -50,7 +50,7 @@ if TYPE_CHECKING:
         NameServerConfiguration,
         ServiceConfiguration,
     )
-    from pyrolab.daemon import Daemon
+    from pyrolab.server import Daemon
     from pyrolab.service import Service
 
 
