@@ -21,7 +21,7 @@ not be able to reconnect to release the lock if not for this feature.)
 from pyrolab.api import locate_ns
 from pyrolab.drivers.sample import SampleService
 from pyrolab.server.locker import create_lockable
-from pyrolab.daemon import LockableDaemon, srv_profile, DaemonConfiguration
+from pyrolab.server import LockableDaemon, srv_profile, DaemonConfiguration
 
 cfg = DaemonConfiguration(servertype="multiplex")
 srv_profile.use(cfg)

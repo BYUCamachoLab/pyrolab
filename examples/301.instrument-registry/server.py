@@ -22,7 +22,7 @@ import multiprocessing
 import signal
 
 from pyrolab.api import locate_ns
-from pyrolab.daemon import LockableDaemon, AutoconnectLockableDaemon, srv_profile, DaemonConfiguration
+from pyrolab.server import LockableDaemon, AutoconnectLockableDaemon, srv_profile, DaemonConfiguration
 from pyrolab.server.registry import registry
 
 cfg = DaemonConfiguration(servertype="multiplex")

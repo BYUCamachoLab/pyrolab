@@ -33,8 +33,7 @@ that the dead service will eventually be removed.
 
 from pyrolab.api import locate_ns
 from pyrolab.drivers.sample import SampleService
-from pyrolab.daemon import Daemon, srv_profile, DaemonConfiguration
-from pyrolab.client import Client
+from pyrolab.server import Daemon, srv_profile, DaemonConfiguration
 
 #
 # Server setup
