@@ -165,7 +165,7 @@ class TSL550(Laser):
         max_power_att : float
             Maximum internal power attenaution of the laser in dB (default 30)
         terminator : str, optional
-            The string that marks the end of a command (default "\r").
+            The string that marks the end of a command (default "\\r").
         timeout : int, optional
             The number of seconds to timeout after no response (default 100).
         query_delay : float, optional
