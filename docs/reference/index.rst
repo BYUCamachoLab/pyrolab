@@ -29,7 +29,7 @@ For configuring and deploying PyroLab instances.
 
    cli
    configure
-   daemon
+   server
    errors
    nameserver
    service
