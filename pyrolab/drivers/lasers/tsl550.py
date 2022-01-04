@@ -109,7 +109,7 @@ class TSL550(Laser):
 
 
     @staticmethod
-    def detect_devices(self) -> List[Dict[str, Any]]:
+    def detect_devices() -> List[Dict[str, Any]]:
         """
         Finds and returns all information needed to connect to the device.
 
@@ -141,7 +141,7 @@ class TSL550(Laser):
         baudrate : int, optional
             Baudrate can be set on the device (default 9600).
         terminator : str, optional
-            The string that marks the end of a command (default "\\\\r").
+            The string that marks the end of a command (default "\r").
         timeout : int, optional
             The number of seconds to timeout after no response (default 100).
         query_delay : float, optional
