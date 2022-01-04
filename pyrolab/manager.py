@@ -220,12 +220,15 @@ class DaemonRunner(multiprocessing.Process):
             log.info(f"Registering service '{sname}'")
             service = sconfig._get_service()
 
+            log.debug("Preparing daemon class")
             service = daemon.prepare_class(service)
             
+            log.debug("Getting service uri")
             uri = daemon.register(service)
             uris[sname] = uri
         
         if self.daemonconfig.nameservers:
+            log.debug("Self-registering daemon")
             uri = daemon.register(daemon)
             uris[self.name] = uri
 
@@ -273,8 +276,11 @@ class DaemonRunner(multiprocessing.Process):
         log.info(f"Starting")
 
         # Set Pyro5 settings for daemon
+        log.info("got here")
         self.daemonconfig.update_pyro_config()
+        log.info("also got here")
         daemon, uris = self.setup_daemon()
+        log.info('are we out of the woods')
 
         GLOBAL_CONFIG = PyroLabConfiguration.from_file(RUNTIME_CONFIG)
 
