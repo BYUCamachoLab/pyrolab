@@ -34,10 +34,11 @@ Note the difference between the two ``servertypes``:
 """
 
 from __future__ import annotations
+import importlib
 
 import logging
 from pathlib import Path
-from typing import IO, Any, Dict, List, Optional, Union
+from typing import IO, Any, Dict, List, Optional, Type, Union
 
 import Pyro5
 from pydantic import BaseModel, BaseSettings, validator
@@ -45,6 +46,9 @@ from pydantic.fields import PrivateAttr
 from yaml import dump, load
 from yaml.constructor import ConstructorError
 from yaml.nodes import MappingNode
+
+from pyrolab.server import Daemon
+from pyrolab.service import Service
 
 try:
     from yaml import CLoader as Loader
@@ -406,7 +410,7 @@ class DaemonConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
                 host: public
                 servertype: multiplex
     """
-    module: str = "pyrolab.daemon"
+    module: str = "pyrolab.server"
     classname: str = "Daemon"
     host: str = "localhost"
     port: int = 0
@@ -415,6 +419,20 @@ class DaemonConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
     natport: int = 0
     servertype: str = "thread"
     nameservers: List[str] = []
+
+    def _get_daemon(self) -> Type[Daemon]:
+        """
+        Dynamically loads the class object for the daemon given by the configuration.
+
+        Returns
+        -------
+        Type[Daemon]
+            The class of the referenced Daemon.
+        """
+        log.debug(f"Attempting to load '{self.module}.{self.classname}'")
+        mod = importlib.import_module(self.module)
+        obj: Daemon = getattr(mod, self.classname)
+        return obj
 
 
 class ServiceConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
@@ -487,6 +505,34 @@ class ServiceConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
     instancemode: str = "session"
     daemon: str = "default"
     nameservers: List[str] = []
+
+    def _get_service(self) -> Type[Service]:
+        """
+        Dynamically loads the class object given by the ServiceConfiguration.
+
+        Also automatically adds autoconnect parameters and sets the instance
+        mode.
+
+        Parameters
+        ----------
+        serviceconfig : ServiceConfiguration
+            The ServiceConfiguration object that holds the information necessary to
+            construct the Service.
+
+        Returns
+        -------
+        Type[Service]
+            The class of the referenced Service.
+        """
+        log.debug(f"Attempting to load '{self.module}.{self.classname}'")
+        mod = importlib.import_module(self.module)
+        obj: Service = getattr(mod, self.classname)
+        
+        obj.set_behavior(self.instancemode)
+        if self.parameters:
+            obj._autoconnect_params = self.parameters
+
+        return obj
 
 
 class AutolaunchSettings(BaseSettings, YAMLMixin):

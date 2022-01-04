@@ -201,46 +201,6 @@ class DaemonRunner(multiprocessing.Process):
         self.serviceconfigs = serviceconfigs
         self.KILL_SIGNAL = False
 
-    def get_daemon(self) -> Type[Daemon]:
-        """
-        Returns the class object for the daemon given by the configuration.
-
-        Returns
-        -------
-        Type[Daemon]
-            The class of the referenced Daemon.
-        """
-        mod = importlib.import_module(self.daemonconfig.module)
-        obj: Daemon = getattr(mod, self.daemonconfig.classname)
-        return obj
-
-    def get_service(self, serviceconfig: ServiceConfiguration) -> Type[Service]:
-        """
-        Gets the class object given by the ServiceConfiguration.
-
-        Parameters
-        ----------
-        serviceconfig : ServiceConfiguration
-            The ServiceConfiguration object that holds the information necessary to
-            construct the Service.
-
-        Returns
-        -------
-        Type[Service]
-            The class of the referenced Service.
-        """
-        log.debug(f"Getting service '{serviceconfig.module}.{serviceconfig.classname}'")
-        mod = importlib.import_module(serviceconfig.module)
-        obj: Service = getattr(mod, serviceconfig.classname)
-        
-        log.debug("Setting service instancemode")
-        obj.set_behavior(serviceconfig.instancemode)
-        if serviceconfig.parameters:
-            log.debug("Setting service autoconnect parameters")
-            obj._autoconnect_params = serviceconfig.parameters
-
-        return obj
-
     def setup_daemon(self) -> Tuple[Daemon, Dict[str, URI]]:
         """
         Locates and loads the Daemon class, adds Pyro's ``behavior``, and 
@@ -252,13 +212,13 @@ class DaemonRunner(multiprocessing.Process):
             The instantiated Daemon object and the URI for the hosted object, 
             to be registered with the nameserver.
         """
-        daemon = self.get_daemon()
+        daemon = self.daemonconfig._get_daemon()
         daemon = daemon()
 
         uris = {}
         for sname, sconfig in self.serviceconfigs.items():
             log.info(f"Registering service '{sname}'")
-            service = self.get_service(sconfig)
+            service = sconfig._get_service()
 
             log.debug("Preparing daemon class")
             service = daemon.prepare_class(service)

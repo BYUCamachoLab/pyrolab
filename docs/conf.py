@@ -24,7 +24,7 @@ copyright = f"2020-{datetime.now().year}, Sequoia Ploeg"
 author = 'Sequoia Ploeg'
 
 # The full version, including alpha/beta/rc tags
-release = '0.2.0'
+release = '0.2.1'
 
 
 # -- General configuration ---------------------------------------------------
@@ -79,6 +79,9 @@ autodoc_mock_imports = [
     'pyfirmata',
     'sacher_tec',
     'firmata',
+    'pyvisa',
+    'pyserial',
+    'pyfirmata',
 ]
 
 panels_add_bootstrap_css = False
