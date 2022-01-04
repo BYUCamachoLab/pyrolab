@@ -410,7 +410,7 @@ class DaemonConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
                 host: public
                 servertype: multiplex
     """
-    module: str = "pyrolab.daemon"
+    module: str = "pyrolab.server"
     classname: str = "Daemon"
     host: str = "localhost"
     port: int = 0
