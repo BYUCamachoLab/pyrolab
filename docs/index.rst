@@ -19,7 +19,7 @@ Key Features
 ------------
 
 - Free and open-source software provided under the GPLv3+ License
-- Compatible with Python 3.6+.
+- Compatible with Python 3.7+.
 - Cross-platform: runs on Windows, MacOS, and Linux.
 - Included device drivers for several scopes and ThorLabs motion controllers.
 - Remotely controlled devices can be accessed through a `Pyro5`_ proxy.
@@ -35,7 +35,8 @@ Key Features
     ^^^^^^^^^^^^^^^
 
     New to *PyroLab*? Check out the getting started guides. They contain an
-    introduction to *PyroLab's* main concepts and links to additional tutorials.
+    introduction to *PyroLab's* main concepts and a step-by-step tutorial for
+    beginners.
 
     +++
 
@@ -50,8 +51,8 @@ Key Features
     User guide
     ^^^^^^^^^^
 
-    The user guide provides in-depth information on the
-    key concepts of PyroLab with useful background information and explanation.
+    The user guide provides in-depth information on the key concepts of PyroLab
+    with useful background information and explanation.
 
     +++
 
@@ -66,9 +67,10 @@ Key Features
     API reference
     ^^^^^^^^^^^^^
 
-    The reference guide contains a detailed description of
-    the PyroLab API. The reference describes how the methods work and which parameters can
-    be used. It assumes that you have an understanding of the key concepts.
+    The reference guide contains a detailed description of the PyroLab API. The
+    reference describes how the methods work and which parameters can be used.
+    It also contains a listing of provided hardware drivers. It assumes that
+    you have an understanding of the key concepts.
 
     +++
 
@@ -106,9 +108,9 @@ Key Features
    development/index
 
 
-Indices and tables
-------------------
+.. Indices and tables
+.. ------------------
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+.. * :ref:`genindex`
+.. * :ref:`modindex`
+.. * :ref:`search`
