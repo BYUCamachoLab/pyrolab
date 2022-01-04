@@ -73,11 +73,12 @@ def _version_callback(value: bool=True) -> None:
         typer.echo(f"PyroLab {__version__}")
         raise typer.Exit()
 
-def _show_data_dir() -> None:
-    from pyrolab import PYROLAB_DATA_DIR, PYROLAB_CONFIG_DIR
-    typer.echo(f"DATA: {PYROLAB_DATA_DIR}")
-    typer.echo(f"CONFIG: {PYROLAB_CONFIG_DIR}")
-    raise typer.Exit()
+def _show_data_dir(value: bool=True) -> None:
+    if value:
+        from pyrolab import PYROLAB_DATA_DIR, PYROLAB_CONFIG_DIR
+        typer.echo(f"DATA: {PYROLAB_DATA_DIR}")
+        typer.echo(f"CONFIG: {PYROLAB_CONFIG_DIR}")
+        raise typer.Exit()
 
 @app.callback()
 def main(
