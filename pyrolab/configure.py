@@ -429,9 +429,16 @@ class DaemonConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
         Type[Daemon]
             The class of the referenced Daemon.
         """
-        log.debug(f"Attempting to load '{self.module}.{self.classname}'")
-        mod = importlib.import_module(self.module)
-        obj: Daemon = getattr(mod, self.classname)
+        log.debug(f"Attempting to load daemon '{self.module}.{self.classname}'")
+        try:
+            mod = importlib.import_module(self.module)
+            log.debug(f"Module found...")
+            obj: Daemon = getattr(mod, self.classname)
+            log.debug("Class found...")
+        except Exception as e:
+            log.critical(e)
+            raise e
+
         return obj
 
 
@@ -525,12 +532,20 @@ class ServiceConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
             The class of the referenced Service.
         """
         log.debug(f"Attempting to load '{self.module}.{self.classname}'")
-        mod = importlib.import_module(self.module)
-        obj: Service = getattr(mod, self.classname)
+        try:
+            mod = importlib.import_module(self.module)
+            log.debug("Module found...")
+            obj: Service = getattr(mod, self.classname)
+            log.debug("Class found...")
+        except Exception as e:
+            log.critical(e)
+            raise e
         
         obj.set_behavior(self.instancemode)
+        log.debug(f"Behavior '{self.instancemode}' set")
         if self.parameters:
             obj._autoconnect_params = self.parameters
+            log.debug("Autoconnect parameters set")
 
         return obj
 
