@@ -63,10 +63,22 @@ autodoc_inherit_docstrings = True  # If no docstring, inherit from base class
 # add_module_names = False # Remove namespaces from class/method signatures
 
 autodoc_mock_imports = [
+    'numpy',
+    'scipy',
+    'Pyro5',
+    'pydantic',
+    'yaml',
+    'appdirs',
+    'deprecation',
+    'appnope',
+    'typer',
+    'colorama',
+    'tabulate', 
     'serial',
     'thorlabs_kinesis',
     'pyfirmata',
     'sacher_tec',
+    'firmata',
 ]
 
 panels_add_bootstrap_css = False
