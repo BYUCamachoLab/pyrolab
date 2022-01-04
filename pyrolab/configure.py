@@ -328,6 +328,34 @@ class NameServerConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
             return f"{self.storage}:" + str(NAMESERVER_STORAGE / f"ns_{self.name}.{self.storage}")
         return self.storage
 
+    def update_pyro_config(self) -> Dict[str, Any]:
+        """
+        Sets all key-value attributes that are Pyro5 configuration options.
+
+        Pyro5 attributes that this function automatically translates:
+        | * HOST: "public" is translated to the machine's ip address
+        | * NS_HOST: "public" is translated to the machine's ip address
+        | * NS_BCHOST: "public" is translated to the machine's ip address
+
+        One side effect of this function is that it also updates NS_HOST to the 
+        same value as HOST. This is usually desirable.
+
+        Parameters
+        ----------
+        values : dict, optional
+            A dictionary of key-value pairs to update the configuration. If not
+            provided, the model's attributes will be used.
+        
+        Returns
+        -------
+        dict
+            A dictionary of Pyro5 key-value pairs that were updated, for 
+            debugging or informational purposes.
+        """
+        values = self.dict()
+        values['ns_host'] = values['host']
+        return super().update_pyro_config(values=values)
+
 
 class DaemonConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
     """
