@@ -1,3 +1,5 @@
+.. _getting_started_overview:
+
 
 Overview
 ========
@@ -36,6 +38,8 @@ In this case, the specific issues that PyroLab was trying to solve were:
 
 PyroLab attempts to solve this problem by:
 
+#. Standardize the API for controlling our hardware across all projects and
+   setups.
 #. Allowing local machines to host specific hardware devices that can be 
    accessed remotely by any number of machines.
 #. Allowing remote machines to connect to any number of local machines, thereby

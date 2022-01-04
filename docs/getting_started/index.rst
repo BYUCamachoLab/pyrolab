@@ -18,10 +18,12 @@ For more detailed information, see the user guide.
     overview
     pyro5_essentials
     architecture
-    nameserver
+    services
     server
+    nameserver
     configuration
     client
+    fullexample
     analysis
 
 .. getting_started/usage
