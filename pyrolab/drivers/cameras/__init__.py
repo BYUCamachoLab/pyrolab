@@ -6,12 +6,13 @@
 
 """
 Cameras
--------
+=======
 
 Submodule containing drivers for each supported camera type.
 """
 
 from pyrolab.drivers import Instrument
+
 
 class Camera(Instrument):
     pass

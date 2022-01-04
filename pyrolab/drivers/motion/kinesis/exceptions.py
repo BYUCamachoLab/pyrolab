@@ -6,7 +6,9 @@
 
 """
 Kinesis Exceptions
-------------------
+==================
+
+Exceptions for the Kinesis driver.
 """
 
 class KinesisError(Exception):

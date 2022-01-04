@@ -6,7 +6,7 @@
 
 """
 Analysis
---------
+========
 
 Module for analyzing data from instruments included in PyroLab.
 """

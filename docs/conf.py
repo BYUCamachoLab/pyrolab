@@ -65,6 +65,8 @@ autodoc_inherit_docstrings = True  # If no docstring, inherit from base class
 autodoc_mock_imports = [
     'serial',
     'thorlabs_kinesis',
+    'pyfirmata',
+    'sacher_tec',
 ]
 
 panels_add_bootstrap_css = False

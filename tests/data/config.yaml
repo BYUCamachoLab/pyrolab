@@ -1,0 +1,97 @@
+version: '1.0'
+
+nameservers:
+  default:
+    host: public
+    ns_port: 9090
+    broadcast: false
+    ns_bchost: null
+    ns_bcport: 9091
+    ns_autoclean: 0.0
+    storage: memory
+  production:
+    host: camacholab.ee.byu.edu
+    ns_port: 9090
+    broadcast: false
+    ns_bchost: null
+    ns_bcport: 9091
+    ns_autoclean: 15.0
+    storage: sql
+  development:
+    host: remotehost
+    ns_port: 9090
+    broadcast: false
+    ns_bchost: null
+    ns_bcport: 9091
+    ns_autoclean: 0.0
+    storage: memory
+
+daemons:
+  default:
+    module: pyrolab.daemon
+    classname: Daemon
+    host: localhost
+    port: 0
+    unixsocket: null
+    nathost: null
+    natport: 0
+    servertype: thread
+  lockable:
+    module: pyrolab.daemon
+    classname: LockableDaemon
+    host: public
+    port: 0
+    unixsocket: null
+    nathost: null
+    natport: 0
+    servertype: thread
+    nameservers:
+    - production
+  multiplexed:
+    module: pyrolab.daemon
+    classname: Daemon
+    host: public
+    port: 0
+    unixsocket: null
+    nathost: null
+    natport: 0
+    servertype: multiplex
+
+services:
+  asgard.wolverine:
+    module: pyrolab.drivers.motion.z825b
+    classname: PRM1Z8
+    parameters:
+      serialno: 27003366
+    description: Rotational motion
+    instancemode: single
+    daemon: lockable
+    nameservers:
+    - production
+  asgard.hulk:
+    module: pyrolab.drivers.motion.z825b
+    classname: Z825B
+    parameters:
+      serialno: 27003497
+    description: Longitudinal motion
+    instancemode: single
+    daemon: lockable
+    nameservers:
+    - production
+  asgard.captainamerica:
+    module: pyrolab.drivers.motion.z825b
+    classname: Z825B
+    parameters:
+      serialno: 27504851
+    description: Lateral motion
+    instancemode: single
+    daemon: lockable
+    nameservers:
+    - production
+
+autolaunch:
+  nameservers:
+  - production  
+  daemons:
+  - lockable
+  

@@ -1,2 +1,2 @@
-Server Tutorial
-===============
+Server Configuration
+====================

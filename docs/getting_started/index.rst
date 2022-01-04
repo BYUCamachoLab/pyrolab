@@ -1,11 +1,13 @@
 .. _getting_started:
 
-===============
+
 Getting Started
 ===============
 
-This section contains plug-and-play tutorials and examples to help you become
-more familiar with the mechanisms of PyroLab.
+This section guides you through setting up and experimenting with all the 
+features of PyroLab. It includes plug-and-play tutorials and examples to help 
+you become get hands on experience and become more familiar with the mechanisms 
+and terminology of PyroLab.
 
 For more detailed information, see the user guide.
 
@@ -15,8 +17,10 @@ For more detailed information, see the user guide.
     install
     overview
     pyro5_essentials
+    architecture
     nameserver
     server
+    configuration
     client
     analysis
 

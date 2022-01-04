@@ -5,19 +5,35 @@
 # (see pyrolab/__init__.py for details)
 
 """
-PRM1Z8
-------
+Motorized Precision Rotation Stage
+==================================
 
-Submodule containing drivers for the ThorLabs PRM1Z8 rotational stage.
+Submodule containing drivers for the ThorLabs PRM1Z8 rotational stage, driven
+by the KDC101 motor controller.
 
-Contributors
- * Benjamin Arnesen (https://github.com/BenA8)  
- * Christian Carver (https://github.com/cjcarver)
+.. attention::
+
+   Windows only.
+
+   Requires ThorLabs Kinesis software. Download it at `thorlabs.com`_.
+
+   .. _thorlabs.com: https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=10285
+
+.. admonition:: Dependencies
+   :class: note
+
+   thorlabs_kinesis (:ref:`installation instructions <Thorlabs Kinesis Package>`)
+
+.. tip::
+
+   If you are using the remote functionalities of PyroLab, you may see the
+   error ``RuntimeError: FT_DeviceNotFound`` when calling functions on objects
+   inheriting from KDC101. This sometimes occus when you forget to call
+   ``autoconnect()`` before trying to use the device.
 """
 
-from pyrolab.drivers.motion import Motion
+from pyrolab.api import behavior, expose
 from pyrolab.drivers.motion.kinesis.kdc101 import KDC101, HomingMixin
-from pyrolab.api import expose, behavior
 
 
 @behavior(instance_mode="single")
@@ -36,8 +52,4 @@ class PRM1Z8(KDC101, HomingMixin):
     home : bool
         True tells the device to home when initializing
     """
-    # def __init__(self, serialno: str, polling=200, home=False):
-    #     super().__init__(serialno, polling, home)
-
-
-    
+    pass

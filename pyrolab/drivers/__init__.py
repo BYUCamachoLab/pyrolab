@@ -6,18 +6,16 @@
 
 """
 Drivers
--------
+=======
 
 Submodule containing drivers for each supported instrument type.
 """
 
 import logging
-
-from pyrolab.api import expose
 from typing import Any, Dict, List
 
+from pyrolab.api import expose
 from pyrolab.service import Service
-
 
 log = logging.getLogger(__name__)
 
@@ -25,6 +23,10 @@ log = logging.getLogger(__name__)
 class Instrument(Service):
     """
     Abstract base class provides a common interface for services and instruments.
+
+    While not a true abstract base class (it *can* be instantiated), all the
+    essential functions raise NotImplementedErrors when run. They are therefore
+    required to be overridden by derived classes.
 
     Note that, in order to support autoconnect within the PyroLab framework,
     the ``__init__`` method is never used to set up or connect to the 
@@ -54,6 +56,9 @@ class Instrument(Service):
         Destructor. Automatically calls ``close()``. 
         
         Automatically releases any potentially claimed resources.
+
+        # TODO: This function is unsafe! It is not guaranteed to be called!
+        # Enforce calling close() explicitly.
         """
         self.close()
 

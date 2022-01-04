@@ -6,12 +6,13 @@
 
 """
 Motion
-------
+======
 
 Submodule containing drivers for each supported motor type.
 """
 
 from pyrolab.drivers import Instrument
+
 
 class Motion(Instrument):
     pass

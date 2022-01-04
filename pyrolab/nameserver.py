@@ -6,20 +6,20 @@
 
 """
 Nameserver
-----------
+==========
 
 Wrapped nameserver functions that references PyroLab configuration settings.
 """
 
 import logging
-from typing import Dict, List, Optional
+import socket
+import sys
+from typing import Callable
 
-import Pyro5.nameserver
+from Pyro5.nameserver import BroadcastServer, NameServerDaemon, start_ns
 
-from pyrolab.utils.network import get_ip
-from pyrolab.utils.configure import Configuration
 from pyrolab import PYROLAB_DATA_DIR
-
+from pyrolab.configure import NameServerConfiguration
 
 log = logging.getLogger(__name__)
 
@@ -27,87 +27,6 @@ log = logging.getLogger(__name__)
 NAMESERVER_DATA_DIR = PYROLAB_DATA_DIR / "nameserver" / "data"
 NAMESERVER_DATA_DIR.mkdir(parents=True, exist_ok=True)
 STORAGE_FILE = NAMESERVER_DATA_DIR / "storage"
-
-
-class NameServerConfiguration(Configuration):
-    """
-    The NameServer Configuration class. 
-    
-    Contains all applicable configuration parameters for running a nameserver.
-
-    Parameters
-    ----------
-    host : str, optional
-        The hostname of the nameserver. Defaults to "localhost".
-    ns_port : int, optional
-        The port of the nameserver. Defaults to 9090.
-    broadcast : bool, optional
-        Whether to launch a broadcast server. Defaults to False.
-    ns_bchost : str, optional
-        The hostname of the broadcast server. Defaults to None.
-    ns_bcport : int, optional
-        The port of the broadcast server. Defaults to 9091.
-    ns_autoclean : float, optional
-        The interval in seconds at which the nameserver will ping registered
-        objects and clean up unresponsive ones. Default is 0.0 (off).
-    storage_type : str, optional
-        The type of storage to use for the nameserver. Defaults to "memory".
-    storage_filename : str, optional
-        The filename of the storage to use for the nameserver. Defaults to "".
-        Can be specified if storage_type is "sql" or "dbm". If not specified,
-        internal data directories will be used.
-    storage : str, optional
-        A Pyro5-style storage string. It's easier and safer to specify 
-        ``storage_type`` and ``storage_filename``. Sometimes, however, 
-        reconstructing this object provides this parameter, hence it's 
-        available. If this argument is specified, it takes precedence. 
-        Defaults to "".
-    kwargs : dict, optional
-        These arguments are ignored. They are only here to allow for
-        compatibility with the ``Configuration`` class when reinstantiating
-        from dictionary.
-
-    Raises
-    ------
-    ValueError
-        If the storage type is not one of "memory", "sql", or "dbm".
-    """
-    def __init__(self,
-                 host: str="localhost",
-                 ns_port: int=9090,
-                 broadcast: bool=False,
-                 ns_bchost: Optional[bool]=None,
-                 ns_bcport: int=9091,
-                 ns_autoclean: float=0.0,
-                 storage_type: str="memory",
-                 storage_filename: str="",
-                 storage: str="",
-                 **kwargs) -> None:
-        super().__init__()
-        if host == "public":
-            host = get_ip()
-        self.host = host
-        self.ns_host = host
-        self.ns_port = ns_port
-        self.broadcast = broadcast
-        self.ns_bchost = ns_bchost
-        self.ns_bcport = ns_bcport
-        self.ns_autoclean = ns_autoclean
-        if storage:
-            self.storage = storage
-        else:
-            if storage_type not in ("memory", "sql", "dbm"):
-                raise ValueError("invalid storage type: " + storage_type)
-            if storage_type != "memory" and not storage_filename:
-                storage_filename = str(STORAGE_FILE.with_suffix(f".{storage_type}"))
-            if storage_type == "sql":
-                self.storage = f"sql:{storage_filename}"
-            elif storage_type == "dbm":
-                self.storage = f"dbm:{storage_filename}"
-            elif storage_type == "memory":
-                self.storage = storage_type
-            else:
-                raise ValueError(f"Unknown storage type: {storage_type}")
 
 
 # # Inheriting from the Nameserver
@@ -119,20 +38,77 @@ class NameServerConfiguration(Configuration):
 #     pass
 
 
-def start_ns_loop(cfg: NameServerConfiguration=None) -> None:
+def start_ns_loop(cfg: NameServerConfiguration, loop_condition: Callable=lambda: True) -> None:
     """
     Utility function that starts a new NameServer and enters its requestloop.
 
-    Loop can be shut down using ``ctrl+c``.
+    This function is a reimplemntation of the ``Pyro5.nameserver.start_ns_loop``
+    that allows for a loop condition to kill the loop. Alternatively, the loop 
+    can be shut down using ``ctrl+c``.
 
     Parameters
     ----------
     cfg : NameserverConfiguration
         The configuration object for the nameserver.
+    loop_condition : callable, optional
+        A callable that returns a boolean value. If the value is True, the loop
+        will continue. If the value is False, the loop will stop. Defaults to
+        ``lambda: True``.
     """
-    Pyro5.nameserver.start_ns_loop(host=cfg.host, port=cfg.ns_port, 
-        enableBroadcast=cfg.broadcast, bchost=cfg.ns_bchost, 
-        bcport=cfg.ns_bcport, storage=cfg.storage)
+    # Parameters from the original function
+    host = cfg.host
+    port = cfg.ns_port
+    unixsocket = None
+    nathost = None
+    natport = None
+    enableBroadcast = cfg.broadcast
+    bchost = cfg.ns_bchost
+    bcport = cfg.ns_bcport
+    storage = cfg.get_storage_location()
+    cfg.update_pyro_config()
+
+    daemon = NameServerDaemon(unixsocket, nathost=nathost, natport=natport, storage=storage)
+    nsUri = daemon.uriFor(daemon.nameserver)
+    internalUri = daemon.uriFor(daemon.nameserver, nat=False)
+    bcserver = None
+    if unixsocket:
+        hostip = "Unix domain socket"
+    else:
+        hostip = daemon.sock.getsockname()[0]
+        if daemon.sock.family == socket.AF_INET6:       # ipv6 doesn't have broadcast. We should probably use multicast instead...
+            log.info("Not starting NS broadcast server because NS is using IPv6")
+            enableBroadcast = False
+        elif hostip.startswith("127.") or hostip == "::1":
+            log.info("Not starting NS broadcast server because NS is bound to localhost")
+            enableBroadcast = False
+        if enableBroadcast:
+            # Make sure to pass the internal uri to the broadcast responder.
+            # It is almost always useless to let it return the external uri,
+            # because external systems won't be able to talk to this thing anyway.
+            bcserver = BroadcastServer(internalUri, bchost, bcport, ipv6=daemon.sock.family == socket.AF_INET6)
+            log.info("Broadcast server running on %s" % bcserver.locationStr)
+            bcserver.runInThread()
+    existing = daemon.nameserver.count()
+    if existing > 1:   # don't count our own nameserver registration
+        log.info("Persistent store contains %d existing registrations." % existing)
+    log.info("NS running on %s (%s)" % (daemon.locationStr, hostip))
+    if daemon.natLocationStr:
+        log.info("internal URI = %s" % internalUri)
+        log.info("external URI = %s" % nsUri)
+    else:
+        log.info("URI = %s" % nsUri)
+    try:
+        # Placed in a try block because this fails with pythonw.exe
+        sys.stdout.flush()
+    except:
+        log.warning("Couldn't flush stdout! (Not a problem if running under pythonw.exe)")
+    try:
+        daemon.requestLoop(loopCondition=loop_condition)
+    finally:
+        daemon.close()
+        if bcserver is not None:
+            bcserver.close()
+    log.info("NS shut down.")
 
 
 def start_ns(cfg: NameServerConfiguration=None):
@@ -145,7 +121,11 @@ def start_ns(cfg: NameServerConfiguration=None):
     nameserverUri, nameserverDaemon, broadcastServer
         A tuple containing three pieces of information.
     """
-    return Pyro5.nameserver.start_ns(host=cfg.host, 
-        port=cfg.ns_port, enableBroadcast=cfg.broadcast, 
-        bchost=cfg.bc_host, bcport=cfg.bc_port,
-        storage=cfg.storage)
+    return start_ns(
+        host=cfg.host, 
+        port=cfg.ns_port, 
+        enableBroadcast=cfg.broadcast, 
+        bchost=cfg.bc_host, 
+        bcport=cfg.bc_port,
+        storage=cfg.storage
+    )

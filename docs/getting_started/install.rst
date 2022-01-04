@@ -1,4 +1,4 @@
-============
+
 Installation
 ============
 
@@ -20,34 +20,121 @@ Considerations
 3. Is this installation acting as a nameserver?
    It is recommended you use a Linux installation for the nameserver, due to 
    the simplicity of security, opening ports, and running servers on Linux.
+   However, the nameserver is the simplest mechanism in PyroLab, and can run
+   easily on any operating system.
 
 Python Version Support
 ----------------------
 
 PyroLab officially supports Python 3.7 to 3.9.
 
+
 Installing PyroLab
 ------------------
+
+
+A note about dependencies
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Since PyroLab supports many drivers but may only be configured on specific
+computers with a few different devices, it does not install all potential 
+dependencies by default.
+
+Some drivers, for example, have dependencies that are OS-specific. And, for
+machines that will be acting purely as clients, you do not need the 
+dependencies in order to access services running on other machines. Only the
+computer hosting a given service needs its dependencies. Be sure to
+visit each driver's documentation for a listing of packages you may need to
+preinstall.
+
+For drivers or services that have packages installable from PyPI, a pip install
+with extras is sufficient (see below). Some drivers may require additional 
+3rd party software to be installed, see the respetive drivers' documentation.
+
 
 Installing with pip
 ^^^^^^^^^^^^^^^^^^^
 
 PyroLab supports many different drivers but aims to avoid clogging up your 
-system with all the potential dependencies. Therefore, options are provided
-for installing dependencies for each desired feature.
+system with all the potential dependencies. Therefore, installation "extras" 
+are provided for installing the dependencies of each desired feature.
+
+For a basic installation, run:
+
+.. code-block:: bash
+
+   pip install pyrolab
+
+You can install the extras (or multiple of them) using the following command:
+
+.. code-block:: bash
+
+   pip install pyrolab[feature]
+   pip install pyrolab[feature1,feature2,feature3]
+
+Available extras:
+
+* ``tsl550``
+* ``ppcl55x``
+* ``rto``
+* ``arduino``
+
 
 Installing from git
 ^^^^^^^^^^^^^^^^^^^
 
-You can also install directly from git by first cloning the repository.
+You can also install directly from git by first cloning the repository. After
+cloning, we still recommend using an "editable" pip install to setup all the
+paths and register the command line program. That looks like this:
 
-Dependencies
-^^^^^^^^^^^^
+.. code-block:: bash
 
-Since PyroLab supports many drivers but may only be configured on specific
-computers with a few different devices, it does not install all dependencies
-by default.
+   git clone https://github.com/BYUCamachoLab/pyrolab
+   cd pyrolab
+   pip install -e .
+   # Or, with some extras:
+   pip install -e .[tsl550,ppcl55x,rto,arduino]
 
-Some drivers, for example, have dependencies that are OS-specific. Be sure to
-visit each driver's documentation for a listing of packages you should
-preinstall.
+If deep down inside you, you truly hate pip installing and just want to add
+things to your PATH to install them, you can add the directory containing
+PyroLab to your PATH. Additionally, the command line program can be invoked
+by executing:
+
+.. code-block:: bash
+
+   python -m pyrolab.cli
+
+
+Data Directories
+----------------
+
+PyroLab stores a fair amount of data on the user's computer. This includes
+configuration files that allow you to specify hosted services or instruments, 
+log files, and other data files. However, performing a pip uninstall (or, if
+you simply added the directory to your PATH, simply deleting the directory)
+will not remove the data. To see where PyroLab stores its data, run one of the
+following:
+
+.. code-block:: bash
+
+   # If PyroLab is installed on the command line
+   pyrolab --show-data-dir
+
+   # If running from the source directory
+   python -m pyrolab.cli --show-data-dir
+
+
+On Linux, you might get something directories like:
+
+.. code-block:: python
+
+   # If running from an interactive shell
+   >>> from pyrolab import PYROLAB_DATA_DIR, PYROLAB_CONFIG_DIR
+   >>> print(PYROLAB_DATA_DIR)
+   /home/user/.local/share/PyroLab
+   >>> print(PYROLAB_CONFIG_DIR)
+   /home/user/.config/PyroLab
+
+If you ever uninstall PyroLab and want to purge all the files it might have
+left around, delete those directories after uninstalling (but be sure to find 
+them before uninstalling, or each time PyroLab is run, it will recreate them!).

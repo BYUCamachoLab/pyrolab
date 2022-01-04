@@ -10,3 +10,9 @@ bump2version>=1.0.0
 pyfirmata
 pyyaml
 appnope
+pydantic
+typer
+tabulate
+colorama
+black
+isort>=5.0.0

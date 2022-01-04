@@ -1,4 +1,4 @@
-===========
+
 Nameservers
 ===========
 
@@ -99,3 +99,20 @@ script like this:
     start_ns_loop(configs['default'])
 
 
+Notes on nameserver registrations
+---------------------------------
+
+Because many services may "go dark" or become unavailable at times, the 
+nameserver can be configured to "autoclean" itself. Additionally, PyroLab
+does its best to ensure that as services are shutdown, they also notify the
+nameserver that they're are no longer available and should be removed. However,
+sometimes the software (or the hardware) may crash without the chance to 
+handle housekeeping calls. This is why the nameserver can periodically ping
+all known services to check if they are still alive.
+
+Additionally, because services can come back online with the same name and
+notify the nameserver of their availability, the nameserver will not block
+registrations of new services with the same name. Be sure when you're writing
+a configuration file with daemons and services that you check to make sure
+none of the names you're using are already used by the register, or you may
+"orphan" some services, in the sense that they'll be unfindable by others!

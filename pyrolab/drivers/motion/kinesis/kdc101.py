@@ -6,7 +6,7 @@
 
 """
 KDC101
-------
+======
 
 Submodule that implements the basic functionality of the KCube DC Servo.
 
@@ -22,31 +22,31 @@ ThorLabs Kinesis should be installed, see ThorLabs' website to download.
    ``autoconnect()`` before trying to use the device.
 """
 
-import time
 import logging
+import time
 from ctypes import (
-    c_bool,
-    c_short,
-    c_char_p,
-    c_void_p,
     byref,
-    c_uint,
+    c_bool,
+    c_char_p,
+    c_double,
+    c_float,
     c_int,
     c_long,
-    c_float,
-    c_double,
-    create_string_buffer,
+    c_short,
+    c_uint,
+    c_void_p,
     cast,
+    create_string_buffer,
 )
 from ctypes.wintypes import DWORD, WORD
 from typing import Any, Dict, List
 
 from Pyro5.server import oneway
 from thorlabs_kinesis import kcube_dcservo as kcdc
-from thorlabs_kinesis._utils import c_word, c_dword
+from thorlabs_kinesis._utils import c_dword, c_word
 
-from pyrolab.drivers.motion.kinesis import KinesisInstrument, ERROR_CODES
 from pyrolab.api import expose
+from pyrolab.drivers.motion.kinesis import ERROR_CODES, KinesisInstrument
 from pyrolab.drivers.motion.kinesis.exceptions import (
     KinesisCommunicationError,
     KinesisDLLError,

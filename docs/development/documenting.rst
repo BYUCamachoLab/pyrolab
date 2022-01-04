@@ -17,9 +17,18 @@ For uniformity in documentation, the reST standard we use for headings is as
 follows (docstrings that use headings that will be rendered by Sphinx should
 also follow this convention):
 
+* # with overline, for parts
+* * with overline, for chapters
+* =, for sections
+* -, for subsections
+* ^, for subsubsections
+* “, for paragraphs
+
+Therefore, most documentation pages (and the docstrings themselves) should use
+the following headings:
+
 .. code-block:: rst
    
-   =========
    Heading 1
    =========
 
@@ -28,8 +37,3 @@ also follow this convention):
 
    Heading 3
    ^^^^^^^^^
-
-   Heading 4
-   *********
-
-You should rarely, if ever, even need to get to Heading 4.

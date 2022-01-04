@@ -5,26 +5,25 @@
 # (see pyrolab/__init__.py for details)
 
 """
-Server
-------
+Daemon
+======
 
-Wrapped server functions that references PyroLab configuration settings.
+Wrapped daemon functions that references PyroLab configuration settings.
 """
 
 from __future__ import annotations
-import logging
-import inspect
 
-from typing import Any, Dict, List, TYPE_CHECKING, Optional, Union, Callable, Type
+import inspect
+import logging
+from typing import TYPE_CHECKING, Callable, Optional, Type
+
 import Pyro5
 from Pyro5.core import URI
-from Pyro5.server import expose, behavior, oneway, serve
-
-from pyrolab.utils.configure import Configuration
-from pyrolab.utils.network import get_ip
+from Pyro5.server import behavior, expose, oneway, serve
 
 if TYPE_CHECKING:
     from Pyro5.socketutil import SocketConnection
+
     from pyrolab.drivers import Instrument
     from pyrolab.service import Service
 
@@ -74,56 +73,6 @@ def change_behavior(cls: Type[Instrument], instance_mode: str="session", instanc
     cls._pyroInstancing = (instance_mode, instance_creator)
 
 
-class DaemonConfiguration(Configuration):
-    """
-    Server configuration object.
-
-    Note that for the ``host`` parameter, the string "public" will always be
-    reevaluated to the computer's public IP address.
-
-    Parameters
-    ----------
-    module : str, optional
-        The module that contains the Daemon class (default "pyrolab.server").
-    classname : str, optional
-        The name of the Daemon class to use (default is basic "Daemon").
-    host : str, optional
-        The hostname of the local server, or the string "public", which 
-        is converted to the host's public IP address (default "localhost").
-    ns_host : str, optional
-        The hostname of the nameserver (default "localhost").
-    ns_port : int, optional
-        The port of the nameserver (default 9090).
-    ns_bcport : int, optional
-        The port of the broadcast server (default 9091).
-    ns_bchost : bool, optional
-        Whether to broadcast the nameserver (default None).
-    servertype : str, optional
-        Either ``thread`` or ``multiplex`` (default "thread").
-    """
-    def __init__(self,
-                 module: str="pyrolab.daemon",
-                 classname: str="Daemon",
-                 host: str="localhost",
-                 port: int=0,
-                 unixsocket: Optional[str]=None,
-                 nathost: Optional[str]=None,
-                 natport: int=0,
-                 servertype: str="thread") -> None:
-        if host == "public":
-            host = get_ip()
-        super().__init__(
-            module=module,
-            classname=classname,
-            host=host,
-            port=port,
-            unixsocket=unixsocket,
-            nathost=nathost,
-            natport=natport,
-            servertype=servertype
-        )
-
-
 @expose
 class Lockable:
     """
@@ -131,6 +80,11 @@ class Lockable:
     
     Rejects new connections at the Daemon level when locked. Daemon stores the 
     user who locked the device for reference.
+
+    This mixin only makes sense in the context of a Daemon. It is not intended
+    for use with local instruments. Additionally, any service registered with
+    a :py:class:`LockableDaemon` will automatically have this mixin added to 
+    it.
     """
     def lock(self, user: str="") -> bool:
         """
@@ -147,7 +101,7 @@ class Lockable:
             return daemon._lock(self._pyroId, daemon._last_requestor, user)
         return True
 
-    def release(self) -> bool:
+    def unlock(self) -> bool:
         """
         Releases the lock on the object.
         """
@@ -187,7 +141,7 @@ class Daemon(Pyro5.server.Daemon):
         port.
     unixsocket : str, optional
         The name of a Unix domain socket to use instead of a TCP/IP socket. 
-        Default is None (don’t use).
+        Default is None (don't use).
     nathost : str, optional
         hostname to use in published addresses (useful when running behind a 
         NAT firewall/router). Default is None which means to just use the 
@@ -310,6 +264,9 @@ class LockableDaemon(Daemon):
             The pyroId of the Pyro object.
         conn : SocketConnection
             The socket connection with the client that owns the lock.
+        user : str, optional
+            The user who has locked the device. Useful when a device is locked
+            by a user and another user wants to know who is using it.
 
         Returns
         -------

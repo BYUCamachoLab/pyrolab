@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright © 2020 PyroLab Project Contributors and others (see AUTHORS.txt).
+# Copyright © 2020- PyroLab Project Contributors and others (see AUTHORS.txt).
 # The resources, libraries, and some source files under other terms (see NOTICE.txt).
 #
 # This file is part of PyroLab.
@@ -21,13 +21,13 @@
 PyroLab
 =======
 
-A framework for using remote lab instruments as local resources built on Pyro5 
+A framework for using remote lab instruments as local resources built on Pyro5.
 """
 
+import os
 import pathlib
 import platform
 import sys
-import os
 
 if sys.version_info < (3, 7, 0):
     raise Exception(
@@ -50,44 +50,84 @@ __website_url__ = "https://camacholab.byu.edu/"
 
 
 import warnings
+
 warnings.filterwarnings("default", category=DeprecationWarning)
+if "PYROLAB_HUSH_DEPRECATION" in os.environ:
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+
+# Hide a very annoying warnings from appnope about Python 3.12
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
+    import appnope
+    appnope.nope()
 
 
 from appdirs import AppDirs
+
 _dirs = AppDirs(__name__, __author__)
+
+# Data Directories
 PYROLAB_DATA_DIR = pathlib.Path(_dirs.user_data_dir)
-PYROLAB_CONFIG_DIR = pathlib.Path(_dirs.user_config_dir)
 PYROLAB_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+# Configuration Directories
+PYROLAB_CONFIG_DIR = pathlib.Path(_dirs.user_config_dir)
 PYROLAB_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+
+# Note that on Windows, PYROLAB_DATA_DIR might be the same as
+# PYROLAB_CONFIG_DIR! Plan filenames accordingly.
+
+# User config file directory
+CONFIG_DIR = PYROLAB_CONFIG_DIR / "config"
+CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+
+# Background daemon data directory
+PYROLABD_DATA = PYROLAB_DATA_DIR / "pyrolabd"
+PYROLABD_DATA.mkdir(parents=True, exist_ok=True)
+
+NAMESERVER_STORAGE = PYROLAB_DATA_DIR / "nameservers"
+NAMESERVER_STORAGE.mkdir(parents=True, exist_ok=True)
+
+# LOGFILES_DIR = PYROLAB_DATA_DIR / "logs"
+# LOGFILES_DIR.mkdir(parents=True, exist_ok=True)
+
+LOCKFILE = PYROLABD_DATA / "pyrolabd.lock"
+USER_CONFIG_FILE = CONFIG_DIR / "user_configuration.yaml"
+RUNTIME_CONFIG = PYROLABD_DATA / "runtime_config.yaml"
+PYROLAB_LOGFILE = PYROLAB_DATA_DIR / "pyrolab.log"
 
 
 # Set up logging to file
 import logging
-logfile = os.getenv("PYROLAB_LOGFILE", PYROLAB_DATA_DIR / "pyrolab.log")
-loglevel = os.getenv("PYROLAB_LOGLEVEL", "INFO")
-try:
-    loglevel = getattr(logging, loglevel.upper())
-except AttributeError:
-    loglevel = logging.INFO
-logging.basicConfig(level=loglevel,
-                    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                    filename=str(logfile),
-                    filemode='a')
-logging.debug("PyroLab started (logger configured).")
+import logging.handlers
+
+
+def get_loglevel() -> int:
+    loglevel = os.getenv("PYROLAB_LOGLEVEL", "INFO")
+    try:
+        loglevel = getattr(logging, loglevel.upper())
+    except AttributeError:
+        loglevel = logging.INFO
+    return loglevel
+
+if len(logging.root.handlers) == 0:
+    #     datefmt="%Y-%m-%d %H:%M:%S",
+    #     format="[%(asctime)s.%(msecs)03d,%(name)s,%(levelname)s] %(message)s"
+    
+    # This is not multiprocess safe, but it's not critical
+    logfile = os.getenv("PYROLAB_LOGFILE", PYROLAB_LOGFILE)
+
+    root = logging.getLogger()
+    h = logging.handlers.RotatingFileHandler(logfile, 'a', 30000, 10)
+    f = logging.Formatter('%(asctime)s %(process)d %(processName)-10s %(name)-12s %(levelname)-8s %(message)s', datefmt="%Y-%m-%d %H:%M:%S")
+    h.setFormatter(f)
+    root.addHandler(h)
+    root.setLevel(get_loglevel())
+    root.debug("PyroLab logging configured", logfile)
 
 
 # Include remote traceback in local tracebacks
 import Pyro5.errors
+
 sys.excepthook = Pyro5.errors.excepthook
-
-
-import appnope
-appnope.nope()
-
-
-from multiprocessing import current_process
-if current_process().name == 'MainProcess':
-    PID = str(os.getpid()) + '_main'
-    os.environ["PYROLAB_TOPLEVEL_PID"] = PID
-else:
-    PID = str(os.getpid()) + '_child'

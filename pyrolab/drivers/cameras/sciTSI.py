@@ -6,23 +6,37 @@
 
 """
 Thorlabs Scientific Camera
---------------------------
+==========================
 
-Driver for a Thorlabs Microscope.
+Driver for a Thorlabs Scientific Camera.
 
-Contributors
- * David Hill (https://github.com/hillda3141)
+.. attention::
+
+   Presently Windows only. 
+   
+   Requires ThorCam software. Download it at `thorlabs.com`_.
+
+   .. _thorlabs.com: https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam
+
+   Potential future Linux support, since ThorLabs does provide a Windows and 
+   Linux SDK.
+
+.. admonition:: Dependencies
+   :class: note
+
+   thorlabs_kinesis (:ref:`installation instructions <Thorlabs Kinesis Package>`)
 """
 
-from Pyro5.errors import PyroError
-from pyrolab.api import expose
-from thorlabs_kinesis import thor_science_camera as tc
-import socket
 import pickle
-import time
+import socket
 import threading
-import numpy as np
 from ctypes import *
+
+import numpy as np
+from thorlabs_kinesis import thor_science_camera as tc
+
+from pyrolab.api import expose
+
 
 @expose
 class SCICAM:
@@ -32,12 +46,12 @@ class SCICAM:
     Attributes
     ----------
     HEADERSIZE : int
-        the size of the header used to communicate the size of the message
-        (10 bytes is a safe size)
+        The size of the header used to communicate the size of the message
+        (10 bytes is a safe size).
     """
     HEADERSIZE = 10
 
-    def __init__(self, ser_no, port=2222, bit_depth=8, camera="ThorCam FS", exposure=10000):
+    def __init__(self, serialno, port=2222, bit_depth=8, camera="ThorCam FS", exposure=10000):
         """
         Opens the serial communication with the Thorlabs camera.
         
@@ -45,41 +59,24 @@ class SCICAM:
 
         Parameters
         ----------
-        ser_no : long
-            the serial number of the camera that should be initiated
-        port : int
-            the port on which the socket transmits the video feed to the client
-        bit_depth : int
-            the number of bits used for each pixel (usually is 8)
-        camera: string
-            camera name
-        pixel_clock: int
-            clock speed of the camera
-        color_mode: int
-            mode of color that the camera returns data in. 11 returns raw format:
-            | R  G0 |...
-            | G1  B |...
-              .   .
-              .   .
-              .   .
-        roi_shape : array(int)
-            dimentions of the image that is taken by the camera (usually 1024 x 1280)
-        roi_pos : array(int)
-            position of the top left corner of the roi (region of interest) in
-            relation to the sensor array (usaually 0,0)
-        framerate : int
-            the framerate of the camera in frames per second
-        exposure: int
-            in milliseconds, the time the shutter is open on the camera (90 default)
-        pixelbytes: int
-            the amount of memory space allocated per pixel in bytes
+        serialno : int
+            The serial number of the camera that should be connected to.
+        port : int, optional
+            The port on which the socket transmits the video feed to the client
+            (default 2222).
+        bit_depth : int, optional
+            The number of bits used for each pixel (default 8).
+        camera: string, optional
+            Camera name (default "ThorCam FS").
+        exposure: int, optional
+            In milliseconds, the time the shutter is open on the camera 
+            (default 10,000).
         """
-
         ser_no_list = create_string_buffer(4096)
         length = c_int(4096)
         error = tc.OpenSDK()
         error = tc.DiscoverAvailableCameras(ser_no_list,length)
-        if(str(ser_no) == str(ser_no_list.value.decode()).strip()):
+        if(str(serialno) == str(ser_no_list.value.decode()).strip()):
             self.handle = c_void_p()
             error = tc.OpenCamera(ser_no_list.value, self.handle)
         # print(self.handle)
@@ -104,7 +101,7 @@ class SCICAM:
         library. The header is then added to inform the client how long
         the message is. This should not be called from the client. It
         will be called from the function _video_loop() which is on a
-        parrallel thread with Pyro5.
+        parallel thread with Pyro5.
         """
         image_buffer = POINTER(c_ushort)()
         frame_count = c_int()
@@ -169,22 +166,34 @@ class SCICAM:
             
     def get_frame(self):
         """
-        Returns the most recently updated frame from the camera. Only use if the
-        program is connecting to a local camera.   
+        Returns the most recently updated frame from the camera. 
+        
+        Only use if the program is connecting to a local camera.
         """
         if(self.local == True):
             return self._get_image()
 
-    def start_capture(self,color=False,local=True):
+    def start_capture(self, color: bool = False, local: bool = True):
         """
+        Starts capture from the camera.
+
         This starts the capture from the camera to the allocated
         memory location as well as starts a new parallel thread
         for the socket server to stream from memory to the client.
 
         Parameters
         ----------
-        color : boolean
-            whether the video should be sent in full color or grayscale
+        color : bool, optional
+            Whether the video should be sent in full color or grayscale
+            (default False).
+        local : bool
+            Whether the video should be sent to the local computer or to the
+            client (default True).
+
+        Returns
+        -------
+        ip_address : str
+            The delivery IP address of the video stream.
         """
         self.color = color
         self.local = local
@@ -200,6 +209,8 @@ class SCICAM:
 
     def stop_capture(self):
         """
+        Stops the capture from the camera.
+
         This frees the memory used for storing the frames then triggers
         the stop_video event which will end the parrallel socket thread.
         """
@@ -211,15 +222,14 @@ class SCICAM:
         tc.DisarmCamera(self.handle)
         
     
-    def set_exposure(self, exposure):
+    def set_exposure(self, exposure: int):
         """
-        This sets the exposure of the camera.
+        Sets the exposure of the camera.
 
         Parameters
         ----------
-        exposure: int
-            in milliseconds, the time the shutter is open on the camera (90 is
-            a good exposure value)
+        exposure: int, optional
+            The time the shutter is open on the camera in milliseconds.
         """
         min_exposure = c_longlong()
         max_exposure = c_longlong()
@@ -235,14 +245,17 @@ class SCICAM:
 
     def close(self):
         """
-        Calls self.stop_capture to free memory and end the socket server
+        Closes communication with the camera and frees memory.
+
+        Calls :py:func:`stop_capture` to free memory and end the socket server
         and then closes serial communication with the camera.
 
         Raises
         ------
-        PyroError("Closing ThorCam failed with error code "+str(i))
-            Error to signal that the connection to the camera was closed abruptly
-            or another error was thrown upon closing (usually is ignorable)
+        PyroLabError
+            Error to signal that the connection to the camera was closed 
+            abruptly or another error was thrown upon closing (usually 
+            safely ignorable).
         """
         if(self.opened == True):
             try:
@@ -254,9 +267,3 @@ class SCICAM:
             tc.CloseSDK()
             print("camera closed")
             self.opened = False
-
-    def __del__(self):
-        """"
-        Function called when Proxy connection is lost.
-        """
-        self.close()

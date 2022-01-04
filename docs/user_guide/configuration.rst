@@ -1,9 +1,11 @@
 Nameservers
+===========
 
 Note that, regardless of whether it is present in the file, the default
 configuration is always available. It has the following settings:
 
 .. code-block:: yaml
+    
     nameservers:
         - default:
             host: localhost
@@ -26,6 +28,7 @@ Note that, regardless of whether it is present in the file, the default
 configuration is always available. It has the following settings:
 
 .. code-block:: yaml
+    
     daemons:
         - default:
             classname: Daemon
