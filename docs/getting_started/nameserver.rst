@@ -17,15 +17,12 @@ Let's take a look at the nameserver configuration class.
 
 ----
 
-First, notice that all the configuration values have "sensible" defaults.
-PyroLab by default keeps everything on localhost for security's sake---you 
-don't want to unwittingly open up your ports to the world. You have to 
-explicitly tell PyroLab to do that.
+Again, notice that all the configuration values have "sensible" defaults.
+PyroLab by default keeps everything on localhost for security's sake.
 
-Second, notice that in a YAML representation of the nameserver's configuration, 
-only the keys that are different from the defaults need to be defined; the
-model that loads the file will automatically populate the missing fields with
-the default values.
+As with the server configuration, in the YAML representation of the
+nameserver's configuration, only the keys that are different from the defaults
+need to be define. Undefined fields assume their default values.
 
 We can work with NameServerConfiguration objects either through a text YAML
 file, or by using the actual Python object. Let's see how that would look:
