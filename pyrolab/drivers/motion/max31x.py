@@ -60,19 +60,6 @@ class MAX31X(BPC303):
 
     Sets a default home position at the halfway point of the full travel for 
     each channel.
-
-    Parameters
-    ----------
-    serialno : int
-        The serial number of the device to connect to.
-    polling : int
-        The polling rate in milliseconds.
-    closed_loop : bool, optional
-        Puts controller in open or closed loop mode. Open loop if False 
-        (closed loop allows for positional commands instead of voltage 
-        commands), default True.
-    smoothed : bool, optional
-        Puts controller in smoothed start/stop mode, default False.
     
     Attributes
     ----------
@@ -89,17 +76,33 @@ class MAX31X(BPC303):
     Therefore, all public methods available to that class are available
     here. Note that the functions `position` and `voltage` should not be used,
     but rather `move` from this class.
-    """    
-    def __init__(self, 
+    """
+
+    def connect(self, 
                  serialno: str, 
                  poll_period: int=200, 
                  closed_loop: bool=True, 
                  smoothed: bool=False) -> None:
-        super().__init__(serialno=serialno,
+        super().connect(serialno=serialno,
                          poll_period=poll_period,
                          closed_loop=closed_loop,
                          smoothed=smoothed)
+        """
+        Connect to the device.
 
+        Parameters
+        ----------
+        serialno : int
+            The serial number of the device to connect to.
+        polling : int
+            The polling rate in milliseconds.
+        closed_loop : bool, optional
+            Puts controller in open or closed loop mode. Open loop if False 
+            (closed loop allows for positional commands instead of voltage 
+            commands), default True.
+        smoothed : bool, optional
+            Puts controller in smoothed start/stop mode, default False.
+        """
         # Values for each axis maximum
         self.max_pos = [val / 10 for val in self.max_travel]
 

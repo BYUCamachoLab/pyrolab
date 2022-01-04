@@ -38,22 +38,6 @@ class BPC303(KinesisInstrument):
     """ 
     A Thorlabs BPC-303 Benchtop Piezo controller.
 
-    Device connection is attempted upon instantiation of this class.
-
-    Parameters
-    ----------
-    serialno : str
-        The serial number of the device being connected to as a string.
-    poll_period : int, optional
-        The polling period (time between data pulls from the device) in ms 
-        (default 200).
-    closed_loop : bool, optional
-        Puts controller in open or closed loop mode. Closed loop if True 
-        (closed loop allows for positional commands instead of voltage 
-        commands), default False.
-    smoothed : bool, optional
-        Puts controller in smoothed start/stop mode, default False.
-
     Attributes
     ----------
     serialno : str
@@ -68,15 +52,33 @@ class BPC303(KinesisInstrument):
         Distance in steps of 100nm, range 0 to 65535 (10000 = 1mm) by channel.
     max_voltage : [int]
         Maximum output voltage, 750, 1000 or 1500 (75.0, 100.0, 150.0). 
-
-    Raises
-    ------
-    RuntimeError
-        If Kinesis cannot build a device list or no connected devices are found.
-    ValueError
-        If the serial number is not found in the connected devices.
     """
-    def __init__(self, serialno: str, poll_period: int=200, closed_loop: bool=False, smoothed: bool=False) -> None:
+
+    def connect(self, serialno: str, poll_period: int=200, closed_loop: bool=False, smoothed: bool=False) -> None:
+        """
+        Connects to the device.
+
+        Parameters
+        ----------
+        serialno : str
+            The serial number of the device being connected to as a string.
+        poll_period : int, optional
+            The polling period (time between data pulls from the device) in ms 
+            (default 200).
+        closed_loop : bool, optional
+            Puts controller in open or closed loop mode. Closed loop if True 
+            (closed loop allows for positional commands instead of voltage 
+            commands), default False.
+        smoothed : bool, optional
+            Puts controller in smoothed start/stop mode, default False.
+
+        Raises
+        ------
+        RuntimeError
+            If Kinesis cannot build a device list or no connected devices are found.
+        ValueError
+            If the serial number is not found in the connected devices.
+        """
         self.serialno = serialno
         self._serialno = c_char_p(bytes(serialno, "utf-8")) # Store as char array.
         self.poll_period = poll_period
