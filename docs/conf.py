@@ -79,6 +79,9 @@ autodoc_mock_imports = [
     'pyfirmata',
     'sacher_tec',
     'firmata',
+    'pyvisa',
+    'pyserial',
+    'pyfirmata',
 ]
 
 panels_add_bootstrap_css = False
