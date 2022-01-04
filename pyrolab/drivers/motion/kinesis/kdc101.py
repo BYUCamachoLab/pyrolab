@@ -147,10 +147,6 @@ class KDC101(KinesisInstrument):
     """
     CONDITIONS = ["homed", "moved", "stopped", "limit_updated"]
 
-    def __init__(self) -> None:
-        log.debug("KDC101 created")
-        super().__init__()
-
     def connect(self, serialno: str = "", polling=200, home=False):
         log.debug("Entering `connect()`")
         # TODO: Build an exception for this.
