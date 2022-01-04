@@ -63,15 +63,10 @@ autoclass_content = "class"  # Add __init__ doc (ie. params) to class summaries
 autodoc_inherit_docstrings = True  # If no docstring, inherit from base class
 # add_module_names = False # Remove namespaces from class/method signatures
 
+# Do not mock numpy, scipy, Pyro5! Build will fail.
 autodoc_mock_imports = [
-    'numpy',
-    'scipy',
-    'Pyro5',
-    'pydantic',
-    'yaml',
-    'appdirs',
-    'deprecation',
     'appnope',
+    'deprecation',
     'typer',
     'colorama',
     'tabulate', 
@@ -79,9 +74,7 @@ autodoc_mock_imports = [
     'thorlabs_kinesis',
     'pyfirmata',
     'sacher_tec',
-    'firmata',
     'pyvisa',
-    'pyserial',
     'pyfirmata',
 ]
 
