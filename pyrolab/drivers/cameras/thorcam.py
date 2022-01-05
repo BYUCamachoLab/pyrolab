@@ -75,10 +75,6 @@ class ThorCamBase(Camera):
         self.stop_video = threading.Event()
         self.VIDEO_THREAD_READY = False
 
-        self.color = True
-        self.pixelclock = 24
-        self.exposure = 90
-        self.framerate = 15
         self.brightness = 5
         self.color = True
 
@@ -97,7 +93,10 @@ class ThorCamBase(Camera):
     def pixelclock(self, clockspeed: int) -> None:
         self._pixelclock = clockspeed
         pixelclock = c_uint(clockspeed)
-        tc.PixelClock(self.handle, 6, byref(pixelclock), sizeof(pixelclock))
+        if hasattr(self, "handle"):
+            tc.PixelClock(self.handle, 6, byref(pixelclock), sizeof(pixelclock))
+        else:
+            raise PyroLabError("Cannot set pixelclock before connecting to device.")
 
     @property
     @expose
@@ -111,7 +110,10 @@ class ThorCamBase(Camera):
     def exposure(self, exposure: int) -> None:
         self._exposure = exposure
         exposure_c = c_double(exposure)
-        tc.SetExposure(self.handle, 12 , exposure_c, sizeof(exposure_c))
+        if hasattr(self, "handle"):
+            tc.SetExposure(self.handle, 12 , exposure_c, sizeof(exposure_c))
+        else:
+            raise PyroLabError("Cannot set exposure before connecting to device.")
 
     @property
     @expose
@@ -125,7 +127,10 @@ class ThorCamBase(Camera):
     def framerate(self, framerate: int) -> None:
         self._framerate = framerate
         s_framerate = c_double(0)
-        tc.SetFrameRate(self.handle, c_double(framerate), byref(s_framerate))
+        if hasattr(self, "handle"):
+            tc.SetFrameRate(self.handle, c_double(framerate), byref(s_framerate))
+        else:
+            raise PyroLabError("Cannot set framerate before connecting to device.")
 
     @property
     @expose
