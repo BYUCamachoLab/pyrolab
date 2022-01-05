@@ -446,16 +446,20 @@ class ThorCamBase(Camera):
         address, port : tuple(str, str) 
             The IP address and port of the socket serving the video stream.
         """
+        log.debug("Sending signal to camera to start capture")
         tc.StartCapture(self.handle, tc.IS_DONT_WAIT)
+        log.debug("Signal sent")
 
         if not self.local:
+            log.debug("Setting up socket for streaming")
             self.stop_video.clear()
             self.VIDEO_THREAD_READY = False
             address, port = self._get_socket()
             self.video_thread = threading.Thread(target=self._remote_streaming_loop, args=())
-            self.video_thread.daemon = True
+            # self.video_thread.daemon = True
             self.video_thread.start()
             while not self.VIDEO_THREAD_READY:
+                log.debug("VIDEO_STREAM not ready")
                 time.sleep(0.1)
             return [address, port]
 
@@ -637,10 +641,12 @@ class ThorCamClient:
         self._HEADERSIZE = self.cam.HEADERSIZE
     
     def start_stream(self) -> None:
-        print("attempting")
+        print("attempting socket connection")
         address, port = self.cam.start_capture()
+        print("remote capture started")
         self.clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.clientsocket.connect((address, port))
+        print("connected to socket")
 
         self.stop_video.clear()
         self.video_thread = threading.Thread(target=self._receive_video_loop, args=())
