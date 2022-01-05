@@ -387,6 +387,7 @@ class ThorCamBase(Camera):
         return self._bayer_convert(raw)
 
     def _write_header(self, size: int, d1: int = 1, d2: int = 1, d3: int = 1) -> np.array:
+        log.debug(f"Received: {size} {d1} {d2} {d3}")
         return np.array((size, d1, d2, d3), dtype=np.uintc)
 
     def _remote_streaming_loop(self):
@@ -565,7 +566,9 @@ class ThorCamBase(Camera):
             self.handle
         except AttributeError:
             return
+
         self.stop_capture()
+
         error = tc.ExitCamera(self.handle) 
         if error != 0:
             log.error(f"Closing ThorCam failed (code {error})")
@@ -646,35 +649,29 @@ class ThorCamClient:
 
         self.stop_video.clear()
         self.video_thread = threading.Thread(target=self._receive_video_loop, args=())
+        self.video_thread.daemon = True
         self.video_thread.start()
 
     def _decode_header(self, header):
         length, *shape = np.frombuffer(header, dtype=np.uint32)
+        # if shape[0] == 1:
+        #     shape = shape[1:]
         return length, shape
     
     def _receive_video_loop(self) -> None:
         while not self.stop_video.is_set():
             message = b''
+            
             # Read size of the incoming message
             header = self.clientsocket.recv(self._HEADERSIZE)
-            # msg_length = int(submessage[:self._HEADERSIZE])
-            # msg_length = int(submessage)
             length, shape = self._decode_header(header)
-            # while len(message) < msg_length:
             while len(message) < length:
                 submessage = self.clientsocket.recv(self.SUB_MESSAGE_LENGTH)
                 message += submessage
 
-                # We might be able to just move this out one loop and get rid
-                # of the len(message) == msg_length check.
-
-                # Once the whole message is received
-                # if len(message) == length:
-                    # Deserialize the message and break
-                    # self.last_image = pickle.loads(message)
+            # Deserialize the message and break
             self.last_image = np.frombuffer(message, dtype=np.uint8).reshape(shape)
             self.clientsocket.send(b'ACK')  
-                    # break
 
         self.clientsocket.close()
 
