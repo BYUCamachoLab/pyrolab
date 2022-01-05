@@ -14,7 +14,7 @@ is working properly.
 
 import logging
 import time
-from typing import Union
+from typing import Any, List, Union
 
 from pyrolab.api import behavior, expose
 from pyrolab.drivers import Instrument
@@ -32,11 +32,25 @@ class SampleService(Service):
     """
     A sample service with a few stubbed functions.
     """
-    def __init__(self):
+    def __init__(self) -> None:
         log.info("SampleService created")
-        pass
+        self._attribute = False
 
-    def close(self):
+    @property
+    def attribute(self) -> None:
+        """
+        Some hidden property. Can be set to any value.
+        """
+        return self._attribute
+
+    @attribute.setter
+    def attribute(self, value) -> Any:
+        self._attribute = value
+
+    def close(self) -> None:
+        """
+        Close the sample service.
+        """
         log.info("SampleService closed")
         pass
 
@@ -162,6 +176,57 @@ class SampleService(Service):
             The result of the division.
         """
         return num / den
+
+
+class SelectiveSampleService(Service):
+    """
+    Not all functions of this service are exposed over Pyro5. 
+
+    Maintains a list of items. Can be accessed via indexing, etc.
+
+    Parameters
+    ----------
+    items : List[Any]
+        A catalog of items.
+    """
+    def __init__(self, items: List[Any] = []) -> None:
+        self._items = items
+        self.some_attribute = True
+
+    @property
+    @expose
+    def items(self) -> List[Any]:
+        return self._items
+
+    @items.setter
+    @expose
+    def items(self, items: List[Any]) -> None:
+        self._items = items
+
+    @property
+    @expose
+    def attribute(self) -> Any:
+        return self.some_attribute
+        
+    @attribute.setter
+    @expose
+    def attribute(self, value: Any) -> None:
+        self.some_attribute = value
+
+    @expose
+    def sort(self, reverse: bool = False):
+        self.items = sorted(self.items, reverse=reverse)
+
+    @expose
+    def item(self, index: int) -> Any:
+        return self.items[index]
+
+    @expose
+    def set_item(self, index: int, value: Any) -> None:
+        self.items[index] = value
+
+    def objectid(self) -> int:
+        return id(self)
 
 
 @behavior(instance_mode="single")
