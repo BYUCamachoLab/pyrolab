@@ -80,7 +80,7 @@ class ThorCamBase(Camera):
     @property
     @expose
     def HEADERSIZE(self) -> int:
-        return self._HEADERSTRUCT.itemsize * self.HEADERSIZE.size
+        return self._HEADERSTRUCT.itemsize * self.HEADERSTRUCT.size
 
     @property
     @expose
