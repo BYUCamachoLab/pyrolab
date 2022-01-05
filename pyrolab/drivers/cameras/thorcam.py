@@ -429,7 +429,7 @@ class ThorCamBase(Camera):
         """
         self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.serversocket.bind((socket.gethostname(), 0))
-        return self.serversocket.getsockname()[1]
+        return self.serversocket.getsockname()
 
     @expose
     def start_capture(self) -> Tuple[str, str]:
