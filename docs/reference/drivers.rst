@@ -20,6 +20,7 @@ Cameras
    :toctree: api/
    :recursive:
 
+   thorcam
    uc480
    sciTSI
 
