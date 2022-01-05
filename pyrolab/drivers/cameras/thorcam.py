@@ -328,8 +328,13 @@ class ThorCamBase(Camera):
             bayer_B = np.array(B, dtype=np.uint8).reshape(frame_height, frame_width)
 
             log.debug("Stacking color data")
-            dStack = np.clip(np.dstack((bayer_B*(self.brightness/5),bayer_G*(self.brightness/5),
-                            bayer_R*(self.brightness/5))),0,np.power(2,self.bit_depth)-1).astype('uint8')
+            dStack = np.clip(
+            np.dstack(
+                    (bayer_B*(self.brightness/5), bayer_G*(self.brightness/5), bayer_R*(self.brightness/5))
+                ),
+                0,
+                np.power(2, self.bit_depth) - 1
+            ).astype('uint8')
         else:
             log.debug("Bayer convert (grayscale)")
             frame_height = bayer.shape[0]
@@ -338,8 +343,11 @@ class ThorCamBase(Camera):
                             frame_width)
 
             log.debug("Stacking grayscale data")
-            dStack = np.clip(np.dstack(((bayer_T)*(self.brightness/5))),0,
-                            np.power(2,self.bit_depth)-1).astype('uint8')
+            dStack = np.clip(
+                bayer_T*(self.brightness/5),
+                0,
+                np.power(2, self.bit_depth) - 1,
+            ).astype('uint8')
         log.debug("Bayer data stacked")
         return dStack
 
