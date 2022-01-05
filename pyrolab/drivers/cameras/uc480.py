@@ -30,6 +30,7 @@ Driver for a Thorlabs Microscope.
 # TODO: Investigate Linux support 
 # (https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam)
 
+import logging
 import pickle
 import socket
 import threading
@@ -38,9 +39,13 @@ from typing import Tuple
 
 import numpy as np
 from thorlabs_kinesis import thor_camera as tc
+from Pyro5.api import locate_ns, Proxy
 
 from pyrolab.api import expose
 from pyrolab.errors import PyroLabError
+
+
+log = logging.getLogger(__name__)
 
 
 @expose
@@ -53,12 +58,19 @@ class UC480:
     HEADERSIZE : int
         The size of the header used to communicate the size of the message
         (10 bytes is a safe size)
+    color : bool
+        Whether the camera is in color mode or not. If False, images and video
+        will be transmitted in grayscale.
     """
     HEADERSIZE = 10
 
-    def connect(self, serialno, port=2222, bit_depth=8, camera="ThorCam FS",
-                 pixel_clock=24, color_mode=11, roi_shape=(1024, 1280), 
-                 roi_pos=(0,0), framerate=15, exposure=90, pixelbytes=8):
+    def __init__(self):
+        self.stop_video = threading.Event()
+        self.color = True
+
+    def connect(self, serialno, port=2222, bit_depth=8,
+                 pixel_clock=24, color: bool = True, color_mode=11, roi_shape=(1024, 1280), 
+                 roi_pos=(0,0), framerate=15, exposure=90, pixelbytes=8, brightness: int = 5):
         """
         Opens the serial communication with the Thorlabs camera and sets defaults.
         
@@ -73,10 +85,10 @@ class UC480:
             The port on which the socket transmits the video feed to the client.
         bit_depth : int, optional
             The number of bits used for each pixel (default 8).
-        camera: string, optional
-            Camera name (default "ThorCam FS").
         pixel_clock: int, optional
             Clock speed of the camera (default 24).
+        color : bool, optional
+            Whether the camera is in color mode or not (default True).
         color_mode: int, optional
             Mode of color that the camera returns data in. ``11`` (default) 
             returns raw format, see :py:func:`set_color_mode` for more 
@@ -94,43 +106,51 @@ class UC480:
             (default 90).
         pixelbytes: int, optional
             The amount of memory space allocated per pixel in bytes (default 8).
+        brightness : int
+            Integer (range 1-10) defining the brightness, where 5 leaves the 
+            brightness unchanged.
         """
+        log.debug(f"Attempting to connect to camera with serialno '{serialno}'")
         num = c_int(0)
         tc.GetNumberOfCameras(byref(num))
-        print(num)
+        log.debug(f"Number of cameras found: {num.value}")
+
         uci_format = tc.UC480_CAMERA_INFO * 2
         uci = uci_format(tc.UC480_CAMERA_INFO(), tc.UC480_CAMERA_INFO())
         dwCount = c_int(num.value)
         cam_list = tc.UC480_CAMERA_LIST(dwCount=dwCount,uci=uci)
         tc.GetCameraList(byref(cam_list))
+
+        # Find the camera with the given serial number. Each camera has to be
+        # connected to and asked its serial number. We then check that they
+        # match.
         for i in range(num.value):
             handle = c_int(cam_list.uci[i].dwCameraID)
-            temp = tc.InitCamera(byref(handle))
-            if(temp != 0):
+            error = tc.InitCamera(byref(handle))
+            
+            # 0 means no error
+            if(error != 0):
                 continue
+
             info = tc.CAMINFO()
-            out = tc.GetCameraInfo(handle,byref(info))
+            error = tc.GetCameraInfo(handle, byref(info))
+
             if(int(info.SerNo) == serialno):
                 self.handle = handle
                 break
             elif(i == num.value - 1):
                 raise PyroLabError("Camera not found")
             else:
-                i = tc.ExitCamera(handle)
-                if i != 0:
-                    raise PyroLabError("Closing ThorCam failed with error code "+str(i))
+                error = tc.ExitCamera(handle)
+                if error != 0:
+                    log.critical(f"Closing ThorCam failed with error code {error}")
 
         self.bit_depth = bit_depth
-        self.camera = camera
 
         #print("Trigger Mode: " + str(tc.SetTrigger(handle,tc.IS_SET_TRIGGER_SOFTWARE)))
-        print("Trigger Mode: " + str(tc.SetTrigger(self.handle,tc.IS_GET_EXTERNALTRIGGER)))
+        log.debug("Trigger mode: " + str(tc.SetTrigger(self.handle, tc.IS_GET_EXTERNALTRIGGER)))
    
         tc.SetDisplayMode(self.handle, c_int(32768))
-
-        # if i  0:
-        #     print("shee")
-        #     raise PyroLabError("Opening the ThorCam failed with error code "+str(i))
 
         self.meminfo = None
 
@@ -140,66 +160,31 @@ class UC480:
         self.set_roi_pos(roi_pos)
         self.set_framerate(framerate)
         self.set_exposure(exposure)
-        self.initialize_memory(pixelbytes)  
+        self._initialize_memory(pixelbytes)  
         self.port = port
-        print("initialized")
     
-    def _bayer_convert(bayer):
-    """
-    Coverts the raw data to something that can be displayed on-screen.
-
-    Parameters
-    ----------
-    bayer : numpy array
-        this is the raw data that is recieved from the camera    
-    """
-
-    if(self.color):  #if the data is in color, put the numpy array into BGR form
-
-        frame_height = bayer.shape[0]//2
-        frame_width = bayer.shape[1]//2
-
-        ow = (bayer.shape[0]//4) * 4
-        oh = (bayer.shape[1]//4) * 4
-
-        R  = bayer[0::2, 0::2]
-        B  = bayer[1::2, 1::2]
-        G0 = bayer[0::2, 1::2]
-        G1 = bayer[1::2, 0::2]
-        G = G0[:oh,:ow]//2 + G1[:oh,:ow]//2
-
-        bayer_R = np.array(R, dtype=np.uint8).reshape(frame_height, frame_width)
-        bayer_G = np.array(G, dtype=np.uint8).reshape(frame_height, frame_width)
-        bayer_B = np.array(B, dtype=np.uint8).reshape(frame_height, frame_width)
-
-        dStack = np.clip(np.dstack((bayer_B*(self.brightness/5),bayer_G*(self.brightness/5),
-                         bayer_R*(self.brightness/5))),0,np.power(2,self.bit_depth)-1).astype('uint8')
-    else:   #if the data is grayscale
-
-        frame_height = bayer.shape[0]
-        frame_width = bayer.shape[1]
-        bayer_T = np.array(bayer, dtype=np.uint8).reshape(frame_height,
-                           frame_width)
-
-        dStack = np.clip((np.dstack(((bayer_T)*(self.brightness/5))),0,
-                         np.power(2,self.bit_depth)-1).astype('uint8')
-    return dStack
-
-    def _get_image(self):
+    def _bayer_convert(self, bayer: np.array) -> np.array:
         """
-        Retrieves the last frame from the memory buffer.
-        
-        Retrieves the last frame from the memory buffer, processes
-        it into a gray-scale image, and serializes it using the pickle
-        library. The header is then added to inform the client how long
-        the message is. This should not be called from the client. It
-        will be called from the function _video_loop() which is on a
-        parallel thread with Pyro5.
+        Coverts the raw data to something that can be displayed on-screen.
+
+        Image data is retrieved as a single-dimensional array. This function 
+        converts it into either multidimensional BGR or grayscale image.
+
+        Parameters
+        ----------
+        bayer : np.array
+            The raw data that is received from the camera.
+
+        Returns
+        -------
+        np.array
+            The converted data.
         """
-        bayer = np.frombuffer(self.meminfo[0], c_ubyte).reshape(self.roi_shape[1],
-        self.roi_shape[0])
-        
-        if(self.color == False):
+
+        if self.color:
+            frame_height = bayer.shape[0]//2
+            frame_width = bayer.shape[1]//2
+
             ow = (bayer.shape[0]//4) * 4
             oh = (bayer.shape[1]//4) * 4
 
@@ -207,19 +192,61 @@ class UC480:
             B  = bayer[1::2, 1::2]
             G0 = bayer[0::2, 1::2]
             G1 = bayer[1::2, 0::2]
+            G = G0[:oh,:ow]//2 + G1[:oh,:ow]//2
 
-            bayer = R[:oh,:ow]//3 + B[:oh,:ow]//3 + (G0[:oh,:ow]//2 + G1[:oh,:ow]//2)//3
+            bayer_R = np.array(R, dtype=np.uint8).reshape(frame_height, frame_width)
+            bayer_G = np.array(G, dtype=np.uint8).reshape(frame_height, frame_width)
+            bayer_B = np.array(B, dtype=np.uint8).reshape(frame_height, frame_width)
 
-        d_stack = _bayer_convert(bayer)
-        if(self.local == True):
-            return d_stack
+            dStack = np.clip(np.dstack((bayer_B*(self.brightness/5),bayer_G*(self.brightness/5),
+                            bayer_R*(self.brightness/5))),0,np.power(2,self.bit_depth)-1).astype('uint8')
         else:
-            msg = pickle.dumps(d_stack)
-            msg = bytes(f'{len(msg):<{self.HEADERSIZE}}', "utf-8") + msg
-            return msg
-            
+            frame_height = bayer.shape[0]
+            frame_width = bayer.shape[1]
+            bayer_T = np.array(bayer, dtype=np.uint8).reshape(frame_height,
+                            frame_width)
 
-    def _video_loop(self):
+            dStack = np.clip(np.dstack(((bayer_T)*(self.brightness/5))),0,
+                            np.power(2,self.bit_depth)-1).astype('uint8')
+        return dStack
+
+    def get_frame(self) -> list:
+        """
+        Retrieves the last frame from the camera's memory buffer.
+
+        Retrieves the last frame from the camera memory buffer and processes it
+        into a computer-readable image format.
+
+        For remote connections, the image is serialized using the pickle module
+        for remote connections. The header is then added to inform the client
+        how long the message is. This should not be called from the client. It
+        will be called from the function _video_loop() which is on a parallel
+        thread with Pyro5.
+
+        Can only be called after :py:func:`start_capture`.
+
+        Returns
+        -------
+        np.array
+            The last frame from the camera's memory buffer.
+        """
+        raw = np.frombuffer(self.meminfo[0], c_ubyte).reshape(self.roi_shape[1],
+        self.roi_shape[0])
+        
+        if(self.color == False):
+            ow = (raw.shape[0]//4) * 4
+            oh = (raw.shape[1]//4) * 4
+
+            R  = raw[0::2, 0::2]
+            B  = raw[1::2, 1::2]
+            G0 = raw[0::2, 1::2]
+            G1 = raw[1::2, 0::2]
+
+            raw = R[:oh,:ow]//3 + B[:oh,:ow]//3 + (G0[:oh,:ow]//2 + G1[:oh,:ow]//2)//3
+
+        return self._bayer_convert(raw).tolist()
+
+    def _remote_streaming_loop(self):
         """
         Starts a separate thread to stream frames.
 
@@ -227,40 +254,18 @@ class UC480:
         It will loop, sending frame by frame accross the socket connection,
         until the threading.Event() stop_video is triggered.
         """
-        while not self.stop_video.is_set():
-            bad = False
-            if(self.local == False):
-                if bad == False:
-                    if self.start_socket==True:
-                        while True:
-                            self.serversocket = socket.socket(socket.AF_INET,
-                                                              socket.SOCK_STREAM)
-                            self.serversocket.bind((socket.gethostname(), self.port))
-                            self.serversocket.listen(5)
-                            self.clientsocket, address = self.serversocket.accept()
-                            self.start_socket = False
-                            break
-                    msg = self._get_image()
-                    self.clientsocket.send(msg)
-                    while True:
-                        check_msg = self.clientsocket.recv(2)
-                        if(check_msg == b'b'):
-                            bad = True
-                        break
-            else:
-                break
-            
-    def get_frame(self):
-        """
-        Gets the most recently updated frame.
-
-        Returns the most recently updated frame from the camera. Only use if the
-        program is connecting to a local camera.   
-        """
-        if(self.local == True):
-            return self._get_image()
-
+        self.serversocket.listen(5)
+        self.clientsocket, address = self.serversocket.accept()
         
+        while not self.stop_video.is_set():
+            msg = self.get_frame()
+            ser_msg = pickle.dumps(msg)
+            ser_msg = bytes(f'{len(ser_msg):<{self.HEADERSIZE}}', "utf-8") + ser_msg
+            self.clientsocket.send(ser_msg)
+            check_msg = self.clientsocket.recv(4096)
+            if(check_msg == b'b'):
+                break
+
     def set_pixel_clock(self, clockspeed: int) -> None:
         """
         Sets the clockspeed of the camera, usually in the range of 24.
@@ -274,7 +279,7 @@ class UC480:
         pixelclock = c_uint(clockspeed)
         i = tc.PixelClock(self.handle, 6, byref(pixelclock), sizeof(pixelclock))
 
-    def start_capture(self, color: bool = False, local: bool = True) -> str:
+    def start_capture(self, local: bool = True) -> Tuple[str, str]:
         """
         Starts capture from the camera.
 
@@ -284,58 +289,26 @@ class UC480:
 
         Parameters
         ----------
-        color : bool, optional
-            Whether the video should be sent in full color or grayscale
-            (default False).
         local : bool
             Whether the video should be sent to the local computer or to the
             client (default True).
 
         Returns
         -------
-        ip_address : str
-            The delivery IP address of the video stream.
+        address, port : tuple(str, str)
+            The delivery IP address and port of the video stream.
         """
-        self.color = color
         self.local = local
         tc.StartCapture(self.handle, tc.IS_DONT_WAIT)
-        ip_address = socket.gethostbyname(socket.gethostname())
-        self.start_socket = True
-        self.stop_video = threading.Event()
-        self.video_thread = threading.Thread(target=self._video_loop, args=())
-        self.video_thread.start()
-        return ip_address
-    
-    def color_gray(self, color: bool = False) -> None:
-        """
-        Sets the color of the video.
-
-        This function switches whether the socket transmits color or grayscale.
-        
-        Parameters
-        ----------
-        color : boolean
-            Whether the video should be sent in full color or grayscale
-            (default False).
-        """
-        self.color = color
-    
-    def brightness(self, brightness: int: 5) -> None:
-        """
-        Sets the brightness of the video.
-
-        Input has a range of 0 to 10.
-
-        Parameters
-        ----------
-        brightness : int
-            Integer defining the brigtness, where 5 leaves the brightness unchaged.
-        """
-        if brightness < 0:
-            brightness = 0
-        if brightness > 10:
-            brightness = 10
-        self.brightness = brightness
+        if not self.local:
+            self.stop_video.clear()
+            address = socket.gethostbyname(socket.gethostname())
+            self.serversocket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+            self.serversocket.bind((socket.gethostname(), 0))
+            port = self.serversocket.getsockname()[1]
+            self.video_thread = threading.Thread(target=self._video_loop, args=())
+            self.video_thread.start()
+            return [address,port]
 
     def stop_capture(self) -> None:
         """
@@ -346,11 +319,11 @@ class UC480:
         """
         tc.FreeMemory(self.handle, self.meminfo[0], self.meminfo[1])
         tc.StopCapture(self.handle, 1)
-        if(self.local == False):
+        if not self.local:
             self.clientsocket.close()
         self.stop_video.set()
         
-    def initialize_memory(self, pixelbytes: int = 8) -> None:
+    def _initialize_memory(self, pixelbytes: int = 8) -> None:
         """
         Initializes the memory for holding the most recent frame from the camera.
 
@@ -493,55 +466,81 @@ class UC480:
         except AttributeError:
             return
         self.stop_capture()
-        i = tc.ExitCamera(self.handle) 
-        if i != 0:
-            raise PyroLabError("Closing ThorCam failed with error code "+str(i))
+        error = tc.ExitCamera(self.handle) 
+        if error != 0:
+            log.critical(f"Closing ThorCam failed (code {error})")
 
-class UC480_Client():
+
+class UC480Client():
     """
     The Thorlabs UC480 camera driver.
 
-    Attributes
+    Parameters
     ----------
     HEADERSIZE : int
         The size of the header used to communicate the size of the message
         (10 bytes is a safe size)
+    SUB_MESSAGE_LENGTH : int
+        The size of the sub-message chunks used.
     """
-
-    SUB_MESSAGE_LENGTH = 32800
+    def __init__(self, HEADERSIZE: int = 10, SUB_MESSAGE_LENGTH: int = 4096):
+        self.HEADERSIZE = HEADERSIZE
+        self.SUB_MESSAGE_LENGTH = SUB_MESSAGE_LENGTH
+        self.stop_video = threading.Event()
 
     def connect(self, name: str) -> None:
+        """
+        Connect to a remote PyroLab-hosted UC480 camera.
+
+        Assumes the nameserver where the camera is registered is already 
+        configured in the environment.
+
+        Parameters
+        ----------
+        name : str
+            The name used to register the camera on the nameserver.
+        """
         ns = locate_ns()
         self.cam = Proxy(ns.lookup(name))
-        self.port = self.cam.autoconnect()
+        self.cam.autoconnect()
     
     def start_video(self, color: bool=True, brightness: int=5) -> None:
-        self.server_ip_address = cam.start_capture(color,False) #start pulling frames from the camera
-        self.clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #open the socket
-        self.clientsocket.connect((str(self.server_ip_address), port))
+        address, port = self.cam.start_capture()
+        self.clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.clientsocket.connect((address, port))
+        self.stop_video.clear()
+        self.video_thread = threading.Thread(target=self._recieve_video_loop, args=())
+        self.video_thread.start()
+
+    def set_color(self, color: bool=True) -> None:
+        self.cam.set_color(color)
     
-    def _video_loop(self) -> None:
-        while(True):
-        msg = b''
-        new_msg = True
-        msg_len = None
-        image = None
-        while True:
-            if new_msg:
-                sub_msg = self.clientsocket.recv(HEADERSIZE) #read size of the message
-                msg_len = int((sub_msg[:HEADERSIZE]))
-                new_msg = False
-            else:
-                sub_msg = self.clientsocket.recv(SUB_MESSAGE_LENGTH)
-                msg += sub_msg
-                if len(msg) == msg_len: #once the whole messge is recieved
-                    image = pickle.loads(msg)  #deserialize the message and break
-                    break
-                
-        self.dStack = image
+    def set_brightness(self, brightness: int=5) -> None:
+        self.cam.set_brightness(brightness)
+    
+    def _recieve_video_loop(self) -> None:
+        while not self.stop_video.is_set():
+            msg = b''
+            new_msg = True
+            msg_len = None
+            image = None
+            while True:
+                if new_msg:
+                    sub_msg = self.clientsocket.recv(self.HEADERSIZE) #read size of the message
+                    msg_len = int((sub_msg[:self.HEADERSIZE]))
+                    new_msg = False
+                else:
+                    sub_msg = self.clientsocket.recv(self.SUB_MESSAGE_LENGTH)
+                    msg += sub_msg
+                    if len(msg) == msg_len: #once the whole messge is recieved
+                        image = pickle.loads(msg)  #deserialize the message and break
+                        break
+                    
+            self.dStack = image
 
     
     def end_video(self) -> None:
+        self.stop_video.set()
         self.cam.stop_capture()
 
     def get_frame(self):
