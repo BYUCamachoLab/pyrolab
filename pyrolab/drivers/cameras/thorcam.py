@@ -62,8 +62,7 @@ class ThorCamBase(Camera):
     Attributes
     ----------
     HEADERSIZE : int
-        The size of the header used to communicate the size of the message
-        (read only).
+        The size in bytes of the header in each serialized message (read only).
     pixelclock : int
     exposure : int
     framerate : int
@@ -71,7 +70,7 @@ class ThorCamBase(Camera):
     color : bool
     """
     def __init__(self):
-        self._HEADERSIZE = 10 # bytes
+        self._HEADERSTRUCT = np.zeros(4, dtype=np.uint32)
         self.stop_video = threading.Event()
         self.VIDEO_THREAD_READY = False
 
@@ -81,7 +80,7 @@ class ThorCamBase(Camera):
     @property
     @expose
     def HEADERSIZE(self) -> int:
-        return self._HEADERSIZE
+        return self._HEADERSTRUCT.itemsize * self.HEADERSIZE.size
 
     @property
     @expose
@@ -387,6 +386,9 @@ class ThorCamBase(Camera):
 
         return self._bayer_convert(raw)
 
+    def _write_header(self, size: int, d1: int = 1, d2: int = 1, d3: int = 1) -> np.array:
+        return np.array((size, d1, d2, d3), dtype=np.uintc)
+
     def _remote_streaming_loop(self):
         """
         Starts a separate thread to stream frames.
@@ -407,9 +409,11 @@ class ThorCamBase(Camera):
             msg = self.get_frame()
 
             log.debug("Serializing")
-            ser_msg = pickle.dumps(msg)
-            # ser_msg = msg.tobytes()
-            ser_msg = bytes(f'{len(ser_msg):<{self.HEADERSIZE}}', "utf-8") + ser_msg
+            # ser_msg = pickle.dumps(msg)
+            ser_msg = msg.tobytes()
+            header = self._write_header(ser_msg.size, *msg.shape)
+            # ser_msg = bytes(f'{len(ser_msg):<{self.HEADERSIZE}}', "utf-8") + ser_msg
+            ser_msg = header.tobytes() + ser_msg
 
             log.debug(f"Sending message ({len(ser_msg)} bytes)")
             self.clientsocket.send(ser_msg)
@@ -643,15 +647,21 @@ class ThorCamClient:
         self.stop_video.clear()
         self.video_thread = threading.Thread(target=self._receive_video_loop, args=())
         self.video_thread.start()
+
+    def _decode_header(self, header):
+        length, *shape = np.frombuffer(header, dtype=np.uint32)
+        return length, shape
     
     def _receive_video_loop(self) -> None:
         while not self.stop_video.is_set():
             message = b''
             # Read size of the incoming message
-            submessage = self.clientsocket.recv(self._HEADERSIZE)
+            header = self.clientsocket.recv(self._HEADERSIZE)
             # msg_length = int(submessage[:self._HEADERSIZE])
-            msg_length = int(submessage)
-            while len(message) < msg_length:
+            # msg_length = int(submessage)
+            length, shape = self._decode_header(header)
+            # while len(message) < msg_length:
+            while len(message) < length:
                 submessage = self.clientsocket.recv(self.SUB_MESSAGE_LENGTH)
                 message += submessage
 
@@ -659,10 +669,10 @@ class ThorCamClient:
                 # of the len(message) == msg_length check.
 
                 # Once the whole message is received
-                if len(message) == msg_length:
+                if len(message) == length:
                     # Deserialize the message and break
-                    self.last_image = pickle.loads(message)
-                    # self.last_image = np.frombuffer(message, dtype=np.uint8)
+                    # self.last_image = pickle.loads(message)
+                    self.last_image = np.frombuffer(message, dtype=np.uint8).reshape(shape)
                     self.clientsocket.send(b'ACK')  
                     break
 
