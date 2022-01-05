@@ -63,7 +63,7 @@ class ThorCamBase(Camera):
     ----------
     HEADERSIZE : int
         The size of the header used to communicate the size of the message
-        (10 bytes is a safe size)
+        (read only).
     pixelclock : int
     exposure : int
     framerate : int
@@ -71,7 +71,7 @@ class ThorCamBase(Camera):
     color : bool
     """
     def __init__(self):
-        self._HEADERSIZE = 10
+        self._HEADERSIZE = 10 # bytes
         self.stop_video = threading.Event()
         self.VIDEO_THREAD_READY = False
 
@@ -79,6 +79,7 @@ class ThorCamBase(Camera):
         self.color = True
 
     @property
+    @expose
     def HEADERSIZE(self) -> int:
         return self._HEADERSIZE
 
@@ -636,6 +637,7 @@ class ThorCamClient:
         self._HEADERSIZE = self.cam.HEADERSIZE
     
     def start_stream(self) -> None:
+        print("attempting")
         address, port = self.cam.start_capture()
         self.clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.clientsocket.connect((address, port))
