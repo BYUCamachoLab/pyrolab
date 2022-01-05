@@ -400,8 +400,8 @@ class ThorCamBase(Camera):
         log.debug("Waiting for client to connect...")
         self.serversocket.listen(5)
         self.clientsocket, address = self.serversocket.accept()
-        self.VIDEO_THREAD_READY = True
         log.debug("Accepted client socket")
+        self.VIDEO_THREAD_READY.set()
         
         while not self.stop_video.is_set():
             log.debug("Getting frame")
@@ -453,12 +453,13 @@ class ThorCamBase(Camera):
         if not self.local:
             log.debug("Setting up socket for streaming")
             self.stop_video.clear()
-            self.VIDEO_THREAD_READY = False
+            self.VIDEO_THREAD_READY = threading.Event()
+            self.VIDEO_THREAD_READY.clear()
             address, port = self._get_socket()
             self.video_thread = threading.Thread(target=self._remote_streaming_loop, args=())
             # self.video_thread.daemon = True
             self.video_thread.start()
-            while not self.VIDEO_THREAD_READY:
+            while not self.VIDEO_THREAD_READY.is_set():
                 log.debug("VIDEO_STREAM not ready")
                 time.sleep(0.1)
             return [address, port]
