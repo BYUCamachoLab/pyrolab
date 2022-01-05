@@ -38,10 +38,14 @@ from ctypes import *
 from typing import Tuple
 
 import numpy as np
-from thorlabs_kinesis import thor_camera as tc
+try:
+    from thorlabs_kinesis import thor_camera as tc
+except:
+    pass
 from Pyro5.api import locate_ns, Proxy
 
 from pyrolab.api import expose
+from pyrolab.drivers.cameras import Camera
 from pyrolab.errors import PyroLabError
 
 
@@ -49,7 +53,7 @@ log = logging.getLogger(__name__)
 
 
 @expose
-class UC480:
+class UC480(Camera):
     """
     The Thorlabs UC480 camera driver.
 
@@ -68,7 +72,7 @@ class UC480:
         self.stop_video = threading.Event()
         self.color = True
 
-    def connect(self, serialno, port=2222, bit_depth=8,
+    def connect(self, serialno, local: bool = False, bit_depth=8,
                  pixel_clock=24, color: bool = True, color_mode=11, roi_shape=(1024, 1280), 
                  roi_pos=(0,0), framerate=15, exposure=90, pixelbytes=8, brightness: int = 5):
         """
@@ -110,6 +114,7 @@ class UC480:
             Integer (range 1-10) defining the brightness, where 5 leaves the 
             brightness unchanged.
         """
+        self.local = local
         log.debug(f"Attempting to connect to camera with serialno '{serialno}'")
         num = c_int(0)
         tc.GetNumberOfCameras(byref(num))
@@ -160,8 +165,8 @@ class UC480:
         self.set_roi_pos(roi_pos)
         self.set_framerate(framerate)
         self.set_exposure(exposure)
-        self._initialize_memory(pixelbytes)  
-        self.port = port
+        self._initialize_memory(pixelbytes)
+        self.brightness = brightness
     
     def _bayer_convert(self, bayer: np.array) -> np.array:
         """
@@ -182,6 +187,7 @@ class UC480:
         """
 
         if self.color:
+            log.debug("entered color")
             frame_height = bayer.shape[0]//2
             frame_width = bayer.shape[1]//2
 
@@ -198,8 +204,12 @@ class UC480:
             bayer_G = np.array(G, dtype=np.uint8).reshape(frame_height, frame_width)
             bayer_B = np.array(B, dtype=np.uint8).reshape(frame_height, frame_width)
 
+            log.debug("stacking color data...")
+
             dStack = np.clip(np.dstack((bayer_B*(self.brightness/5),bayer_G*(self.brightness/5),
                             bayer_R*(self.brightness/5))),0,np.power(2,self.bit_depth)-1).astype('uint8')
+            
+            log.debug("data stacked")
         else:
             frame_height = bayer.shape[0]
             frame_width = bayer.shape[1]
@@ -230,8 +240,10 @@ class UC480:
         np.array
             The last frame from the camera's memory buffer.
         """
+        log.debug("Retreiving frame from memory...")
         raw = np.frombuffer(self.meminfo[0], c_ubyte).reshape(self.roi_shape[1],
         self.roi_shape[0])
+        log.debug(f"Retreived {len(raw)}")
         
         if(self.color == False):
             ow = (raw.shape[0]//4) * 4
@@ -244,7 +256,9 @@ class UC480:
 
             raw = R[:oh,:ow]//3 + B[:oh,:ow]//3 + (G0[:oh,:ow]//2 + G1[:oh,:ow]//2)//3
 
-        return self._bayer_convert(raw).tolist()
+        img = self._bayer_convert(raw)
+        log.debug("bayer done")
+        return img.tolist()
 
     def _remote_streaming_loop(self):
         """
@@ -254,17 +268,23 @@ class UC480:
         It will loop, sending frame by frame accross the socket connection,
         until the threading.Event() stop_video is triggered.
         """
+        log.debug("Waiting for client to connect...")
         self.serversocket.listen(5)
         self.clientsocket, address = self.serversocket.accept()
+        log.debug("Accepted client socket")
         
         while not self.stop_video.is_set():
+            log.debug("Getting frame...")
             msg = self.get_frame()
+            log.debug("Serializing...")
             ser_msg = pickle.dumps(msg)
             ser_msg = bytes(f'{len(ser_msg):<{self.HEADERSIZE}}', "utf-8") + ser_msg
+            log.debug("Sending message...")
             self.clientsocket.send(ser_msg)
+            log.debug("Message sent")
             check_msg = self.clientsocket.recv(4096)
-            if(check_msg == b'b'):
-                break
+            log.debug("Ack")
+            
 
     def set_pixel_clock(self, clockspeed: int) -> None:
         """
@@ -298,7 +318,6 @@ class UC480:
         address, port : tuple(str, str)
             The delivery IP address and port of the video stream.
         """
-        self.local = local
         tc.StartCapture(self.handle, tc.IS_DONT_WAIT)
         if not self.local:
             self.stop_video.clear()
@@ -306,7 +325,7 @@ class UC480:
             self.serversocket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
             self.serversocket.bind((socket.gethostname(), 0))
             port = self.serversocket.getsockname()[1]
-            self.video_thread = threading.Thread(target=self._video_loop, args=())
+            self.video_thread = threading.Thread(target=self._remote_streaming_loop, args=())
             self.video_thread.start()
             return [address,port]
 
@@ -509,7 +528,7 @@ class UC480Client():
         self.clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.clientsocket.connect((address, port))
         self.stop_video.clear()
-        self.video_thread = threading.Thread(target=self._recieve_video_loop, args=())
+        self.video_thread = threading.Thread(target=self._receive_video_loop, args=())
         self.video_thread.start()
 
     def set_color(self, color: bool=True) -> None:
@@ -518,7 +537,7 @@ class UC480Client():
     def set_brightness(self, brightness: int=5) -> None:
         self.cam.set_brightness(brightness)
     
-    def _recieve_video_loop(self) -> None:
+    def _receive_video_loop(self) -> None:
         while not self.stop_video.is_set():
             msg = b''
             new_msg = True
@@ -532,10 +551,10 @@ class UC480Client():
                 else:
                     sub_msg = self.clientsocket.recv(self.SUB_MESSAGE_LENGTH)
                     msg += sub_msg
-                    if len(msg) == msg_len: #once the whole messge is recieved
+                    if len(msg) == msg_len: #once the whole messge is received
                         image = pickle.loads(msg)  #deserialize the message and break
+                        self.clientsocket.send(b'ak')  
                         break
-                    
             self.dStack = image
 
     
