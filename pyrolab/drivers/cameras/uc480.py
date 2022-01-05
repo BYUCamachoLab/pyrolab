@@ -258,7 +258,7 @@ class UC480(Camera):
 
         img = self._bayer_convert(raw)
         log.debug("bayer done")
-        return img.tolist()
+        return img
 
     def _remote_streaming_loop(self):
         """
@@ -556,6 +556,7 @@ class UC480Client():
                         self.clientsocket.send(b'ak')  
                         break
             self.dStack = image
+        self.clientsocket.close()
 
     
     def end_video(self) -> None:
