@@ -13,15 +13,14 @@ uc480 = ThorCamClient()
 print("connecting")
 uc480.connect("asgard.rocket")
 print("connected")
+# uc480.color = False
 
 uc480.start_stream()
-print("video started")
 time.sleep(3)
-print("let's get to it")
+print("Opening window...")
 while(True):
     frame = uc480.get_frame()
-    print(f"got frame, {frame.shape}")
-    cv2.imshow('UC480',frame)  #paint the image to the cv2 window
+    cv2.imshow('UC480', frame)
     keyCode = cv2.waitKey(30)
 
     if cv2.getWindowProperty('UC480',cv2.WND_PROP_VISIBLE) < 1:   
