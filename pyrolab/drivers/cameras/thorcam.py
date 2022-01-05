@@ -71,7 +71,7 @@ class ThorCamBase(Camera):
     color : bool
     """
     def __init__(self):
-        self.HEADERSIZE = 10
+        self._HEADERSIZE = 10
         self.stop_video = threading.Event()
         self.VIDEO_THREAD_READY = False
 
