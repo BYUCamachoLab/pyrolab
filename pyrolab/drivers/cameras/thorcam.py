@@ -571,8 +571,8 @@ class ThorCamClient:
     """
     The Thorlabs UC480 camera driver. Not a PyroLab :py:class:`Service` object.
 
-    Attributs
-    ---------
+    Attributes
+    ----------
     SUB_MESSAGE_LENGTH : int
         The size of the sub-message chunks used.
     color : bool
@@ -636,12 +636,9 @@ class ThorCamClient:
         self._HEADERSIZE = self.cam.HEADERSIZE
     
     def start_stream(self) -> None:
-        print("attempting socket connection")
         address, port = self.cam.start_capture()
-        print("remote capture started")
         self.clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.clientsocket.connect((address, port))
-        print("connected to socket")
 
         self.stop_video.clear()
         self.video_thread = threading.Thread(target=self._receive_video_loop, args=())
