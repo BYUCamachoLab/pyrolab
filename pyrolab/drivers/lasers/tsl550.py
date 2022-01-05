@@ -114,13 +114,13 @@ class TSL550(Laser):
     MINIMUM_POWER_ATTENUATION = 0
     MAXIMUM_POWER_ATTENUATION = 30
 
-    MINIMUM_FREQUENCY = C/MAXIMUM_WAVELENGTH
-    MAXIMUM_FREQUENCY = C/MINIMUM_WAVELENGTH
+    MINIMUM_FREQUENCY = C/1000/MAXIMUM_WAVELENGTH
+    MAXIMUM_FREQUENCY = C/1000/MINIMUM_WAVELENGTH
     MINIMUM_POWER_MW = 10**(MINIMUM_POWER_DBM/10)
     MAXIMUM_POWER_MW = 10**(MAXIMUM_POWER_DBM/10)
 
     @staticmethod
-    def detect_devices(self) -> List[Dict[str, Any]]:
+    def detect_devices() -> List[Dict[str, Any]]:
         """
         Finds and returns all information needed to connect to the device.
 
@@ -165,7 +165,7 @@ class TSL550(Laser):
         max_power_att : float
             Maximum internal power attenaution of the laser in dB (default 30)
         terminator : str, optional
-            The string that marks the end of a command (default "\\\\r").
+            The string that marks the end of a command (default "\\r").
         timeout : int, optional
             The number of seconds to timeout after no response (default 100).
         query_delay : float, optional
@@ -324,6 +324,10 @@ class TSL550(Laser):
     def on(self) -> None:
         """
         Turns on the laser diode.
+
+        Note that the wavlength on the display will change to the center
+        of the band (ex. 1665) while the photodiode is stabalizing and then
+        return to its previously set value when finished. 
         """
         log.info("Turning on laser")
         self.is_on = True
@@ -408,9 +412,15 @@ class TSL550(Laser):
 
     def power_mW(self, val: float=None) -> float:
         """
-        Set the output optical power in milliwatts. 
+        Set the output optical power in milliwatts.
         
-        If a value is not specified, returns the current output power.
+        This functionality will only work in automatic power mode. It can be set
+        while the photodiode is turned on or off.
+        
+        If a value is not specified, returns the current power. The current
+        power being the actual live power coming out of the laser. If the
+        photodiode is off, the power read out will be 0.0mW even if it has been
+        set to a different value.
         
         The valid range is 0.02 - 20 (mW, typical) with a minimum step of 0.01 (mW).
 
@@ -441,9 +451,15 @@ class TSL550(Laser):
 
     def power_dBm(self, val: float=None) -> float:
         """
-        Set the output optical power in decibel-milliwatts (dBm). 
+        Set the output optical power in decibel-milliwatts (dBm).
         
-        If a value is not specified, returns the current power.
+        This functionality will only work in automatic power mode. It can be
+        set while the photodiode is turned on or off.
+        
+        If a value is not specified, returns the current power. The current
+        power being the actual live power coming out of the laser. If the
+        photodiode is off, the power read out will be -40dBm even if it has been
+        set to a different value.
 
         The valid range is -17 to +13 (dBm, typical) with a minimum step of 0.01 (dBm).
 
@@ -481,8 +497,11 @@ class TSL550(Laser):
     def power_att(self, val: float=None) -> float:
         """
         Sets the internal attenuator value.
+        
+        This functionality will only work in  manual power mode. It can be set
+        while the photodiode is turned on or off.
 
-        If the parameter is not specified, reads out the value currently set.
+        If the parameter is not specified, reads out the current value.
 
         The range for ``val`` is 0 to +30 (dB) with a minimum step of 0.01 (dB).
 
@@ -520,6 +539,10 @@ class TSL550(Laser):
     def power_auto(self) -> None:
         """
         Turn on automatic power control.
+        
+        In this mode, use the functions power_dBm() and power_mW() to set the
+        output power. There is a feedback look in the laser that adjusts the
+        attenuation from its output power reading to set the output power precisely.
 
         .. important::
            Shutter must be open to switch power modes.
@@ -531,6 +554,11 @@ class TSL550(Laser):
     def power_manual(self) -> None:
         """
         Turn on manual power control.
+        
+        In this mode, use the function power_att() to set the output power. The
+        value inputed to this function will be used to set the internal
+        attenuation. The output power may vary slightly, but there are less
+        "moving parts" in the laser itself.
         
         .. important::
            Shutter must be open to switch power modes.
@@ -1179,7 +1207,7 @@ class TSL550(Laser):
             "Stop", "Start", or "Step".
         """
         log.debug("Entering trigger_get_mode()")
-        current_state = self.query("TM")
+        current_state = int(self.query("TM"))
         if current_state == 0:
             return "None"
         elif current_state == 1:
@@ -1234,11 +1262,11 @@ class TSL550(Laser):
         elif current_state == 3:
             return "Step"
 
-    def trigger_set_step(self, step: float=None) -> float:
+    def trigger_step(self, step: float=None) -> float:
         """
         Sets (or returns) the interval of the trigger signal output.
 
-        Valid range is 0.0001 - 160 nm with a minimum step of 0.0001 nm.
+        Valid range is 0.004 - 160 nm with a minimum step of 0.0001 nm.
 
         Parameters
         ----------
@@ -1248,7 +1276,7 @@ class TSL550(Laser):
         Returns
         -------
         val : float
-            The currently set value (returned both on set and on read).
+            The currently set value (returned only on read).
 
         Examples
         --------
@@ -1257,7 +1285,9 @@ class TSL550(Laser):
         """
         if step:
             log.info(f"Setting trigger step to {step} nm")
-        return self._set_var("TW", 4, val=step)
+            self._set_var("TW", 4, val=step)
+        else:
+            return float(self.query("TW"))
 
 
     def wavelength_logging_number(self) -> int:
@@ -1282,7 +1312,9 @@ class TSL550(Laser):
         Read the list of all the wavelength points logged into the laser's buffer. 
         
         Assumes that all the correct sweep and triggering protocol
-        are met (see manual page 6-5).
+        are met (see manual page 6-5). Generally, if the laser does a wavelength
+        sweep, the trigger mode must be set to 'Step' for the wavelengths to be
+        logged.
 
         Returns
         -------

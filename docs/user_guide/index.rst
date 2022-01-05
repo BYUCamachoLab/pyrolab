@@ -10,7 +10,7 @@ User Guide
 
    pyro5_concepts
    nameservers
-   daemons
+   servers
    clients
    services
    configuration

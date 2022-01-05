@@ -34,6 +34,9 @@ MASK_ON = True
 mask = np.arange(0)
 
 def _generate_mask(roi,num_cir=4):
+    """
+    Superimposes rings and a crossheir over the image.
+    """
     max_rx = roi[0]/4
     max_ry = roi[1]/4
     max_r = min(max_rx,max_ry)

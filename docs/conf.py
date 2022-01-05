@@ -12,9 +12,10 @@ from datetime import datetime
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
+import os
+import sys
+sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.abspath('..'))
 
 
 # -- Project information -----------------------------------------------------
@@ -24,7 +25,7 @@ copyright = f"2020-{datetime.now().year}, Sequoia Ploeg"
 author = 'Sequoia Ploeg'
 
 # The full version, including alpha/beta/rc tags
-release = '0.2.0'
+release = '0.2.1'
 
 
 # -- General configuration ---------------------------------------------------
@@ -62,11 +63,19 @@ autoclass_content = "class"  # Add __init__ doc (ie. params) to class summaries
 autodoc_inherit_docstrings = True  # If no docstring, inherit from base class
 # add_module_names = False # Remove namespaces from class/method signatures
 
+# Do not mock numpy, scipy, Pyro5! Build will fail.
 autodoc_mock_imports = [
+    'appnope',
+    'deprecation',
+    'typer',
+    'colorama',
+    'tabulate', 
     'serial',
     'thorlabs_kinesis',
     'pyfirmata',
     'sacher_tec',
+    'pyvisa',
+    'pyfirmata',
 ]
 
 panels_add_bootstrap_css = False

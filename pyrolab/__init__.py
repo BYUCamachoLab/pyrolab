@@ -124,7 +124,7 @@ if len(logging.root.handlers) == 0:
     h.setFormatter(f)
     root.addHandler(h)
     root.setLevel(get_loglevel())
-    root.debug("PyroLab logging configured", logfile)
+    root.debug("PyroLab logging configured")
 
 
 # Include remote traceback in local tracebacks
