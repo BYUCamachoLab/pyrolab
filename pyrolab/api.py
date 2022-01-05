@@ -16,7 +16,12 @@ from Pyro5.core import locate_ns
 from pyrolab import USER_CONFIG_FILE
 
 from pyrolab.configure import (
-    PyroLabConfiguration, NameServerConfiguration, DaemonConfiguration, ServiceConfiguration, reset_config, update_config
+    PyroLabConfiguration, 
+    NameServerConfiguration, 
+    DaemonConfiguration, 
+    ServiceConfiguration, 
+    reset_config, 
+    update_config,
 )
 from pyrolab.server import (
     Daemon,
@@ -47,6 +52,9 @@ __all__ = [
     "reset_config",
     "Service",
     "PyroLabConfiguration",
+    "NameServerConfiguration",
+    "DaemonConfiguration",
+    "ServiceConfiguration",
 ]
 
 # If a user config file exists, load the first listed nameserver by default,
