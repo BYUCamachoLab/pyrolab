@@ -411,16 +411,16 @@ class ThorCamBase(Camera):
             log.debug("Serializing")
             # ser_msg = pickle.dumps(msg)
             ser_msg = msg.tobytes()
-            header = self._write_header(ser_msg.size, *msg.shape)
+            header = self._write_header(len(ser_msg), *msg.shape)
             # ser_msg = bytes(f'{len(ser_msg):<{self.HEADERSIZE}}', "utf-8") + ser_msg
             ser_msg = header.tobytes() + ser_msg
 
             log.debug(f"Sending message ({len(ser_msg)} bytes)")
             self.clientsocket.send(ser_msg)
-
             log.debug("Message sent")
+
             check_msg = self.clientsocket.recv(4096)
-            log.debug("ACK")
+            log.debug(f"ACK: {check_msg}")
 
     def _get_socket(self) -> Tuple[str, int]:
         """
@@ -669,12 +669,12 @@ class ThorCamClient:
                 # of the len(message) == msg_length check.
 
                 # Once the whole message is received
-                if len(message) == length:
+                # if len(message) == length:
                     # Deserialize the message and break
                     # self.last_image = pickle.loads(message)
-                    self.last_image = np.frombuffer(message, dtype=np.uint8).reshape(shape)
-                    self.clientsocket.send(b'ACK')  
-                    break
+            self.last_image = np.frombuffer(message, dtype=np.uint8).reshape(shape)
+            self.clientsocket.send(b'ACK')  
+                    # break
 
         self.clientsocket.close()
 
