@@ -389,12 +389,10 @@ class ThorCamClient:
         >>> print(ThorCamClient.brightness)
         5        
         """
-        if attr == 'remote_attributes':
-            return super().__getattr__(attr)
-        elif attr in self.remote_attributes:
-            return super().__getattr__(attr)
+        if attr in self.remote_attributes:
+            return getattr(self.cam,attr)
         else:
-            return self.__dict__[attr]
+            return super().__getattr__(attr)
     
     def __setattr__(self, attr, value):
         """
