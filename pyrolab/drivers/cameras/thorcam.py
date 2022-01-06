@@ -156,6 +156,30 @@ class ThorCamBase(Camera):
     def color(self, color: bool) -> None:
         self._color = color
 
+    @property
+    @expose
+    def roi_shape(self) -> list:
+        """Sets whether to transmit color (``True``) or grayscale (``False``) 
+        images."""
+        return self._software_roi_shape
+
+    @roi_shape.setter
+    @expose
+    def roi_shape(self, shape: list) -> None:
+        self._software_roi_shape = shape
+
+    @property
+    @expose
+    def roi_pos(self) -> list:
+        """Sets whether to transmit color (``True``) or grayscale (``False``) 
+        images."""
+        return self._software_roi_pos
+
+    @roi_pos.setter
+    @expose
+    def roi_pos(self, pos: list) -> None:
+        self._software_roi_pos = pos
+
     @expose
     def set_color_mode(self, mode: int = 11) -> None:
         """
@@ -288,9 +312,27 @@ class ThorCamBase(Camera):
         self.exposure = exposure
         self.brightness = brightness
         self.set_color_mode(colormode)
-        self.set_roi_shape(roi_shape)
-        self.set_roi_pos(roi_pos)
+        log.debug("setting roi shape...")
+        self._set_hardware_roi_shape(roi_shape)
+        self.roi_shape = [512,640]
+        log.debug("roi shape set")
+        self._set_hardware_roi_pos(roi_pos)
+        self.roi_pos = [0,0]
+        log.debug("roi position set")
         self._initialize_memory(pixelbytes)
+        log.debug("memory initialized")
+
+    def _obtain_roi(self, image: np.array) -> np.array:
+        log.debug(f"shape of image: {image.shape}")
+        log.debug(f"shape: {self.roi_shape}")
+        log.debug(f"positions: {self.roi_pos}")
+        if self.color:
+            image = image[self.roi_pos[0]:self.roi_pos[0]+self.roi_shape[0],self.roi_pos[1]:self.roi_pos[1]+self.roi_shape[1],:]
+            return image
+        else:
+            image = image[self.roi_pos[0]:self.roi_pos[0]+self.roi_shape[0],self.roi_pos[1]:self.roi_pos[1]+self.roi_shape[1]]
+        log.debug(f"new shape of image: {image.shape}")
+        return image
     
     def _bayer_convert(self, bayer: np.array) -> np.array:
         """
@@ -328,8 +370,13 @@ class ThorCamBase(Camera):
             bayer_B = np.array(B, dtype=np.uint8).reshape(frame_height, frame_width)
 
             log.debug("Stacking color data")
-            dStack = np.clip(np.dstack((bayer_B*(self.brightness/5),bayer_G*(self.brightness/5),
-                            bayer_R*(self.brightness/5))),0,np.power(2,self.bit_depth)-1).astype('uint8')
+            dStack = np.clip(
+            np.dstack(
+                    (bayer_B*(self.brightness/5), bayer_G*(self.brightness/5), bayer_R*(self.brightness/5))
+                ),
+                0,
+                np.power(2, self.bit_depth) - 1
+            ).astype('uint8')
         else:
             log.debug("Bayer convert (grayscale)")
             frame_height = bayer.shape[0]
@@ -338,8 +385,11 @@ class ThorCamBase(Camera):
                             frame_width)
 
             log.debug("Stacking grayscale data")
-            dStack = np.clip(np.dstack(((bayer_T)*(self.brightness/5))),0,
-                            np.power(2,self.bit_depth)-1).astype('uint8')
+            dStack = np.clip(
+                bayer_T*(self.brightness/5),
+                0,
+                np.power(2, self.bit_depth) - 1,
+            ).astype('uint8')
         log.debug("Bayer data stacked")
         return dStack
 
@@ -370,7 +420,7 @@ class ThorCamBase(Camera):
             The last frame from the camera's memory buffer.
         """
         log.debug("Retreiving frame from memory")
-        raw = np.frombuffer(self.meminfo[0], c_ubyte).reshape(self.roi_shape[1], self.roi_shape[0])
+        raw = np.frombuffer(self.meminfo[0], c_ubyte).reshape(self.hardware_roi_shape[1], self.hardware_roi_shape[0])
         log.debug(f"Retreived (len {len(raw)})")
         
         if not self.color:
@@ -384,7 +434,8 @@ class ThorCamBase(Camera):
 
             raw = R[:oh,:ow]//3 + B[:oh,:ow]//3 + (G0[:oh,:ow]//2 + G1[:oh,:ow]//2)//3
 
-        return self._bayer_convert(raw)
+        bayer =  self._bayer_convert(raw)
+        return self._obtain_roi(bayer)
 
     def _write_header(self, size: int, d1: int = 1, d2: int = 1, d3: int = 1) -> np.array:
         log.debug(f"Received: {size} {d1} {d2} {d3}")
@@ -492,20 +543,23 @@ class ThorCamBase(Camera):
         if self.meminfo is not None:
             tc.FreeMemory(self.handle, self.meminfo[0], self.meminfo[1])
         
-        xdim, ydim = self.roi_shape
+        xdim, ydim = self.hardware_roi_shape
+        log.debug(f"got dimenstions: {self.hardware_roi_shape}")
         # ydim = self.roi_shape[1]
         imgsize = xdim * ydim
+        log.debug(f"image size is {imgsize}")
             
         memid = c_int(0)
         c_buf = (c_ubyte * imgsize)(0)
-
+        log.debug("allocating memory...")
         tc.AllocateMemory(self.handle, xdim, ydim, c_int(pixelbytes), c_buf, byref(memid))
+        log.debug("setting image memory...")
         tc.SetImageMemory(self.handle, c_buf, memid)
-
+        log.debug("setting infor...")
         self.meminfo = [c_buf, memid]
+        log.debug("meminfo set")
 
-    @expose
-    def set_roi_shape(self, roi_shape: Tuple[int, int]) -> None:
+    def _set_hardware_roi_shape(self, roi_shape: Tuple[int, int]) -> None:
         """
         Sets the dimensions of the region of interest (roi).
 
@@ -516,7 +570,7 @@ class ThorCamBase(Camera):
             (usually 1024 x 1280).
         """
         # Width and height
-        AOI_size = tc.IS_2D(roi_shape[0], roi_shape[1]) 
+        AOI_size = tc.IS_2D(roi_shape[0], roi_shape[1])
         
         # 5 for setting size, 3 for setting position
         tc.AOI(self.handle, 5, byref(AOI_size), 8)
@@ -524,10 +578,9 @@ class ThorCamBase(Camera):
         # 6 for getting sizse, 4 for getting position
         tc.AOI(self.handle, 6, byref(AOI_size), 8)
         
-        self.roi_shape = [AOI_size.s32X, AOI_size.s32Y]
+        self.hardware_roi_shape = [AOI_size.s32X, AOI_size.s32Y]
 
-    @expose
-    def set_roi_pos(self, roi_pos: Tuple[int, int]) -> None:
+    def _set_hardware_roi_pos(self, roi_pos: Tuple[int, int]) -> None:
         """
         Sets the origin position of the region of interest.
 
@@ -546,7 +599,7 @@ class ThorCamBase(Camera):
         # 6 for getting size, 4 for getting position
         tc.AOI(self.handle, 4, byref(AOI_pos), 8 )
 
-        self.roi_pos = [AOI_pos.s32X, AOI_pos.s32Y]
+        self.hardware_roi_pos = [AOI_pos.s32X, AOI_pos.s32Y]
 
     @expose
     def close(self):
