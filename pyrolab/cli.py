@@ -75,15 +75,14 @@ def _version_callback(value: bool=True) -> None:
 
 def _show_data_dir(value: bool=True) -> None:
     if value:
-        from pyrolab import PYROLAB_DATA_DIR, PYROLAB_CONFIG_DIR
-        typer.echo(f"DATA: {PYROLAB_DATA_DIR}")
-        typer.echo(f"CONFIG: {PYROLAB_CONFIG_DIR}")
+        from pyrolab import PYROLAB_DATA_DIR
+        typer.echo(f"{PYROLAB_DATA_DIR}")
         raise typer.Exit()
 
 @app.callback()
 def main(
     version: bool = typer.Option(False, "--version", "-v", help="Show the version and exit.", callback=_version_callback, is_eager=True),
-    show_data_dir: bool = typer.Option(False, "--show-data-dir", help="Show the data directories and exit.", callback=_show_data_dir, is_eager=True),
+    show_data_dir: bool = typer.Option(False, "--data-dir", help="Show the data directories and exit.", callback=_show_data_dir, is_eager=True),
 ):
     return
 
