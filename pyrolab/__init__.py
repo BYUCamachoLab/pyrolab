@@ -114,13 +114,14 @@ def get_loglevel() -> int:
 if len(logging.root.handlers) == 0:
     #     datefmt="%Y-%m-%d %H:%M:%S",
     #     format="[%(asctime)s.%(msecs)03d,%(name)s,%(levelname)s] %(message)s"
+    #     [%(filename)s:%(lineno)d]
     
     # This is not multiprocess safe, but it's not critical
     logfile = os.getenv("PYROLAB_LOGFILE", PYROLAB_LOGFILE)
 
     root = logging.getLogger()
     h = logging.handlers.RotatingFileHandler(logfile, 'a', 30000, 10)
-    f = logging.Formatter('%(asctime)s %(process)d %(processName)-10s %(name)-12s %(levelname)-8s %(message)s', datefmt="%Y-%m-%d %H:%M:%S")
+    f = logging.Formatter('%(asctime)s %(process)-5s %(processName)-10s %(name)-12s %(levelname)-8s %(message)s', datefmt="%Y-%m-%d %H:%M:%S")
     h.setFormatter(f)
     root.addHandler(h)
     root.setLevel(get_loglevel())
