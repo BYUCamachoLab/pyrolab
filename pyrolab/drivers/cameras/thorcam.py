@@ -637,18 +637,16 @@ class ThorCamClient:
     ----------
     SUB_MESSAGE_LENGTH : int
         The size of the sub-message chunks used.
-    color : bool
-    brightness : int
     """
-    def __init__(self, SUB_MESSAGE_LENGTH: int = 4096):
+    def __init__(self):
         self.remote_attributes = []
-        self.SUB_MESSAGE_LENGTH = SUB_MESSAGE_LENGTH
+        self.SUB_MESSAGE_LENGTH = 4096
         self.stop_video = threading.Event()
+        self.last_image = None
     
     def __getattr__(self, attr):
         """
-        Creates a connection to the attributes of the proxy camera so they can
-        be read as if they were local attributes.
+        Accesses remote camera attributes as if they were local.
 
         Examples
         --------
@@ -666,8 +664,7 @@ class ThorCamClient:
     
     def __setattr__(self, attr, value):
         """
-        Creates a connection to the attributes of the proxy camera so they can
-        be set as if they were local attributes.
+        Sets remote camera attributes as if they were local.
 
         Examples
         --------
@@ -708,9 +705,15 @@ class ThorCamClient:
         self.cam.autoconnect()
         self.remote_attributes = self.cam._pyroAttrs
         self._LOCAL_HEADERSIZE = self.HEADERSIZE
-        print(self.remote_attributes)
     
     def start_stream(self) -> None:
+        """
+        Starts the video stream.
+
+        Sets up the remote camera to start streaming and opens a socket 
+        connection to receive the stream. Starts a new daemon thread to 
+        constantly receive images.
+        """
         address, port = self.cam.start_capture()
         self.clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.clientsocket.connect((address, port))
@@ -721,9 +724,23 @@ class ThorCamClient:
         self.video_thread.start()
 
     def _decode_header(self, header):
+        """
+        Decodes the header of the image.
+
+        Image header consists of four np.uintc values, ordered as [length of 
+        message (in bytes), width, height, depth (usually 1, or 3 if color)].
+
+        Parameters
+        ----------
+        header : bytes
+            The header of the image.
+
+        Returns
+        -------
+        length, shape : int, tuple(int, int, int)
+            The length in bytes of the image, and its shape (for np.reshape).
+        """
         length, *shape = np.frombuffer(header, dtype=np.uint32)
-        # if shape[0] == 1:
-        #     shape = shape[1:]
         return length, shape
     
     def _receive_video_loop(self) -> None:
@@ -745,11 +762,61 @@ class ThorCamClient:
         self.cam.stop_capture()
 
     def end_stream(self) -> None:
+        """
+        Ends the video stream.
+        
+        Ends the video stream by setting the stop_video flag and closing the
+        socket connection. Because communication is via a flag, shutdown
+        may not be instantaneous.
+        """
         self.stop_video.set()
 
-    def get_frame(self):
+    def await_stream(self, timeout: float = 3.0) -> bool:
+        """
+        Blocks until the first image is available from the stream.
+
+        Parameters
+        ----------
+        timeout : float
+            The number of seconds to wait for the first image (default 3).
+
+        Returns
+        -------
+        bool
+            ``True`` if an image is available, ``False`` otherwise.
+        """
+        start = time.time()
+        while self.last_image is None:
+            if time.time() - start > timeout:
+                return False
+            time.sleep(0.001)
+        return True
+
+    def get_frame(self) -> np.ndarray:
+        """
+        Returns the last image received from the stream.
+
+        You should make sure to call :py:meth:`await_stream` before calling
+        this method.
+
+        Returns
+        -------
+        np.ndarray
+            The last image received from the stream.
+
+        Examples
+        --------
+        >>> cam = ThorCamClient()
+        >>> cam.connect("camera_name")
+        >>> cam.start_stream()
+        >>> cam.await_stream()
+        >>> frame = cam.get_frame()        
+        """
         return self.last_image
 
     def close(self) -> None:
+        """
+        Closes the Proxy connection to the remote camera.
+        """
         self.cam.close()
         self.remote_attributes = []
