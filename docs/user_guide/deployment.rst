@@ -19,8 +19,11 @@ attempt to create these directories and files as the user that is running.
 PyroLab can be configured to automatically launch at startup. The process is
 different based on operating system.
 
+Operating Systems
+-----------------
+
 Windows
--------
+^^^^^^^
 
 Write a batch file (or use the one located in pyrolab/bin/pyrolab.bat) that
 launches PyroLab. Depending on whether you're using a base python or conda
@@ -46,7 +49,7 @@ Startup folder. These only get launched on login, however. Instructions for
 both methods are included below.
 
 Using the Task Scheduler
-^^^^^^^^^^^^^^^^^^^^^^^^
+""""""""""""""""""""""""
 
 1. Open the Windows Task Scheduler.
 2. Create a new basic task.
@@ -68,7 +71,7 @@ Using the Task Scheduler
     running task does not end when requested, force it to stop".
 
 Using the Startup folder
-^^^^^^^^^^^^^^^^^^^^^^^^
+""""""""""""""""""""""""
 
 1. Press the Windows+R key to open the run dialog.
 2. Type "shell:startup" and press Enter.
@@ -79,11 +82,63 @@ Using the Startup folder
 7. Type a name for the shortcut (such as "pyrolabd"), and click "Finish".
 
 macOS
------
+^^^^^
 
 Your mac os crontab as well.
 
 Linux
------
+^^^^^
 
 The easiest way to run pyrolabd is by running a cron job set to run at startup.
+
+Starting the Daemon
+-------------------
+
+PyroLab has a constantly-running daemon process in the background that monitors
+Pyro services and awaits user commands via the command line interface (CLI). 
+The CLI is really just a glorified client; the PyroLab daemon is listening 
+on some localhost port, and the CLI simply sends commands to the daemon. The
+CLI is not the instance of PyroLab that is actually managing what would be 
+considered the "PyroLab program."
+
+Launching from the command line
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To start the daemon, simply run the following command:
+
+.. code-block:: bash
+
+   pyrolab up
+
+If PyroLab has been configured with a user-defined file, the daemon will
+automatically load that configuration. (This does not imply that all the 
+listed services will be started; for that to happen, they must be listed in
+the ``autolaunch`` section of the configuration file.)
+
+Force launching the daemon
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+PyroLab does its very best to ensure that only one instance of the background
+daemon is running. It creates a lockfile when it's started, and no other 
+instances can be created if that lockfile exists. Anytime the daemon is
+shut down, the lockfile is deleted.
+
+The reason there should only be one instance of PyroLab should be obvious;
+if there are subsequent instances started, all prior instances will in effect
+be "orphaned;" PyroLab will have no knowledge of their existence, and they'll
+continue on, hogging resources (and potentially blocking access to hardware
+devices or other single-access resources), unable to be shutdown by PyroLab.
+PyroLab therefore only allows one instance to be started.
+
+There may be, however, rare instances where an error occurs, so egregious that
+Python terminates immediately, without getting a chance to run the "cleanup"
+code. In such cases, PyroLab may think that an instance is running when it 
+really isn't. The CLI does have an option to force start a new daemon, which 
+will overwrite the lockfile and "forget" about any previous running instances.
+You should double check that the daemon actually died before force starting
+a new one (either in Windows' Task Manager, Mac OS's Activity Monitor, or 
+perhaps in the terminal). To force start a new daemon, simply run:
+
+.. code-block:: python
+
+   pyrolab up --force
