@@ -49,9 +49,34 @@ class SCICAM:
         The size of the header used to communicate the size of the message
         (10 bytes is a safe size).
     """
-    HEADERSIZE = 10
+    
+    @property
+    @expose
+    def exposure(self) -> int:
+        """Sets the exposure of the camera, the time the shutter is open in
+        milliseconds (90 ms is a good default)."""
+        return self._exposure
 
-    def __init__(self, serialno, port=2222, bit_depth=8, camera="ThorCam FS", exposure=10000):
+    @exposure.setter
+    @expose
+    def exposure(self, exposure: int) -> None:
+        self._exposure = exposure
+        min_exposure = c_longlong()
+        max_exposure = c_longlong()
+        error = tc.GetExposureTimeRange(self.handle,min_exposure,max_exposure)
+        if(exposure < min_exposure.value):
+            exposure = min_exposure.value
+        if(exposure > max_exposure.value):
+            exposure = max_exposure.value
+        exp_c = c_longlong(exposure)
+        error = tc.SetExposure(self.handle,exp_c)
+
+    def connect(self, 
+                serialno: str,
+                color: bool = True,
+                exposure: int = 90, 
+                brightness: int = 5
+    ):
         """
         Opens the serial communication with the Thorlabs camera.
         
@@ -61,16 +86,14 @@ class SCICAM:
         ----------
         serialno : int
             The serial number of the camera that should be connected to.
-        port : int, optional
-            The port on which the socket transmits the video feed to the client
-            (default 2222).
-        bit_depth : int, optional
-            The number of bits used for each pixel (default 8).
-        camera: string, optional
-            Camera name (default "ThorCam FS").
+        color : bool, optional
+            Whether the camera is in color mode or not (default True).
         exposure: int, optional
             In milliseconds, the time the shutter is open on the camera 
             (default 10,000).
+        brightness : int
+            Integer (range 1-10) defining the brightness, where 5 leaves the 
+            brightness unchanged.
         """
         ser_no_list = create_string_buffer(4096)
         length = c_int(4096)
@@ -79,22 +102,20 @@ class SCICAM:
         if(str(serialno) == str(ser_no_list.value.decode()).strip()):
             self.handle = c_void_p()
             error = tc.OpenCamera(ser_no_list.value, self.handle)
-        # print(self.handle)
-        self.bit_depth = bit_depth
-        self.camera = camera
 
         self.set_exposure(exposure)
-        self.port = port
+        self.find_sensor_size()
+    
+    def find_sensor_size(self){
         height = c_int()
         error = tc.GetImageHeight(self.handle,height)
         width = c_int()
         error = tc.GetImageWidth(self.handle,width)
         self.height = int(height.value)
         self.width = int(width.value)
-        self.opened = True
-        print("initialized")
+    }
 
-    def _get_image(self):
+    def get_frame(self):
         """
         Retrieves the last frame from the memory buffer, processes
         it into a gray-scale image, and serializes it using the pickle
@@ -108,72 +129,17 @@ class SCICAM:
         metadata_pointer = POINTER(c_char)()
         metadata_size_in_bytes = c_int()
         tc.GetFrameOrNull(self.handle, image_buffer, frame_count, metadata_pointer, metadata_size_in_bytes)
-        # print(image_buffer)
         image_buffer._wrapper = self
-        if(image_buffer):
-            self.bayer = np.ctypeslib.as_array(image_buffer,shape=(self.height,self.width))
+        try:
+            raw = np.ctypeslib.as_array(image_buffer,shape=(self.height,self.width))
+            bayer =  self._bayer_convert(raw)
+            return self._obtain_roi(bayer)
+        except Exception e:
+            raise PyroLabError
         
-        if(self.color == False):
-            ow = (self.bayer.shape[0]//4) * 4
-            oh = (self.bayer.shape[1]//4) * 4
 
-            R  = self.bayer[0::2, 0::2]
-            B  = self.bayer[1::2, 1::2]
-            G0 = self.bayer[0::2, 1::2]
-            G1 = self.bayer[1::2, 0::2]
-
-            GRAY = R[:oh,:ow]//3 + B[:oh,:ow]//3 + (G0[:oh,:ow]//2 + G1[:oh,:ow]//2)//3
-
-            if(self.local == True):
-                return GRAY
-            else:
-                msg = pickle.dumps(GRAY)
-                msg = bytes(f'{len(msg):<{self.HEADERSIZE}}', "utf-8") + msg
-                return msg
-        else:
-            if(self.local == True):
-                return self.bayer
-            else:
-                msg = pickle.dumps(self.bayer)
-                msg = bytes(f'{len(msg):<{self.HEADERSIZE}}', "utf-8") + msg
-                return msg
-            
-
-    def _video_loop(self):
-        """
-        This function is called as a seperate thread when streaming is initiated.
-        It will loop, sending frame by frame accross the socket connection,
-        until the threading.Event() stop_video is triggered.
-        """
-        while not self.stop_video.is_set():
-            if(self.local == False):
-                if self.start_socket==True:
-                    while True:
-                        self.serversocket = socket.socket(socket.AF_INET,
-                                                            socket.SOCK_STREAM)
-                        self.serversocket.bind((socket.gethostname(), self.port))
-                        self.serversocket.listen(5)
-                        self.clientsocket, address = self.serversocket.accept()
-                        self.start_socket = False
-                        break
-                msg = self._get_image()
-                self.clientsocket.send(msg)
-                # check_msg = self.clientsocket.recv(2)
-                # if(check_msg == b'b'):
-                #     break
-            else:
-                break
-            
-    def get_frame(self):
-        """
-        Returns the most recently updated frame from the camera. 
-        
-        Only use if the program is connecting to a local camera.
-        """
-        if(self.local == True):
-            return self._get_image()
-
-    def start_capture(self, color: bool = False, local: bool = True):
+    @expose
+    def start_capture(self):
         """
         Starts capture from the camera.
 
@@ -181,32 +147,17 @@ class SCICAM:
         memory location as well as starts a new parallel thread
         for the socket server to stream from memory to the client.
 
-        Parameters
-        ----------
-        color : bool, optional
-            Whether the video should be sent in full color or grayscale
-            (default False).
-        local : bool
-            Whether the video should be sent to the local computer or to the
-            client (default True).
-
         Returns
         -------
         ip_address : str
             The delivery IP address of the video stream.
         """
-        self.color = color
-        self.local = local
-        self.bayer = np.zeros((1080,1440))
         error = tc.ArmCamera(self.handle,c_int(2))
         error = tc.IssueSoftwareTrigger(self.handle)
-        ip_address = socket.gethostbyname(socket.gethostname())
-        self.start_socket = True
-        self.stop_video = threading.Event()
-        self.video_thread = threading.Thread(target=self._video_loop, args=())
-        self.video_thread.start()
-        return ip_address
+        if not self.local:
+            return self.start_streaming_thread()
 
+    @expose
     def stop_capture(self):
         """
         Stops the capture from the camera.
@@ -217,38 +168,16 @@ class SCICAM:
         
         self.stop_video.set()
         if(self.local == False):
-            self.clientsocket.close()
-            self.serversocket.close()
+            self.stop_streaming_thread()
         tc.DisarmCamera(self.handle)
-        
-    
-    def set_exposure(self, exposure: int):
-        """
-        Sets the exposure of the camera.
 
-        Parameters
-        ----------
-        exposure: int, optional
-            The time the shutter is open on the camera in milliseconds.
-        """
-        min_exposure = c_longlong()
-        max_exposure = c_longlong()
-        error = tc.GetExposureTimeRange(self.handle,min_exposure,max_exposure)
-        if(exposure < min_exposure.value):
-            exposure = min_exposure.value
-        if(exposure > max_exposure.value):
-            exposure = max_exposure.value
-        exp_c = c_longlong(exposure)
-        error = tc.SetExposure(self.handle,exp_c)
-        # print(error)
-        self.exposure = exposure
-
+    @expose
     def close(self):
         """
         Closes communication with the camera and frees memory.
 
         Calls :py:func:`stop_capture` to free memory and end the socket server
-        and then closes serial communication with the camera.
+        and then s serial communication with the camera.
 
         Raises
         ------
@@ -257,13 +186,11 @@ class SCICAM:
             abruptly or another error was thrown upon closing (usually 
             safely ignorable).
         """
-        if(self.opened == True):
-            try:
-                self.handle
-            except AttributeError:
-                return
-            self.stop_capture()
-            tc.CloseCamera(self.handle)
-            tc.CloseSDK()
-            print("camera closed")
-            self.opened = False
+        try:
+            self.handle
+        except AttributeError:
+            return
+        self.stop_capture()
+        tc.CloseCamera(self.handle)
+        tc.CloseSDK()
+        del self.handle
