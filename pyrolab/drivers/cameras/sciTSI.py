@@ -77,6 +77,7 @@ class SCICAM(ThorCamBase):
 
     def connect(self, 
                 serialno: str,
+                local: bool = False,
                 color: bool = True,
                 exposure: int = 90, 
                 brightness: int = 5
@@ -99,6 +100,7 @@ class SCICAM(ThorCamBase):
             Integer (range 1-10) defining the brightness, where 5 leaves the 
             brightness unchanged.
         """
+        self.local = local
         ser_no_list = create_string_buffer(4096)
         length = c_int(4096)
         error = tc.OpenSDK()
@@ -107,7 +109,7 @@ class SCICAM(ThorCamBase):
             self.handle = c_void_p()
             error = tc.OpenCamera(ser_no_list.value, self.handle)
 
-        self.set_exposure(exposure)
+        self.exposure = exposure
         self.find_sensor_size()
     
     def find_sensor_size(self):
