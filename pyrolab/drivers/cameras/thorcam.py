@@ -328,13 +328,8 @@ class ThorCamBase(Camera):
             bayer_B = np.array(B, dtype=np.uint8).reshape(frame_height, frame_width)
 
             log.debug("Stacking color data")
-            dStack = np.clip(
-            np.dstack(
-                    (bayer_B*(self.brightness/5), bayer_G*(self.brightness/5), bayer_R*(self.brightness/5))
-                ),
-                0,
-                np.power(2, self.bit_depth) - 1
-            ).astype('uint8')
+            dStack = np.clip(np.dstack((bayer_B*(self.brightness/5),bayer_G*(self.brightness/5),
+                            bayer_R*(self.brightness/5))),0,np.power(2,self.bit_depth)-1).astype('uint8')
         else:
             log.debug("Bayer convert (grayscale)")
             frame_height = bayer.shape[0]
@@ -343,11 +338,8 @@ class ThorCamBase(Camera):
                             frame_width)
 
             log.debug("Stacking grayscale data")
-            dStack = np.clip(
-                bayer_T*(self.brightness/5),
-                0,
-                np.power(2, self.bit_depth) - 1,
-            ).astype('uint8')
+            dStack = np.clip(np.dstack(((bayer_T)*(self.brightness/5))),0,
+                            np.power(2,self.bit_depth)-1).astype('uint8')
         log.debug("Bayer data stacked")
         return dStack
 
@@ -594,35 +586,46 @@ class ThorCamClient:
     brightness : int
     """
     def __init__(self, SUB_MESSAGE_LENGTH: int = 4096):
+        self.remote_attributes = []
         self.SUB_MESSAGE_LENGTH = SUB_MESSAGE_LENGTH
         self.stop_video = threading.Event()
+    
+    def __getattr__(self, attr):
+        """
+        Creates a connection to the attributes of the proxy camera so they can
+        be read as if they were local attributes.
 
-        self.color = True
-        self.brightness = 5
+        Examples
+        --------
+        >>> print(ThorCamClient.color)
+        False
+        >>> print(ThorCamClient.brightness)
+        5        
+        """
+        if attr == 'remote_attributes':
+            return self.__dict__[attr]
+        elif attr in self.remote_attributes:
+            return getattr(self.cam, attr)
+        else:
+            return self.__dict__[attr]
+    
+    def __setattr__(self, attr, value):
+        """
+        Creates a connection to the attributes of the proxy camera so they can
+        be set as if they were local attributes.
 
-    @property
-    def color(self) -> bool:
-        """Sets whether to transmit color (``True``) or grayscale (``False``) 
-        images."""
-        return self._color
-
-    @color.setter
-    def color(self, color: bool) -> None:
-        self._color = color
-        if hasattr(self, "cam"):
-            self.cam.color = color
-
-    @property
-    def brightness(self) -> int:
-        """Integer (range 1-10) defining the brightness, where 5 leaves the
-        brightness unchanged."""
-        return self._brightness
-
-    @brightness.setter
-    def brightness(self, brightness: int) -> None:
-        self._brightness = brightness
-        if hasattr(self, "cam"):
-            self.cam.brightness = brightness
+        Examples
+        --------
+        >>> ThorCamClient.color = True
+        >>> ThorCamClient.brightness = 8
+        >>> ThorCamClient.exposure = 100
+        """
+        if attr == 'remote_attributes':
+            self.__dict__[attr] = value
+        elif attr in self.remote_attributes:
+            setattr(self.cam, attr, value)
+        else:
+            self.__dict__[attr] = value
 
     def connect(self, name: str) -> None:
         """
@@ -648,7 +651,9 @@ class ThorCamClient:
         with locate_ns() as ns:
             self.cam = Proxy(ns.lookup(name))
         self.cam.autoconnect()
-        self._HEADERSIZE = self.cam.HEADERSIZE
+        self.remote_attributes = self.cam._pyroAttrs
+        self._LOCAL_HEADERSIZE = self.HEADERSIZE
+        print(self.remote_attributes)
     
     def start_stream(self) -> None:
         address, port = self.cam.start_capture()
@@ -671,7 +676,7 @@ class ThorCamClient:
             message = b''
             
             # Read size of the incoming message
-            header = self.clientsocket.recv(self._HEADERSIZE)
+            header = self.clientsocket.recv(self._LOCAL_HEADERSIZE)
             length, shape = self._decode_header(header)
             while len(message) < length:
                 submessage = self.clientsocket.recv(self.SUB_MESSAGE_LENGTH)
@@ -679,16 +684,17 @@ class ThorCamClient:
 
             # Deserialize the message and break
             self.last_image = np.frombuffer(message, dtype=np.uint8).reshape(shape)
-            self.clientsocket.send(b'ACK')  
+            self.clientsocket.send(b'ACK')
 
         self.clientsocket.close()
+        self.cam.stop_capture()
 
     def end_stream(self) -> None:
         self.stop_video.set()
-        self.cam.stop_capture()
 
     def get_frame(self):
         return self.last_image
 
     def close(self) -> None:
         self.cam.close()
+        self.remote_attributes = []
