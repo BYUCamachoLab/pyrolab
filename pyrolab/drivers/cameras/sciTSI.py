@@ -27,6 +27,9 @@ Driver for a Thorlabs Scientific Camera.
    thorlabs_kinesis (:ref:`installation instructions <Thorlabs Kinesis Package>`)
 """
 
+import os
+os.add_dll_directory("C:\Program Files\Thorlabs\Scientific Imaging\ThorCam")
+
 import pickle
 import socket
 import threading
@@ -34,12 +37,13 @@ from ctypes import *
 
 import numpy as np
 from thorlabs_kinesis import thor_science_camera as tc
+from pyrolab.drivers.cameras.thorcam import ThorCamBase
 
 from pyrolab.api import expose
 
 
 @expose
-class SCICAM:
+class SCICAM(ThorCamBase):
     """
     Driver for the ThorLabs SCICAM.
 
@@ -106,14 +110,13 @@ class SCICAM:
         self.set_exposure(exposure)
         self.find_sensor_size()
     
-    def find_sensor_size(self){
+    def find_sensor_size(self):
         height = c_int()
         error = tc.GetImageHeight(self.handle,height)
         width = c_int()
         error = tc.GetImageWidth(self.handle,width)
         self.height = int(height.value)
         self.width = int(width.value)
-    }
 
     def get_frame(self):
         """
@@ -130,12 +133,9 @@ class SCICAM:
         metadata_size_in_bytes = c_int()
         tc.GetFrameOrNull(self.handle, image_buffer, frame_count, metadata_pointer, metadata_size_in_bytes)
         image_buffer._wrapper = self
-        try:
-            raw = np.ctypeslib.as_array(image_buffer,shape=(self.height,self.width))
-            bayer =  self._bayer_convert(raw)
-            return self._obtain_roi(bayer)
-        except Exception e:
-            raise PyroLabError
+        raw = np.ctypeslib.as_array(image_buffer,shape=(self.height,self.width))
+        bayer =  self._bayer_convert(raw)
+        return self._obtain_roi(bayer)
         
 
     @expose

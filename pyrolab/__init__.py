@@ -109,6 +109,7 @@ def get_loglevel() -> int:
         loglevel = getattr(logging, loglevel.upper())
     except AttributeError:
         loglevel = logging.INFO
+    loglevel = logging.DEBUG
     return loglevel
 
 if len(logging.root.handlers) == 0:
