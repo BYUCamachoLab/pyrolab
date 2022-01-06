@@ -631,6 +631,8 @@ class ThorCamClient:
     """
     The Thorlabs UC480 camera driver. Not a PyroLab :py:class:`Service` object.
 
+    Any :py:class:`ThorCamBase` attribute is a valid ThorCamClient attribute.
+
     Attributes
     ----------
     SUB_MESSAGE_LENGTH : int
@@ -656,9 +658,9 @@ class ThorCamClient:
         5        
         """
         if attr == 'remote_attributes':
-            return self.__dict__[attr]
+            return super().__getattr__(attr)
         elif attr in self.remote_attributes:
-            return getattr(self.cam, attr)
+            return super().__getattr__(attr)
         else:
             return self.__dict__[attr]
     
@@ -674,11 +676,11 @@ class ThorCamClient:
         >>> ThorCamClient.exposure = 100
         """
         if attr == 'remote_attributes':
-            self.__dict__[attr] = value
+            return super().__setattr__(attr,value)
         elif attr in self.remote_attributes:
-            setattr(self.cam, attr, value)
+            return setattr(self.cam, attr, value)
         else:
-            self.__dict__[attr] = value
+            return super().__setattr__(attr,value)
 
     def connect(self, name: str) -> None:
         """
