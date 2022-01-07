@@ -141,10 +141,9 @@ class ThorCamBase(Camera):
         log.debug(f"shape: {self.roi_shape}")
         log.debug(f"positions: {self.roi_pos}")
         if self.color:
-            image = image[self.roi_pos[0]:self.roi_pos[0]+self.roi_shape[0],self.roi_pos[1]:self.roi_pos[1]+self.roi_shape[1],:]
-            return image
+            image = image[self.roi_pos[1]:self.roi_pos[1]+self.roi_shape[1],self.roi_pos[0]:self.roi_pos[0]+self.roi_shape[0],:]
         else:
-            image = image[self.roi_pos[0]:self.roi_pos[0]+self.roi_shape[0],self.roi_pos[1]:self.roi_pos[1]+self.roi_shape[1]]
+            image = image[self.roi_pos[1]:self.roi_pos[1]+self.roi_shape[1],self.roi_pos[0]:self.roi_pos[0]+self.roi_shape[0]]
         log.debug(f"new shape of image: {image.shape}")
         return image
     
