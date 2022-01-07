@@ -451,6 +451,7 @@ class ThorCamClient:
         self.clientsocket.connect((address, port))
 
         self.stop_video.clear()
+        self.video_stopped.clear()
         self.video_thread = threading.Thread(target=self._receive_video_loop, args=())
         self.video_thread.daemon = True
         self.video_thread.start()
@@ -491,7 +492,7 @@ class ThorCamClient:
             self.clientsocket.send(b'ACK')
 
         self.clientsocket.close()
-        self.cam.stop_capture()
+        self.video_stopped.set()
 
     def end_stream(self) -> None:
         """
@@ -502,6 +503,9 @@ class ThorCamClient:
         may not be instantaneous.
         """
         self.stop_video.set()
+        while not self.video_stopped.is_set():
+            time.sleep(0.001)
+        self.cam.stop_capture()
 
     def await_stream(self, timeout: float = 3.0) -> bool:
         """
