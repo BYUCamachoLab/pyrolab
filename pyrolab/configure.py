@@ -39,6 +39,7 @@ import importlib
 import logging
 from pathlib import Path
 from typing import IO, Any, Dict, List, Optional, Type, Union
+import uuid
 
 import Pyro5
 from pydantic import BaseModel, BaseSettings, validator
@@ -59,6 +60,25 @@ from pyrolab import NAMESERVER_STORAGE, USER_CONFIG_FILE
 from pyrolab.utils import generate_random_name, get_ip
 
 log = logging.getLogger(__name__)
+
+
+def uniquify_class(cls: Type[Service]) -> Type[Service]:
+    """
+    Returns a new class with a unique name.
+
+    Parameters
+    ----------
+    cls : Type[Service]
+        The class to uniquify.
+
+    Returns
+    -------
+    Type[Service]
+        The uniquified class.
+    """
+    uid = str(uuid.uuid4())
+    name = f"{cls.__name__}_{uid}"
+    return type(name, (cls,), {}) # "__module__": cls.__module__
 
 
 class UniqueOrAutoKeyLoader(Loader):
@@ -541,13 +561,14 @@ class ServiceConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
             log.critical(e)
             raise e
         
-        obj.set_behavior(self.instancemode)
+        uobj = uniquify_class(obj)
+        uobj.set_behavior(self.instancemode)
         log.debug(f"Behavior '{self.instancemode}' set")
         if self.parameters:
-            obj._autoconnect_params = self.parameters
+            uobj._autoconnect_params = self.parameters
             log.debug("Autoconnect parameters set")
 
-        return obj
+        return uobj
 
 
 class AutolaunchSettings(BaseSettings, YAMLMixin):
@@ -764,7 +785,10 @@ class GlobalConfiguration:
         Dict[str, DaemonConfiguration]
             The services for the given daemon.
         """
-        return {k: v for k, v in self.config.services.items() if v.daemon == daemon}
+        log.debug(f"Getting service configurations for daemon '{daemon}'")
+        configs = {k: v for k, v in self.config.services.items() if v.daemon == daemon}
+        log.debug(f"Found {len(configs)} configs")
+        return configs
 
 
 def update_config(filename: Union[str, Path]) -> None:
