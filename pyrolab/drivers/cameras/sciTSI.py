@@ -129,9 +129,9 @@ class SCICAM(ThorCamBase):
         error = tc.GetImageWidth(self.handle,width)
         self.height = int(height.value)
         self.width = int(width.value)
-        self.roi_shape = [int(self.height/2),int(self.width/2)]
+        self.roi_shape = [int(self.width/2),int(self.height/2)]
         self.roi_pos = [0,0]
-        log.debug(f"sensor size found {self.height} x {self.width}")
+        log.debug(f"sensor size found {self.width} x {self.height}")
 
     def get_frame(self):
         """
