@@ -148,7 +148,7 @@ class KDC101(KinesisInstrument):
     CONDITIONS = ["homed", "moved", "stopped", "limit_updated"]
 
     def connect(self, serialno: str = "", polling=200, home=False):
-        log.debug("Entering `connect()`")
+        log.debug(f"Attempting to connect to KCUBE (serialno: {serialno})")
         # TODO: Build an exception for this.
         if not serialno:
             raise ValueError("No serial number provided.")
