@@ -224,9 +224,9 @@ class UC480(ThorCamBase):
         self.brightness = brightness
         self.set_color_mode(colormode)
         self._set_hardware_roi_shape(roi_shape)
-        self.roi_shape = [roi_shape[0]/2,roi_pos[1]/2]
+        self.roi_shape = [int(roi_shape[0]/2),int(roi_shape[1]/2)]
         self._set_hardware_roi_pos(roi_pos)
-        self.roi_pos = [roi_pos[0]/2,roi_pos[1]/2]
+        self.roi_pos = [int(roi_pos[0]/2),int(roi_pos[1]/2)]
         self._initialize_memory(pixelbytes)
     
     @expose
@@ -285,7 +285,7 @@ class UC480(ThorCamBase):
         """
         log.debug("Retreiving frame from memory")
         raw = np.frombuffer(self.meminfo[0], c_ubyte).reshape(self.hardware_roi_shape[1], self.hardware_roi_shape[0])
-        log.debug(f"Retreived (len {len(raw)})")
+        log.debug(f"Retreived (size {raw.shape})")
 
         bayer =  self._bayer_convert(raw)
         return self._obtain_roi(bayer)

@@ -30,6 +30,8 @@ Driver for a Thorlabs Scientific Camera.
 import os
 os.add_dll_directory("C:\Program Files\Thorlabs\Scientific Imaging\ThorCam")
 
+import time
+import logging
 import pickle
 import socket
 import threading
@@ -41,6 +43,7 @@ from pyrolab.drivers.cameras.thorcam import ThorCamBase
 
 from pyrolab.api import expose
 
+log = logging.getLogger(__name__)
 
 @expose
 class SCICAM(ThorCamBase):
@@ -74,9 +77,12 @@ class SCICAM(ThorCamBase):
             exposure = max_exposure.value
         exp_c = c_longlong(exposure)
         error = tc.SetExposure(self.handle,exp_c)
+        log.debug(f"exposure set with error {error}")
 
     def connect(self, 
                 serialno: str,
+                local: bool = False,
+                bit_depth: int = 8,
                 color: bool = True,
                 exposure: int = 90, 
                 brightness: int = 5
@@ -99,15 +105,21 @@ class SCICAM(ThorCamBase):
             Integer (range 1-10) defining the brightness, where 5 leaves the 
             brightness unchanged.
         """
+        self.local = local
+        self.bit_depth = bit_depth
         ser_no_list = create_string_buffer(4096)
         length = c_int(4096)
         error = tc.OpenSDK()
         error = tc.DiscoverAvailableCameras(ser_no_list,length)
+        log.debug(f"serial number list: {str(ser_no_list.value.decode()).strip()}")
         if(str(serialno) == str(ser_no_list.value.decode()).strip()):
             self.handle = c_void_p()
+            log.debug("camera found")
             error = tc.OpenCamera(ser_no_list.value, self.handle)
+            log.debug(f"camera opened with error {error}")
 
-        self.set_exposure(exposure)
+        log.debug("setting exposure...")
+        self.exposure = exposure
         self.find_sensor_size()
     
     def find_sensor_size(self):
@@ -117,6 +129,9 @@ class SCICAM(ThorCamBase):
         error = tc.GetImageWidth(self.handle,width)
         self.height = int(height.value)
         self.width = int(width.value)
+        self.roi_shape = [int(self.height/2),int(self.width/2)]
+        self.roi_pos = [0,0]
+        log.debug(f"sensor size found {self.height} x {self.width}")
 
     def get_frame(self):
         """
@@ -128,10 +143,12 @@ class SCICAM(ThorCamBase):
         parallel thread with Pyro5.
         """
         image_buffer = POINTER(c_ushort)()
-        frame_count = c_int()
+        frame_count = c_int(0)
         metadata_pointer = POINTER(c_char)()
         metadata_size_in_bytes = c_int()
-        tc.GetFrameOrNull(self.handle, image_buffer, frame_count, metadata_pointer, metadata_size_in_bytes)
+        log.debug("getting frame...")
+        while frame_count.value == 0:
+            tc.GetFrameOrNull(self.handle, image_buffer, frame_count, metadata_pointer, metadata_size_in_bytes)
         image_buffer._wrapper = self
         raw = np.ctypeslib.as_array(image_buffer,shape=(self.height,self.width))
         bayer =  self._bayer_convert(raw)
@@ -155,6 +172,7 @@ class SCICAM(ThorCamBase):
         error = tc.ArmCamera(self.handle,c_int(2))
         error = tc.IssueSoftwareTrigger(self.handle)
         if not self.local:
+            time.sleep(1)
             return self.start_streaming_thread()
 
     @expose
@@ -165,11 +183,11 @@ class SCICAM(ThorCamBase):
         This frees the memory used for storing the frames then triggers
         the stop_video event which will end the parrallel socket thread.
         """
-        
-        self.stop_video.set()
-        if(self.local == False):
+
+        if self.local == False:
             self.stop_streaming_thread()
-        tc.DisarmCamera(self.handle)
+        error = tc.DisarmCamera(self.handle)
+        log.debug(f"error: {error}")
 
     @expose
     def close(self):
@@ -191,6 +209,8 @@ class SCICAM(ThorCamBase):
         except AttributeError:
             return
         self.stop_capture()
-        tc.CloseCamera(self.handle)
-        tc.CloseSDK()
-        del self.handle
+        error = tc.CloseCamera(self.handle)
+        log.debug(f"error: {error}")
+        error = tc.CloseSDK()
+        log.debug(f"error: {error}")
+        # del self.handle
