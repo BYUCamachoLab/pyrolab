@@ -375,6 +375,7 @@ class ThorCamClient:
         self.remote_attributes = []
         self.SUB_MESSAGE_LENGTH = 4096
         self.stop_video = threading.Event()
+        self.video_stopped = threading.Event()
         self.last_image = None
     
     def __getattr__(self, attr):
