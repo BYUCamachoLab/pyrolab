@@ -31,9 +31,6 @@ Driver for a Thorlabs Microscope.
 # (https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam)
 
 import logging
-import pickle
-import socket
-import threading
 from ctypes import *
 from typing import Tuple
 
@@ -42,7 +39,6 @@ try:
     from thorlabs_kinesis import thor_camera as tc
 except:
     pass
-from Pyro5.api import locate_ns, Proxy
 
 from pyrolab.api import expose
 from pyrolab.drivers.cameras.thorcam import ThorCamBase, ThorCamClient

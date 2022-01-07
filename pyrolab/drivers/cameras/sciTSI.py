@@ -27,14 +27,8 @@ Driver for a Thorlabs Scientific Camera.
    thorlabs_kinesis (:ref:`installation instructions <Thorlabs Kinesis Package>`)
 """
 
-import os
-os.add_dll_directory("C:\Program Files\Thorlabs\Scientific Imaging\ThorCam")
-
 import time
 import logging
-import pickle
-import socket
-import threading
 from ctypes import *
 
 import numpy as np
