@@ -224,9 +224,9 @@ class UC480(ThorCamBase):
         self.brightness = brightness
         self.set_color_mode(colormode)
         self._set_hardware_roi_shape(roi_shape)
-        self.roi_shape = [int(roi_shape[0]/2),int(roi_shape[1]/2)]
+        self.roi_shape = [int(roi_shape[1]/2),int(roi_shape[0]/2)]
         self._set_hardware_roi_pos(roi_pos)
-        self.roi_pos = [int(roi_pos[0]/2),int(roi_pos[1]/2)]
+        self.roi_pos = [int(roi_pos[1]/2),int(roi_pos[0]/2)]
         self._initialize_memory(pixelbytes)
     
     @expose
