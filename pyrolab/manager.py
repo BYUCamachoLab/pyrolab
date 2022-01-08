@@ -184,12 +184,15 @@ class DaemonRunner(multiprocessing.Process):
                  msg_queue: Queue=None, 
                  msg_polling: float=1.0,
                  **kwargs) -> None:
+        log.info("Building DaemonRunner")
+        # TODO: Add log statements before raising exceptions
         super().__init__(*args, **kwargs)
         if not name:
             raise ValueError("DaemonRunner requires a name")
         if not daemonconfig:
             raise ValueError("DaemonRunner requires a DaemonConfiguration")
         if not serviceconfigs:
+            log.critical(f"No service configurations for daemon '{name}', did you intend to register services?")
             raise ValueError("DaemonRunner requires ServiceConfigurations")
         if not msg_queue:
             raise ValueError("DaemonRunner requires a message queue")

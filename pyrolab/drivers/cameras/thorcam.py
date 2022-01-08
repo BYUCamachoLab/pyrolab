@@ -33,7 +33,6 @@ Driver for ThorLabs cameras interfacing with the ThorCam software DLLs.
 """
 
 import logging
-import pickle
 import socket
 import threading
 import time
@@ -41,15 +40,10 @@ from ctypes import *
 from typing import Tuple, Optional
 
 import numpy as np
-try:
-    from thorlabs_kinesis import thor_camera as tc
-except:
-    pass
 from Pyro5.api import locate_ns, Proxy
 
 from pyrolab.api import expose
 from pyrolab.drivers.cameras import Camera
-from pyrolab.errors import PyroLabError
 
 
 log = logging.getLogger(__name__)

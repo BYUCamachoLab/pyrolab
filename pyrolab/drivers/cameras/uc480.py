@@ -31,9 +31,6 @@ Driver for a Thorlabs Microscope.
 # (https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam)
 
 import logging
-import pickle
-import socket
-import threading
 from ctypes import *
 from typing import Tuple
 
@@ -42,7 +39,6 @@ try:
     from thorlabs_kinesis import thor_camera as tc
 except:
     pass
-from Pyro5.api import locate_ns, Proxy
 
 from pyrolab.api import expose
 from pyrolab.drivers.cameras.thorcam import ThorCamBase, ThorCamClient
@@ -224,9 +220,9 @@ class UC480(ThorCamBase):
         self.brightness = brightness
         self.set_color_mode(colormode)
         self._set_hardware_roi_shape(roi_shape)
-        self.roi_shape = [int(roi_shape[0]/2),int(roi_shape[1]/2)]
+        self.roi_shape = [int(roi_shape[1]/2),int(roi_shape[0]/2)]
         self._set_hardware_roi_pos(roi_pos)
-        self.roi_pos = [int(roi_pos[0]/2),int(roi_pos[1]/2)]
+        self.roi_pos = [int(roi_pos[1]/2),int(roi_pos[0]/2)]
         self._initialize_memory(pixelbytes)
     
     @expose
