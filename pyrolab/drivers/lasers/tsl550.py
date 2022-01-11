@@ -109,7 +109,8 @@ class TSL550(Laser):
 
     MINIMUM_WAVELENGTH = 1500
     MAXIMUM_WAVELENGTH = 1630
-    MINIMUM_POWER_DBM = -10
+    # TODO: Isn't the valid range of power dBm -17 to 13 dBm in the manual?
+    MINIMUM_POWER_DBM = -10 
     MAXIMUM_POWER_DBM = 15
     MINIMUM_POWER_ATTENUATION = 0
     MAXIMUM_POWER_ATTENUATION = 30
