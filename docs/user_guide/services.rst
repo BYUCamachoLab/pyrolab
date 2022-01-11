@@ -33,3 +33,12 @@ necessarily need to have *good* defaults, though; they could be values such as
 None or an empty list, after which you have code in the connect function that
 checks for bad arguments and raises exceptions like ValueError for required
 arguments.
+
+Availability
+------------
+
+Some services have drivers that may only be available on certain operating
+systems. The beauty of PyroLab is that, while the computer hosting the service
+must run the correct OS and provide the appropriate drivers, any client
+(regardless of OS or the availability of drivers) can then connect to that
+host via a Proxy and make requests, send control inputs, and retrieve data.

@@ -96,6 +96,8 @@ class Lockable:
             The user who has locked the device. Useful when a device is locked
             and another user wants to know who is using it.
         """
+        # TODO: Consider making "user" a required parameter so we never have
+        # to wonder who acquired the lock.
         daemon = getattr(self, "_pyroDaemon", None)
         if daemon:
             return daemon._lock(self._pyroId, daemon._last_requestor, user)
@@ -158,6 +160,8 @@ class Daemon(Pyro5.server.Daemon):
         Pptional existing socket connection to use instead of creating a new 
         server socket.
     """
+    # TODO: Implement methods that allow a client to view and forcibly close 
+    # connections to this Daemon.
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 

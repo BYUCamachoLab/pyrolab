@@ -1,5 +1,5 @@
 # from multiprocessing import Lock
-# from pyrolab.api import locate_ns, behavior, change_behavior
+# from pyrolab.api import locate_ns, behavior
 # from pyrolab.drivers.sample import SampleService
 # from pyrolab.daemon import LockableDaemon
 

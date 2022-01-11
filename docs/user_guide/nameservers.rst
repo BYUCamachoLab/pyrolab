@@ -118,3 +118,45 @@ registrations of new services with the same name. Be sure when you're writing
 a configuration file with daemons and services that you check to make sure
 none of the names you're using are already used by the register, or you may
 "orphan" some services, in the sense that they'll be unfindable by others!
+
+
+Free connections to the nameserver quickly
+------------------------------------------
+
+From the `Pyro5 docs <https://pyro5.readthedocs.io/en/latest/nameserver.html#free-connections-to-the-ns-quickly>`_`:
+
+    By default the Name server uses a Pyro socket server based on whatever
+    configuration is the default. Usually that will be a threadpool based
+    server with a limited pool size. If more clients connect to the name server
+    than the pool size allows, they will get a connection error.
+
+    It is suggested you apply the following pattern when using the name server in your code:
+
+    1. obtain a proxy for the NS
+    2. look up the stuff you need, store it
+    3. free the NS proxy (See Proxies, connections, threads and cleaning up)
+    4. use the uri's/proxies you've just looked up
+
+    This makes sure your client code doesn't consume resources in the name
+    server for an excessive amount of time, and more importantly, frees up the
+    limited connection pool to let other clients get their turn. If you have a
+    proxy to the name server and you let it live for too long, it may
+    eventually deny other clients access to the name server because its
+    connection pool is exhausted. So if you don't need the proxy anymore, make
+    sure to free it up.
+
+The recommended way to use a nameserver is therefore as shown:
+
+.. code-block:: python
+
+    from pyrolab.api import locate_ns, Proxy
+
+    proxy_ids = ["service1", "service2", "service3"]
+    proxies = []
+
+    with locate_ns() as ns:
+        for proxy in proxy_ids:
+            proxy = Proxy(ns.lookup(proxy))
+            proxies.append(proxy)
+
+    # do stuff with proxies

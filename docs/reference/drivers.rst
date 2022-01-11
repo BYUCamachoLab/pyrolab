@@ -1,5 +1,32 @@
 .. _api.drivers:
 
+.. warning:: 
+   
+   It is the responsibility of the user to ensure parameters are within the
+   physical limits of the hardware. The software may or may not perform checks
+   to validate input, but given the nature of a driver potentially working with
+   several devices with different valid ranges, and the possibility of drivers
+   being contributed by many different parties, this behavior cannot be 
+   guaranteed.
+
+   It is possible that the device firmware may save you, but this is device 
+   dependent and untested. Be careful to prevent damaging devices with bad
+   inputs.
+
+.. note::
+
+   You should always close connections to the device when you are finished.
+   This will ensure proper recovery of resources and prevent access errors
+   from subsequent connections.
+
+   More important than closing connections, though, is making sure the hardware
+   device is in a safe state. For example, a laser doesn't automatically turn
+   off between runs. This is so if you disconnect but continue using it, you 
+   don't have the pain of it automatically turning itself off. Additionally,
+   there's often a time penalty for each reconnect; so the devices typically
+   maintain their state when disconnected. So, be aware of your instruments!
+
+
 pyrolab.drivers
 ===============
 .. currentmodule:: pyrolab
