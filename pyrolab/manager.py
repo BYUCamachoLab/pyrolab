@@ -367,6 +367,23 @@ class ProcessManager:
 
     @classmethod
     def instance(cls) -> "ProcessManager":
+        """
+        Get the singleton instance of the ProcessManager.
+
+        Only the main process can access the ProcessManager.
+
+        Returns
+        -------
+        ProcessManager
+            The singleton instance of the ProcessManager.
+
+        Raises
+        ------
+        RuntimeError
+            If the requesting process is not the main process.
+        """
+        # TODO: Do we want to change it so the GlobalConfiguration object is
+        # injected, instead of "gotten" by the ProcessManager itself?
         log.debug("ProcessManager instance requested")
         if current_process().name != 'MainProcess':
             log.critical("ProcessManager instance requested from non-main process")
