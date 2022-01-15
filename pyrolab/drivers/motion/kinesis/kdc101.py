@@ -96,16 +96,6 @@ class KDC101(KinesisInstrument):
     """
     A KCube DC Servo motor. 
 
-    Parameters
-    ----------
-    serialno : int
-        The serial number of the device to connect to.
-    polling : int, optional
-        The polling rate in milliseconds (default 200).
-    home : bool
-        Whether to automatically home the device upon connection
-        (default ``False``).
-
     Attributes
     ----------
     serialno : str
@@ -147,7 +137,20 @@ class KDC101(KinesisInstrument):
     """
     CONDITIONS = ["homed", "moved", "stopped", "limit_updated"]
 
-    def connect(self, serialno: str = "", polling=200, home=False):
+    def connect(self, serialno: str = "", polling: int = 200, home: bool = False):
+        """
+        Connect to the device.
+
+        Parameters
+        ----------
+        serialno : str
+            The serial number of the device to connect to.
+        polling : int, optional
+            The polling rate in milliseconds (default 200).
+        home : bool, optional
+            Whether to automatically home the device upon connection
+            (default ``False``).
+        """
         log.debug(f"Attempting to connect to KCUBE (serialno: {serialno})")
         # TODO: Build an exception for this.
         if not serialno:

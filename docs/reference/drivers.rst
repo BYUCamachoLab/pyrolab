@@ -1,5 +1,8 @@
 .. _api.drivers:
 
+pyrolab.drivers
+===============
+
 .. warning:: 
    
    It is the responsibility of the user to ensure parameters are within the
@@ -27,8 +30,6 @@
    maintain their state when disconnected. So, be aware of your instruments!
 
 
-pyrolab.drivers
-===============
 .. currentmodule:: pyrolab
 
 Base Instrument

@@ -95,12 +95,44 @@ class Z825B(KDC101, HomingMixin):
     This stage has a travel range of 25 mm, submicron resolution, and a maximum
     velocity of 2.3 mm/s.
 
-    Parameters
+    Attributes
     ----------
-    serialno : int
-        The serial number of the device to connect to.
-    polling : int
-        The polling rate in milliseconds.
+    serialno : str
+        The serial number as a string.
+    homed : bool
+        True if the device has been homed since being opened.
+    backlash : float
+        The backlash setting (used to control hysteresis) in real units
+    homing_velocity : float
+        The homing velocity in mm/s. It is always a positive number.
+    jog_mode : str
+        The jog mode can be either ``stepped`` (fixed distance, single step) or 
+        ``continuous`` (move continuously until stopped).
+    jog_step_size : float
+        The distance to move in millimeters when jogging.
+    stop_mode : str
+        The stop mode, either ``immediate`` (stops immediately) or ``profiled`` 
+        (stops, using the current velocity profile).
+    max_pos : float
+        The stage axis maximum position limit in millimeters.
+    min_pos : float
+        The stage axis minimum position limit in millimeters.
+    soft_limits_mode : str
+        The software limits mode 
+        ``disallow``: Disable any move outside of the current travel range of 
+        the stage.
+        ``partial``: Truncate moves to within the current travel range of the 
+        stage.
+        ``all``: Allow all moves, regardless of whether they are within the 
+        current travel range of the stage. 
+    move_velocity : float
+        The move velocity in mm/s. It is always a positive number.
+    move_acceleration: float
+        The move acceleration in real units. It is always a positive number.
+    jog_velocity : float
+        The jog velocity in mm/s. It is always a positive number.
+    jog_acceleration : float
+        The jog acceleration in real units. It is always a positive number.
 
     Notes
     -----
