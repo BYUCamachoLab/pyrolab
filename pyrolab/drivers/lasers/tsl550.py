@@ -179,6 +179,9 @@ class TSL550(Laser):
             True if the device has been successfuly connected to. False otherwise.
         """
         log.debug("Entering connect()")
+        if hasattr(self, "device") and self.device.is_open:
+            log.debug("Already connected")
+            return True
         try:
             self.device = serial.Serial(port, baudrate=baudrate, timeout=timeout)
         except serial.SerialException as e:
@@ -591,7 +594,7 @@ class TSL550(Laser):
             for each step. In both cases it has units of seconds and
             should be specified in 100 microsecond intervals.
         number : int, optional
-            The sweep is repeated ``number`` times.
+            The sweep is repeated ``number`` times (default 1).
         delay : float, optional
             If delay (in seconds) is specified, there is a pause of
             that duration between each sweep (default 0).
