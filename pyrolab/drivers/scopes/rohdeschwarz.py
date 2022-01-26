@@ -315,6 +315,11 @@ class RTO(Scope):
             number of acquisition cycles as set by 
             :py:func:`acquisition_settings`), or ``stop`` (stops a 
             running acquisition). Default is ``single``.
+
+        Raises
+        ------
+        ValueError
+            If the run type is not one of the allowed values.
         """        
         if run == "single":
             cmd = "SING"
