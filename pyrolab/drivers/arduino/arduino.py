@@ -26,10 +26,10 @@ Code also available in the PyroLab repository under ``/extras/arduino``.
    pyfirmata
 """
 
-from pyfirmata import Arduino, ArduinoDue, ArduinoMega, ArduinoNano, util
+from pyfirmata import ANALOG, INPUT, OUTPUT, PWM, SERVO, Arduino, ArduinoDue, ArduinoMega, ArduinoNano, util
 from Pyro5.api import expose
 
-from pyrolab.drivers.arduino import Arduino
+from pyrolab.drivers.arduino import Arduino as PyroArduino
 from pyrolab.errors import PyroLabError
 
 
@@ -42,7 +42,7 @@ class UnknownBoardException(PyroLabError):
 
 
 @expose
-class BaseArduinoDriver(Arduino):
+class BaseArduinoDriver(PyroArduino):
     """
     A base class providing pin read/write access for common Arduino boards.
     """
@@ -74,6 +74,9 @@ class BaseArduinoDriver(Arduino):
             self.board = ArduinoNano(self.port)
         else:
             raise UnknownBoardException("Unknown board " + board)
+        self.it = util.Iterator(self.board)
+        self.it.start()
+
 
     def digital_write(self, pin: int, value: int) -> None:
         """
@@ -88,9 +91,8 @@ class BaseArduinoDriver(Arduino):
             | 0: LOW
             | 1: HIGH
         """
-        command_string = "d:" + str(pin) + ":o"
-        pin = self.board.get_pin(command_string)
-        pin.write(value)
+        self.board.digital[pin].mode = OUTPUT
+        pin = self.board.digital[pin].write(value)
     
     def pwm_write(self, pin: int, value: float) -> None:
         """
@@ -103,9 +105,8 @@ class BaseArduinoDriver(Arduino):
         value : float
             The duty cycle of the pwm to be set (0 - 1.0)
         """
-        command_string = "d:" + str(pin) + ":p"
-        pin = self.board.get_pin(command_string)
-        pin.write(value)
+        self.board.digital[pin].mode = PWM
+        self.board.digital[pin].write(value)
     
     def servo_write(self, pin: int, value: int) -> None:
         """
@@ -119,7 +120,7 @@ class BaseArduinoDriver(Arduino):
         value : int
             The angle in degrees to move the servo to
         """
-        self.board.servo_config(pin)
+        self.board.digital[pin].mode = SERVO
         self.board.digital[pin].write(value)
     
     def digital_read(self, pin: int) -> int:
@@ -136,9 +137,8 @@ class BaseArduinoDriver(Arduino):
         int
             The value read by the digital pin, 0 (LOW) or 1 (HIGH)
         """
-        command_string = "d:" + str(pin) + ":i"
-        pin = self.board.get_pin(command_string)
-        return pin.read()
+        self.board.digital[pin].mode = INPUT
+        return self.board.digital[pin].read()
     
     def analog_read(self, pin: int) -> float:
         """
@@ -154,9 +154,14 @@ class BaseArduinoDriver(Arduino):
         float
             The value read by the analog pin (0 - 1.0)
         """
-        command_string = "a:" + str(pin) + ":i"
-        pin = self.board.get_pin(command_string)
-        return pin.read()
+        # self.board.iterate()
+        self.board.analog[pin].mode = INPUT
+        self.board.analog[pin].enable_reporting()
+        while True:
+            value = self.board.analog[pin].read()
+            if value is not None:
+                break
+        return value
 
     def close(self) -> None:
         """
