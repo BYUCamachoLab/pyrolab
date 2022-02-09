@@ -405,7 +405,7 @@ class ThorCamClient:
         else:
             return super().__setattr__(attr,value)
 
-    def connect(self, name: str) -> None:
+    def connect(self, name: str, ns_host: str = None, ns_port: float = None) -> None:
         """
         Connect to a remote PyroLab-hosted UC480 camera.
 
@@ -426,7 +426,12 @@ class ThorCamClient:
         >>> cam = ThorCamClient()
         >>> cam.connect("camera_name")
         """
-        with locate_ns() as ns:
+        if ns_host or ns_port:
+            args = {'host': ns_host, 'port': ns_port}
+        else:
+            args = {}
+            
+        with locate_ns(**args) as ns:
             self.cam = Proxy(ns.lookup(name))
         self.cam.autoconnect()
         self.remote_attributes = self.cam._pyroAttrs
