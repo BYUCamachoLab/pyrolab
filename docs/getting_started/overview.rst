@@ -38,7 +38,7 @@ In this case, the specific issues that PyroLab was trying to solve were:
 
 PyroLab attempts to solve this problem by:
 
-#. Standardize the API for controlling our hardware across all projects and
+#. Standardizing the API for controlling our hardware across all projects and
    setups.
 #. Allowing local machines to host specific hardware devices that can be 
    accessed remotely by any number of machines.
@@ -59,9 +59,9 @@ computers. No more cable management issues, no more arguing over "who has the
 laser today," and no more issues with slow computers that can only manage
 one frame per second from the microscope while running Windows 10.
 
-Yes, it was written, tailored to our use case. But, we tried to keep it general
+Yes, it was written tailored to our use case. But we tried to keep it general
 enough so that you, too, will find it so invaluable that you'll want to use it,
 develop it, and contribute new drivers to it.
 
-So, welcome to PyroLab. Read on, to learn about the philosophy of the framework
-and how to use it properly.
+So, welcome to PyroLab. Read on to learn about the "philosophy" of the
+framework and how to use it properly.
