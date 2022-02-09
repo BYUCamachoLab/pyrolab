@@ -18,6 +18,7 @@ import subprocess
 import sys
 import textwrap
 import time
+from datetime import date
 from pathlib import Path
 from typing import Optional
 
@@ -66,6 +67,13 @@ def get_daemon(abort=True, suppress_reload_message=False) -> PyroLabDaemon:
 ###############################################################################
 
 app = typer.Typer()
+
+print(f"PyroLab  Copyright © 2020-{date.today().year}  BYU CamachoLab, PyroLab Project Contributors")
+print("This program comes with ABSOLUTELY NO WARRANTY.")
+print("This is free software, and you are welcome to redistribute it under certain conditions.")
+print("See the documentation for more information (https://pyrolab.readthedocs.io).")
+print()
+
 
 def _version_callback(value: bool=True) -> None:
     if value:
