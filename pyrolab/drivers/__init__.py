@@ -60,6 +60,7 @@ class Instrument(Service):
         # TODO: This function is unsafe! It is not guaranteed to be called!
         # Enforce calling close() explicitly.
         """
+        log.info("Destructing %s", self.__class__.__name__)
         self.close()
 
     @staticmethod
