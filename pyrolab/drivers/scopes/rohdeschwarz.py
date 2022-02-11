@@ -196,9 +196,7 @@ class RTO(Scope):
         .. note::
            This function is blocking.
         """
-        res = self.device.query('*OPC?')
-        time.sleep(0.1)
-        return res
+        self.device.ext_wait_for_opc()
 
     def acquisition_settings(self, sample_rate, duration, force_realtime=False):
         """
@@ -206,6 +204,19 @@ class RTO(Scope):
 
         The exact command this executes is:
         `'ACQ:POIN:AUTO RES;:ACQ:SRAT {};:TIM:RANG {}'`
+
+        .. warning::
+
+            The oscilloscope has a record length limit. This is system 
+            dependent! If you are getting cryptic errors, such as "Data out of 
+            range;ACQ:SRAT <some value>", you might be exceeding the record
+            length limit, calculated as SAMPLE_RATE x DURATION. The system 
+            enforces this limit to "prevent undersampling and ensure a 
+            sufficient resolution to acquire the correct waveform if the time 
+            scale is changed." Check your specific system to find the record
+            length limit.
+
+            See also: RTO User Manual Chapter 4.2 (page 147).
 
         Parameters
         ----------
@@ -352,6 +363,7 @@ class RTO(Scope):
             10e-9).
         """
         self.write(f'TIM:SCAL {str(time)}')
+        self.device.ext_error_checking()
 
     def set_auto_measurement(self, measurement: int=1, source: str='C1W1', 
                              meastype: str='MAX') -> None:
