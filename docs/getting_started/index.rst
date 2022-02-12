@@ -24,7 +24,6 @@ For more detailed information, see the user guide.
     configuration
     client
     fullexample
-    analysis
 
 .. getting_started/usage
 .. getting_started/examples
