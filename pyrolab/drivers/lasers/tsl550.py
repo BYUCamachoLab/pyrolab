@@ -1245,7 +1245,7 @@ class TSL550(Laser):
 
         See Also
         --------
-        trigger_set_step
+        trigger_step
         """
         mode = 0
         if val == "None" or val == None:
@@ -1284,7 +1284,7 @@ class TSL550(Laser):
 
         Examples
         --------
-        >>> laser.trigger_set_step()
+        >>> laser.trigger_step()
         0.012
         """
         if step:

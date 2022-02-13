@@ -250,7 +250,7 @@ class RTO(Scope):
             Selects the connection of the indicated channel signal. Valid values are
             "DC" (direct connection with 50 ohm termination), "DCLimit" (direct connection 
             with 1M ohm termination), or "AC" (connection through DC capacitor).
-            Default is DCLimit (see ``CHANnel<m>:COUPling``).
+            Default is "DCLimit" (see ``CHANnel<m>:COUPling``).
         range : float, optional
             Sets the voltage range across the 10 vertical divisions of the diagram
             in V/div. Default is 0.5 (see ``CHANnel<m>:RANGe``).
