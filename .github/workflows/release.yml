@@ -20,11 +20,11 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install --upgrade setuptools wheel twine
+          pip install --upgrade setuptools wheel twine build
           pip install -r requirements.txt
       - name: Build
         run: |
-          python setup.py sdist bdist_wheel
+          python -m build
       - name: Get version number
         id: get_version
         run: echo ::set-env name=VERSION::$(python3 -c "import pyrolab; print(pyrolab.__version__)")
