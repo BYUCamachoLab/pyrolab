@@ -16,8 +16,10 @@ Driver for the Thorlabs BPC-303 Benchtop Piezo.
    travel for that channel will be defaulted.
 """
 
+import logging
 import time
 from ctypes import c_char_p, c_int, c_short
+from typing import Any, Dict, List
 
 from Pyro5.server import oneway
 from thorlabs_kinesis import benchtop_piezo as bp
@@ -25,12 +27,11 @@ from thorlabs_kinesis import benchtop_piezo as bp
 from pyrolab.api import expose
 from pyrolab.drivers.motion.kinesis import KinesisInstrument
 
+
+log = logging.getLogger(__name__)
+
+
 MAX_C_SHORT = 32767
-
-
-# class ChannelInformation:
-#     def __init__(self):
-#         pass
 
 
 @expose
@@ -54,7 +55,7 @@ class BPC303(KinesisInstrument):
         Maximum output voltage, 750, 1000 or 1500 (75.0, 100.0, 150.0). 
     """
 
-    def connect(self, serialno: str, poll_period: int=200, closed_loop: bool=False, smoothed: bool=False) -> None:
+    def connect(self, serialno: str = "", poll_period: int=200, closed_loop: bool=False, smoothed: bool=False) -> None:
         """
         Connects to the device.
 
@@ -79,6 +80,8 @@ class BPC303(KinesisInstrument):
         ValueError
             If the serial number is not found in the connected devices.
         """
+        if not serialno:
+            raise ValueError("No serial number provided.")
         self.serialno = serialno
         self._serialno = c_char_p(bytes(serialno, "utf-8")) # Store as char array.
         self.poll_period = poll_period
@@ -141,6 +144,18 @@ class BPC303(KinesisInstrument):
         # Clear prior messages
         bp.PBC_ClearMessageQueue(self._serialno)
         time.sleep(1)
+
+    @staticmethod
+    def detect_devices() -> List[Dict[str, Any]]:
+        """
+        Detect all KCube DC Servo devices connected to the computer.
+
+        .. warning::
+            
+            Not currently implemented.
+        """
+        log.debug("Entering `detect_devices()`")
+        return []
 
     def close(self) -> None:
         """

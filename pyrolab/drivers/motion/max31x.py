@@ -32,10 +32,16 @@ motion stage.
    ``autoconnect()`` before trying to use the device.
 """
 
+import logging
+
 from numpy import interp
 from Pyro5.api import behavior, expose
 
 from pyrolab.drivers.motion.kinesis.bpc303 import BPC303
+
+
+log = logging.getLogger(__name__)
+
 
 SHORT_MAX = 32767
 
@@ -78,15 +84,7 @@ class MAX31X(BPC303):
     but rather `move` from this class.
     """
 
-    def connect(self, 
-                 serialno: str, 
-                 poll_period: int=200, 
-                 closed_loop: bool=True, 
-                 smoothed: bool=False) -> None:
-        super().connect(serialno=serialno,
-                         poll_period=poll_period,
-                         closed_loop=closed_loop,
-                         smoothed=smoothed)
+    def connect(self, serialno: str = "", poll_period: int=200, closed_loop: bool=True, smoothed: bool=False) -> None:
         """
         Connect to the device.
 
@@ -103,6 +101,10 @@ class MAX31X(BPC303):
         smoothed : bool, optional
             Puts controller in smoothed start/stop mode, default False.
         """
+        super().connect(serialno=serialno,
+                         poll_period=poll_period,
+                         closed_loop=closed_loop,
+                         smoothed=smoothed)
         # Values for each axis maximum
         self.max_pos = [val / 10 for val in self.max_travel]
 

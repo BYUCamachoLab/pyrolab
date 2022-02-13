@@ -192,6 +192,13 @@ class KDC101(KinesisInstrument):
 
     @staticmethod
     def detect_devices() -> List[Dict[str, Any]]:
+        """
+        Detect all KCube DC Servo devices connected to the computer.
+
+        .. warning::
+            
+            Not currently implemented.
+        """
         log.debug("Entering `detect_devices()`")
         return []
 
