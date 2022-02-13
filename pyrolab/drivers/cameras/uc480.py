@@ -5,385 +5,413 @@
 # (see pyrolab/__init__.py for details)
 
 """
--------------------------------------------------------------------------------
+Thorlabs UC480 Scientific Camera
+================================
+
 Driver for a Thorlabs Microscope.
-Author: David Hill (https://github.com/hillda3141)
-Repo: https://github.com/BYUCamachoLab/pyrolab/pyrolab/drivers/cameras
+
+.. attention::
+
+   Presently Windows only. 
+   
+   Requires ThorCam software. Download it at `thorlabs.com`_.
+
+   .. _thorlabs.com: https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam
+
+   Potential future Linux support, since ThorLabs does provide a Windows and 
+   Linux SDK.
+
+.. admonition:: Dependencies
+   :class: note
+
+   thorlabs_kinesis (:ref:`installation instructions <Thorlabs Kinesis Package>`)
 """
 
-from Pyro5.errors import PyroError
-from pyrolab.api import expose
-from thorlabs_kinesis import thor_camera as tc
-import socket
-import pickle
-import threading
-import numpy as np
+# TODO: Investigate Linux support 
+# (https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam)
+
+import logging
 from ctypes import *
+from typing import Tuple
+
+import numpy as np
+try:
+    from thorlabs_kinesis import thor_camera as tc
+except:
+    pass
+
+from pyrolab.api import expose
+from pyrolab.drivers.cameras.thorcam import ThorCamBase, ThorCamClient
+from pyrolab.errors import PyroLabError
+
+
+log = logging.getLogger(__name__)
+
 
 @expose
-class UC480:
+class UC480(ThorCamBase):
     """
+    The Thorlabs UC480 camera driver.
+
     Attributes
     ----------
     HEADERSIZE : int
-        the size of the header used to communicate the size of the message
-        (10 bytes is a safe size)
+    brightness : int
+    color : bool
+    roi_shape : (int, int)
+    roi_pos : (int, int)
+    pixelclock : int
+    exposure : int
+    framerate : int
     """
-    HEADERSIZE = 10
 
-    def __init__(self, ser_no, port=2222, bit_depth=8, camera="ThorCam FS",
-                 pixel_clock=24, color_mode=11, roi_shape=(1024, 1280), 
-                 roi_pos=(0,0), framerate=15, exposure=90, pixelbytes=8):
+    @property
+    @expose
+    def pixelclock(self) -> int:
+        """Sets the clockspeed of the camera, usually in the range of 24."""
+        return self._pixelclock
+
+    @pixelclock.setter
+    @expose
+    def pixelclock(self, clockspeed: int) -> None:
+        self._pixelclock = clockspeed
+        pixelclock = c_uint(clockspeed)
+        if hasattr(self, "handle"):
+            tc.PixelClock(self.handle, 6, byref(pixelclock), sizeof(pixelclock))
+        else:
+            raise PyroLabError("Cannot set pixelclock before connecting to device.")
+
+    @property
+    @expose
+    def exposure(self) -> int:
+        """Sets the exposure of the camera, the time the shutter is open in
+        milliseconds (90 ms is a good default)."""
+        return self._exposure
+
+    @exposure.setter
+    @expose
+    def exposure(self, exposure: int) -> None:
+        self._exposure = exposure
+        exposure_c = c_double(exposure)
+        if hasattr(self, "handle"):
+            tc.SetExposure(self.handle, 12 , exposure_c, sizeof(exposure_c))
+        else:
+            raise PyroLabError("Cannot set exposure before connecting to device.")
+
+    @property
+    @expose
+    def framerate(self) -> int:
+        """The framerate of the camera (fps). You must reset the exposure
+        after setting the framerate."""
+        return self._framerate
+
+    @framerate.setter
+    @expose
+    def framerate(self, framerate: int) -> None:
+        self._framerate = framerate
+        s_framerate = c_double(0)
+        if hasattr(self, "handle"):
+            tc.SetFrameRate(self.handle, c_double(framerate), byref(s_framerate))
+        else:
+            raise PyroLabError("Cannot set framerate before connecting to device.")
+
+    def connect(self, 
+                serialno: str, 
+                local: bool = False, 
+                bit_depth: int = 8,
+                pixelclock: int = 24, 
+                color: bool = True, 
+                colormode: int = 11, 
+                roi_shape: Tuple[int, int] = (1024, 1280), 
+                roi_pos: Tuple[int, int] = (0,0), 
+                framerate: int = 15, 
+                exposure: int = 90, 
+                pixelbytes: int = 8, 
+                brightness: int = 5
+    ):
         """
-        Opens the serial communication with the Thorlabs camera and sets
-        some low-level values, including the bit depth and camera name.
+        Opens the serial communication with the Thorlabs camera and sets defaults.
+        
+        Default low-level values that are set include the bit depth and camera 
+        name.
 
         Parameters
         ----------
-        ser_no : long
-            the serial number of the camera that should be initiated
-        port : int
-            the port on which the socket transmits the video feed to the client
-        bit_depth : int
-            the number of bits used for each pixel (usually is 8)
-        camera: string
-            camera name
-        pixel_clock: int
-            clock speed of the camera
-        color_mode: int
-            mode of color that the camera returns data in. 11 returns raw format:
-            | R  G0 |...
-            | G1  B |...
-              .   .
-              .   .
-              .   .
-        roi_shape : array(int)
-            dimentions of the image that is taken by the camera (usually 1024 x 1280)
-        roi_pos : array(int)
-            position of the top left corner of the roi (region of interest) in
-            relation to the sensor array (usaually 0,0)
-        framerate : int
-            the framerate of the camera in frames per second
-        exposure: int
-            in milliseconds, the time the shutter is open on the camera (90 default)
-        pixelbytes: int
-            the amount of memory space allocated per pixel in bytes
+        serialno : int
+            The serial number of the camera that should be connected.
+        local : bool, optional
+            Whether the camera is being used as a local device; if True, will 
+            not configure sockets for streaming when starting capature (default 
+            False).
+        bit_depth : int, optional
+            The number of bits used for each pixel (default 8).
+        pixelclock: int, optional
+            Clock speed of the camera (default 24).
+        color : bool, optional
+            Whether the camera is in color mode or not (default True).
+        colormode: int, optional
+            Mode of color that the camera returns data in. ``11`` (default) 
+            returns raw format, see :py:func:`set_color_mode` for more 
+            information.
+        roi_shape : tuple(int, int), optional
+            Dimensions of the image that is taken by the camera (default 
+            ``(1024, 1280)``).
+        roi_pos : tuple(int, int), optional
+            Position of the top left corner of the roi (region of interest) in
+            relation to the sensor array (default ``(0,0)``).
+        framerate : int, optional
+            The framerate of the camera in frames per second (default 15).
+        exposure: int, optional
+            In milliseconds, the time the shutter is open on the camera 
+            (default 90).
+        pixelbytes: int, optional
+            The amount of memory space allocated per pixel in bytes (default 8).
+        brightness : int
+            Integer (range 1-10) defining the brightness, where 5 leaves the 
+            brightness unchanged.
         """
+        self.local = local
+        self.color = color
+
+        log.debug(f"Attempting to connect to camera with serialno '{serialno}'")
         num = c_int(0)
         tc.GetNumberOfCameras(byref(num))
-        print(num)
+        log.debug(f"Found {num.value} cameras")
+
         uci_format = tc.UC480_CAMERA_INFO * 2
         uci = uci_format(tc.UC480_CAMERA_INFO(), tc.UC480_CAMERA_INFO())
         dwCount = c_int(num.value)
-        cam_list = tc.UC480_CAMERA_LIST(dwCount=dwCount,uci=uci)
+        cam_list = tc.UC480_CAMERA_LIST(dwCount=dwCount, uci=uci)
         tc.GetCameraList(byref(cam_list))
+
+        # Find the camera with the given serial number. Each camera has to be
+        # connected to and asked its serial number. We then check that they
+        # match.
         for i in range(num.value):
             handle = c_int(cam_list.uci[i].dwCameraID)
-            temp = tc.InitCamera(byref(handle))
-            if(temp != 0):
+            error = tc.InitCamera(byref(handle))
+            
+            # 0 means no error
+            if(error != 0):
                 continue
+
             info = tc.CAMINFO()
-            out = tc.GetCameraInfo(handle,byref(info))
-            if(int(info.SerNo) == ser_no):
+            error = tc.GetCameraInfo(handle, byref(info))
+
+            if(int(info.SerNo) == serialno):
                 self.handle = handle
                 break
             elif(i == num.value - 1):
-                raise PyroError("Camera not found")
+                raise PyroLabError("Camera not found")
             else:
-                i = tc.ExitCamera(handle)
-                if i != 0:
-                    raise PyroError("Closing ThorCam failed with error code "+str(i))
+                error = tc.ExitCamera(handle)
+                if error != 0:
+                    log.error(f"Closing ThorCam failed with error code {error}")
 
         self.bit_depth = bit_depth
-        self.camera = camera
-
-        #print("Trigger Mode: " + str(tc.SetTrigger(handle,tc.IS_SET_TRIGGER_SOFTWARE)))
-        print("Trigger Mode: " + str(tc.SetTrigger(self.handle,tc.IS_GET_EXTERNALTRIGGER)))
    
         tc.SetDisplayMode(self.handle, c_int(32768))
 
-        # if i  0:
-        #     print("shee")
-        #     raise PyroError("Opening the ThorCam failed with error code "+str(i))
-
         self.meminfo = None
 
-        self.set_pixel_clock(pixel_clock)
-        self.set_color_mode(color_mode)
-        self.set_roi_shape(roi_shape)
-        self.set_roi_pos(roi_pos)
-        self.set_framerate(framerate)
-        self.set_exposure(exposure)
-        self.initialize_memory(pixelbytes)  
-        self.port = port
-        print("initialized")
-
-    def _get_image(self):
-        """
-        Retrieves the last frame from the memory buffer, processes
-        it into a gray-scale image, and serializes it using the pickle
-        library. The header is then added to inform the client how long
-        the message is. This should not be called from the client. It
-        will be called from the function _video_loop() which is on a
-        parrallel thread with Pyro5.
-        """
-        bayer = np.frombuffer(self.meminfo[0], c_ubyte).reshape(self.roi_shape[1],
-        self.roi_shape[0])
-        
-        if(self.color == False):
-            ow = (bayer.shape[0]//4) * 4
-            oh = (bayer.shape[1]//4) * 4
-
-            R  = bayer[0::2, 0::2]
-            B  = bayer[1::2, 1::2]
-            G0 = bayer[0::2, 1::2]
-            G1 = bayer[1::2, 0::2]
-
-            GRAY = R[:oh,:ow]//3 + B[:oh,:ow]//3 + (G0[:oh,:ow]//2 + G1[:oh,:ow]//2)//3
-
-            if(self.local == True):
-                return GRAY
-            else:
-                msg = pickle.dumps(GRAY)
-                msg = bytes(f'{len(msg):<{self.HEADERSIZE}}', "utf-8") + msg
-                return msg
-        else:
-            if(self.local == True):
-                return bayer
-            else:
-                msg = pickle.dumps(bayer)
-                msg = bytes(f'{len(msg):<{self.HEADERSIZE}}', "utf-8") + msg
-                return msg
-            
-
-    def _video_loop(self):
-        """
-        This function is called as a seperate thread when streaming is initiated.
-        It will loop, sending frame by frame accross the socket connection,
-        until the threading.Event() stop_video is triggered.
-        """
-        while not self.stop_video.is_set():
-            bad = False
-            if(self.local == False):
-                if bad == False:
-                    if self.start_socket==True:
-                        while True:
-                            self.serversocket = socket.socket(socket.AF_INET,
-                                                              socket.SOCK_STREAM)
-                            self.serversocket.bind((socket.gethostname(), self.port))
-                            self.serversocket.listen(5)
-                            self.clientsocket, address = self.serversocket.accept()
-                            self.start_socket = False
-                            break
-                    msg = self._get_image()
-                    self.clientsocket.send(msg)
-                    while True:
-                        check_msg = self.clientsocket.recv(2)
-                        if(check_msg == b'b'):
-                            bad = True
-                        break
-            else:
-                break
-            
-    def get_frame(self):
-        """
-        Returns the most recently updated frame from the camera. Only use if the
-        program is connecting to a local camera.   
-        """
-        if(self.local == True):
-            return self._get_image()
-
-        
-    def set_pixel_clock(self, clockspeed):
-        """
-        Sets the clockspeed of the camera, usually in the range of 24.
-
-        Parameters
-        ----------
-        clockspeed : int
-            clock speed of the camera       
-        """
-
-        pixelclock = c_uint(clockspeed)
-        i = tc.PixelClock(self.handle, 6, byref(pixelclock), sizeof(pixelclock))
-
-    def start_capture(self,color=False,local=True):
-        """
-        This starts the capture from the camera to the allocated
-        memory location as well as starts a new parallel thread
-        for the socket server to stream from memory to the client.
-
-        Parameters
-        ----------
-        color : boolean
-            whether the video should be sent in full color or grayscale
-        """
-        self.color = color
-        self.local = local
-        tc.StartCapture(self.handle, tc.IS_DONT_WAIT)
-        ip_address = socket.gethostbyname(socket.gethostname())
-        self.start_socket = True
-        self.stop_video = threading.Event()
-        self.video_thread = threading.Thread(target=self._video_loop, args=())
-        self.video_thread.start()
-        return ip_address
+        self.pixelclock = pixelclock
+        self.framerate = framerate
+        self.exposure = exposure
+        self.brightness = brightness
+        self.set_color_mode(colormode)
+        self._set_hardware_roi_shape(roi_shape)
+        self.roi_shape = [int(roi_shape[1]/2),int(roi_shape[0]/2)]
+        self._set_hardware_roi_pos(roi_pos)
+        self.roi_pos = [int(roi_pos[1]/2),int(roi_pos[0]/2)]
+        self._initialize_memory(pixelbytes)
     
-    def color_gray(self,color=False):
+    @expose
+    def set_color_mode(self, mode: int = 11) -> None:
         """
-        This function switches whether the socket transmits color or grayscale.
+        Sets the color mode of the image.
+
+        This sets the mode of image that is taken. Almost always
+        use ``11`` which will give you the raw photosensor data in the format:
+
+        .. table::
+
+           +----+----+----+
+           | R  | G0 |... |
+           +----+----+----+
+           | G1 | B  |... |
+           +----+----+----+
+           |... |... |    |
+           +----+----+----+
+        
+        This data is interpreted in the _get_image() function.
+
         Parameters
         ----------
-        color : boolean
-            whether the video should be sent in full color or grayscale
+        mode : int, optional
+            The color mode of the pixel data. ``11``, the default, means raw 
+            8-bit. ``6`` means gray 8-bit.
+        """        
+        tc.SetColorMode(self.handle, mode)
+    
+    def get_frame(self) -> np.array:
         """
-        self.color = color
+        Retrieves the last frame from the camera's memory buffer.
 
-    def stop_capture(self):
+        Retrieves the last frame from the camera memory buffer and processes it
+        into a computer-readable image format.
+
+        .. warning:: 
+
+           Not a Pyro exposed function, cannot be called from a Proxy. We 
+           recommend using the :py:class:`ThorCamClient` for streaming 
+           video/getting remote images.
+
+        For remote connections, the image is serialized using the pickle module
+        for remote connections. The header is then added to inform the client
+        how long the message is. This should not be called from the client. It
+        will be called from the function _video_loop() which is on a parallel
+        thread with Pyro5.
+
+        Can only be called after :py:func:`start_capture`.
+
+        Returns
+        -------
+        img : np.array
+            The last frame from the camera's memory buffer.
         """
-        This frees the memory used for storing the frames then triggers
-        the stop_video event which will end the parrallel socket thread.
+        log.debug("Retreiving frame from memory")
+        raw = np.frombuffer(self.meminfo[0], c_ubyte).reshape(self.hardware_roi_shape[1], self.hardware_roi_shape[0])
+        log.debug(f"Retreived (size {raw.shape})")
+
+        bayer =  self._bayer_convert(raw)
+        return self._obtain_roi(bayer)
+    
+    @expose
+    def start_capture(self) -> Tuple[str, str]:
         """
-        
+        Starts capture from the camera.
+
+        This starts the capture from the camera to the allocated memory
+        location as well as starts a new thread for the socket server to stream
+        video from camera memory to the client.
+
+        Returns
+        -------
+        address, port : tuple(str, str) 
+            The IP address and port of the socket serving the video stream.
+        """
+        log.debug("Sending signal to camera to start capture")
+        tc.StartCapture(self.handle, tc.IS_DONT_WAIT)
+        log.debug("Signal sent")
+
+        if not self.local:
+            return self.start_streaming_thread()
+    
+    @expose
+    def stop_capture(self) -> None:
+        """
+        Stops the capture from the camera.
+
+        This frees the memory used for storing the frames, then (for remote
+        connections) sets the stop_video flag which will close the daemon
+        socket thread (not necessarily immediately).
+        """
         tc.FreeMemory(self.handle, self.meminfo[0], self.meminfo[1])
         tc.StopCapture(self.handle, 1)
-        if(self.local == False):
-            self.clientsocket.close()
-        self.stop_video.set()
-        
-    def initialize_memory(self, pixelbytes=8):
+        if not self.local:
+            self.stop_streaming_thread()
+    
+    def _initialize_memory(self, pixelbytes: int = 8) -> None:
         """
         Initializes the memory for holding the most recent frame from the camera.
 
         Parameters
         ----------
-        pixelbytes: int
-            the amount of memory space allocated per pixel in bytes
+        pixelbytes: int, optional
+            The amount of memory space allocated per pixel in bytes (default 8).
         """
-        
-        if self.meminfo != None:
+        if self.meminfo is not None:
             tc.FreeMemory(self.handle, self.meminfo[0], self.meminfo[1])
         
-        xdim = self.roi_shape[0]
-        ydim = self.roi_shape[1]
-        imagesize = xdim*ydim
+        xdim, ydim = self.hardware_roi_shape
+        log.debug(f"got dimenstions: {self.hardware_roi_shape}")
+        # ydim = self.roi_shape[1]
+        imgsize = xdim * ydim
+        log.debug(f"image size is {imgsize}")
             
         memid = c_int(0)
-        c_buf = (c_ubyte * imagesize)(0)
-
-        tc.AllocateMemory(self.handle, xdim, ydim, c_int(pixelbytes), c_buf,
-                          byref(memid))
+        c_buf = (c_ubyte * imgsize)(0)
+        log.debug("allocating memory...")
+        tc.AllocateMemory(self.handle, xdim, ydim, c_int(pixelbytes), c_buf, byref(memid))
+        log.debug("setting image memory...")
         tc.SetImageMemory(self.handle, c_buf, memid)
+        log.debug("setting infor...")
         self.meminfo = [c_buf, memid]
-    
-    def set_exposure(self, exposure):
+        log.debug("meminfo set")
+
+    def _set_hardware_roi_shape(self, roi_shape: Tuple[int, int]) -> None:
         """
-        This sets the exposure of the camera.
+        Sets the dimensions of the region of interest (roi).
 
         Parameters
         ----------
-        exposure: int
-            in milliseconds, the time the shutter is open on the camera (90 is
-            a good exposure value)
+        roi_shape : tuple(int, int)
+            Dimensions of the image that is taken by the camera 
+            (usually 1024 x 1280).
         """
+        # Width and height
+        AOI_size = tc.IS_2D(roi_shape[0], roi_shape[1])
         
-        exposure_c = c_double(exposure)
-        tc.SetExposure(self.handle, 12 , exposure_c, sizeof(exposure_c))
-        self.exposure = exposure_c.value
-    
-    def set_framerate(self, framerate):
-        """
-        Sets the framerate of the camera (fps). After calling
-        this function you must reset the exposure.
-
-        Parameters
-        ----------
-        framerate: int
-            the framerate of the camera in frames per second
-        """
-            
-        s_framerate = c_double(0)
-        tc.SetFrameRate(self.handle, c_double(framerate), byref(s_framerate))
-        self.framerate = s_framerate.value
-
-    def set_color_mode(self, mode=11):
-        """
-        This sets the mode of image that is taken, almost always
-        use 11 which will give you the raw photosensor data in the format:
-            | R  G0 |...
-            | G1  B |...
-              .   .
-              .   .
-              .   .
-        This data is interpreted in the _get_image() function.
-        Parameters
-        ----------
-        mode: int
-            the color mode of the pixel data
-        """
+        # 5 for setting size, 3 for setting position
+        tc.AOI(self.handle, 5, byref(AOI_size), 8)
         
-        i = tc.SetColorMode(self.handle, mode) #11 means raw 8-bit, 6 means
-                                               #gray 8-bit
+        # 6 for getting sizse, 4 for getting position
+        tc.AOI(self.handle, 6, byref(AOI_size), 8)
+        
+        self.hardware_roi_shape = [AOI_size.s32X, AOI_size.s32Y]
 
-    def set_roi_shape(self, roi_shape):
+    def _set_hardware_roi_pos(self, roi_pos: Tuple[int, int]) -> None:
         """
-        Sets the dimmentions of the region of interest (roi)
+        Sets the origin position of the region of interest.
 
         Parameters
         ----------
-        roi_shape : (int,int)
-            dimentions of the image that is taken by the camera (usually 1024 x 1280)
+        roi_pos : tuple(int, int)
+            Position of the top left corner of the roi (region of interest) in
+            relation to the sensor array (usually ``(0,0)``).
         """
+        # Width and height
+        AOI_pos = tc.IS_2D(roi_pos[0], roi_pos[1])
         
-        AOI_size = tc.IS_2D(roi_shape[0], roi_shape[1]) #Width and Height
-            
-        i = tc.AOI(self.handle, 5, byref(AOI_size), 8)#5 for setting size,
-                                                      #3 for setting position
-        tc.AOI(self.handle, 6, byref(AOI_size), 8)#6 for getting size
-                                                  #4 for getting position
-        self.roi_shape = [AOI_size.s32X, AOI_size.s32Y]
+        # 5 for setting size, 3 for setting position
+        tc.AOI(self.handle, 3, byref(AOI_pos), 8 )
 
-    def set_roi_pos(self, roi_pos):
-        """
-        Sets the origin position of the region of interest
+        # 6 for getting size, 4 for getting position
+        tc.AOI(self.handle, 4, byref(AOI_pos), 8 )
 
-        Parameters
-        ----------
-        roi_pos : int x int
-            position of the top left corner of the roi (region of interest) in
-            relation to the sensor array (usaually 0,0)
-        """
-        
-        AOI_pos = tc.IS_2D(roi_pos[0], roi_pos[1]) #Width and Height
-            
-        i = tc.AOI(self.handle, 3, byref(AOI_pos), 8 )#5 for setting size
-                                                      #3 for setting position
-        tc.AOI(self.handle, 4, byref(AOI_pos), 8 )#6 for getting size
-                                                  #4 for getting position
-        self.roi_pos = [AOI_pos.s32X, AOI_pos.s32Y]
+        self.hardware_roi_pos = [AOI_pos.s32X, AOI_pos.s32Y]
 
+    @expose
     def close(self):
         """
-        Calls self.stop_capture to free memory and end the socket server
-        and then closes serial communication with the camera.
+        Closes communication with the camera and frees memory.
 
-        Raises
-        ------
-        PyroError("Closing ThorCam failed with error code "+str(i))
-            Error to signal that the connection to the camera was closed abruptly
-            or another error was thrown upon closing (usually is ignorable)
+        Calls :py:func:`stop_capture` to free memory and end the socket server
+        and then closes serial communication with the camera.
         """
-        
         try:
             self.handle
         except AttributeError:
             return
+        
         self.stop_capture()
-        i = tc.ExitCamera(self.handle) 
-        if i != 0:
-            raise PyroError("Closing ThorCam failed with error code "+str(i))
 
-    def __del__(self):
-        """"
-        Function called when Proxy connection is lost.
-        """
-        self.close()
+        error = tc.ExitCamera(self.handle) 
+        if error != 0:
+            log.error(f"Closing ThorCam failed (code {error})")
+        del self.handle
+        self.meminfo = None
+
+
+class UC480Client(ThorCamClient):
+    pass

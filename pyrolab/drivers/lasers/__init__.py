@@ -6,12 +6,13 @@
 
 """
 Lasers
-------
+======
 
 Submodule containing drivers for each supported laser type.
 """
 
 from pyrolab.drivers import Instrument
+
 
 class Laser(Instrument):
     pass
