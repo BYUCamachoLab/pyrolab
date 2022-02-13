@@ -27,16 +27,17 @@ jobs:
           python -m build
       - name: Get version number
         id: get_version
-        run: echo ::set-env name=VERSION::$(python3 -c "import pyrolab; print(pyrolab.__version__)")
+        run: echo ::set-output name=VERSION::$(python3 -c "import pyrolab; print(pyrolab.__version__)")
       - name: Load Release text
+        id: get_text
         run: |
-          BODY=$(cat ./docs/changelog/${{ env.VERSION }}-changelog.md)
+          BODY=$(cat ./docs/changelog/${{ steps.get_version.outputs.VERSION }}-changelog.md)
           BODY="${BODY//'%'/'%25'}"
           BODY="${BODY//$'\n'/'%0A'}"
           BODY="${BODY//$'\r'/'%0D'}"
-          echo "::set-env name=BODY::$BODY"
+          echo "::set-output name=BODY::$BODY"
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.1.0
+        uses: pypa/gh-action-pypi-publish@v1.5.0
         with:
           user: __token__
           password: ${{ secrets.PYPI_PASSWORD }}
@@ -47,7 +48,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
           tag_name: ${{ github.ref }}
-          release_name: PyroLab ${{ env.VERSION }}
-          body: ${{ env.BODY }}
+          release_name: PyroLab ${{ steps.get_version.outputs.VERSION }}
+          body: ${{ steps.get_text.outputs.BODY }}
           draft: false
           prerelease: false
