@@ -74,11 +74,6 @@ PYROLAB_DATA_DIR.mkdir(parents=True, exist_ok=True)
 # Configuration Directories
 PYROLAB_CONFIG_DIR = PYROLAB_DATA_DIR / "config"
 PYROLAB_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-# PYROLAB_CONFIG_DIR = pathlib.Path(_dirs.user_config_dir)
-# PYROLAB_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-
-# Note that on Windows, PYROLAB_DATA_DIR might be the same as
-# PYROLAB_CONFIG_DIR! Plan filenames accordingly.
 
 # User config file directory
 CONFIG_DIR = PYROLAB_CONFIG_DIR / "user"
@@ -90,9 +85,6 @@ PYROLABD_DATA.mkdir(parents=True, exist_ok=True)
 
 NAMESERVER_STORAGE = PYROLAB_DATA_DIR / "nameservers"
 NAMESERVER_STORAGE.mkdir(parents=True, exist_ok=True)
-
-# LOGFILES_DIR = PYROLAB_DATA_DIR / "logs"
-# LOGFILES_DIR.mkdir(parents=True, exist_ok=True)
 
 LOCKFILE = PYROLABD_DATA / "pyrolabd.lock"
 USER_CONFIG_FILE = CONFIG_DIR / "user_configuration.yaml"
@@ -114,12 +106,8 @@ def get_loglevel() -> int:
     loglevel = logging.DEBUG
     return loglevel
 
-if len(logging.root.handlers) == 0:
-    #     datefmt="%Y-%m-%d %H:%M:%S",
-    #     format="[%(asctime)s.%(msecs)03d,%(name)s,%(levelname)s] %(message)s"
-    #     [%(filename)s:%(lineno)d]
-    
-    # This is not multiprocess safe, but it's not critical
+if len(logging.root.handlers) == 0:    
+    # This is not multiprocess safe, but it's not critical right now
     logfile = os.getenv("PYROLAB_LOGFILE", PYROLAB_LOGFILE)
 
     root = logging.getLogger()
