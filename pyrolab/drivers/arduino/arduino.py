@@ -25,12 +25,16 @@ Code also available in the PyroLab repository under ``/extras/arduino``.
 
    pyfirmata
 """
+import logging
 
 from pyfirmata import ANALOG, INPUT, OUTPUT, PWM, SERVO, Arduino, ArduinoDue, ArduinoMega, ArduinoNano, util
 from Pyro5.api import expose
 
 from pyrolab.drivers.arduino import Arduino as PyroArduino
 from pyrolab.errors import PyroLabError
+
+
+log = logging.getLogger(__name__)
 
 
 class UnknownBoardException(PyroLabError):
@@ -62,6 +66,10 @@ class BaseArduinoDriver(PyroArduino):
             | ``due``: `Arduino Due <https://store.arduino.cc/products/arduino-due>`_
             | ``nano``: `Arduino Nano <https://store.arduino.cc/products/arduino-nano>`_
         """
+        if hasattr(self.board):
+            log.debug("Already connected")
+            return True
+
         self.port = port
 
         if board == "uno":
@@ -74,6 +82,7 @@ class BaseArduinoDriver(PyroArduino):
             self.board = ArduinoNano(self.port)
         else:
             raise UnknownBoardException("Unknown board " + board)
+        
         self.it = util.Iterator(self.board)
         self.it.start()
 
@@ -168,3 +177,4 @@ class BaseArduinoDriver(PyroArduino):
         Close the connection with the arduino.
         """
         self.board.exit()
+        del self.board
