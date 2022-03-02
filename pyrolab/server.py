@@ -349,7 +349,7 @@ class LockableDaemon(Daemon):
         # Only matters when instance mode is "single".
         instance = self._pyroInstances.get(obj)
         if instance:
-            return instance.release()
+            return instance.unlock()
         else:
             return True
 
