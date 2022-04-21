@@ -260,4 +260,7 @@ if __name__ == "__main__":
             daemon.requestLoop()
         finally:
             LOCKFILE.unlink()
-            RUNTIME_CONFIG.unlink()
+            try:
+                RUNTIME_CONFIG.unlink()
+            except FileNotFoundError:
+                print("Runtime configuration not found (and therefore not removed).")
