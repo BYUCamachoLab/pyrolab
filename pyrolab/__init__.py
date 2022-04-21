@@ -113,8 +113,8 @@ if len(logging.root.handlers) == 0:
     root = logging.getLogger()
     h = logging.handlers.RotatingFileHandler(logfile, 'a', 30000, 10)
     f = logging.Formatter('%(asctime)s.%(msecs)03d %(process)-5s %(processName)-10s %(name)-12s %(levelname)-8s %(message)s', datefmt="%Y-%m-%d %H:%M:%S")
-    h.setFormatter(f)
-    root.addHandler(h)
+    # h.setFormatter(f)
+    # root.addHandler(h)
     root.setLevel(get_loglevel())
     root.debug("PyroLab logging configured")
 
