@@ -328,7 +328,8 @@ def logs_clean():
     """
     Deletes all log files.
     """
-    PYROLAB_LOGFILE.unlink(missing_ok=True)
+    if PYROLAB_LOGFILE.exists():
+        PYROLAB_LOGFILE.unlink()
 
 @logs_app.command("export")
 def logs_export(filename: str):

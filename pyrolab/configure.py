@@ -843,11 +843,8 @@ def reset_config() -> None:
     This function deletes the user configuration file, reverting to the default
     configuration each time PyroLab is started.
     """
-    if sys.version_info >= (3, 8, 0):
-        USER_CONFIG_FILE.unlink(missing_ok=True)
-    else:
-        if USER_CONFIG_FILE.exists():
-            USER_CONFIG_FILE.unlink()
+    if USER_CONFIG_FILE.exists():
+        USER_CONFIG_FILE.unlink()
 
 def export_config(config: PyroLabConfiguration, filename: Union[str, Path]) -> None:
     """
