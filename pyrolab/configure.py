@@ -38,6 +38,7 @@ import importlib
 
 import logging
 from pathlib import Path
+import sys
 from typing import IO, Any, Dict, List, Optional, Type, Union
 import uuid
 
@@ -842,7 +843,11 @@ def reset_config() -> None:
     This function deletes the user configuration file, reverting to the default
     configuration each time PyroLab is started.
     """
-    USER_CONFIG_FILE.unlink(missing_ok=True)
+    if sys.version_info >= (3, 8, 0):
+        USER_CONFIG_FILE.unlink(missing_ok=True)
+    else:
+        if USER_CONFIG_FILE.exists():
+            USER_CONFIG_FILE.unlink()
 
 def export_config(config: PyroLabConfiguration, filename: Union[str, Path]) -> None:
     """
