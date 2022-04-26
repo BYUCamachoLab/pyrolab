@@ -311,6 +311,8 @@ class NameServerConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
     The following are examples of valid YAML configurations for nameservers.
     Keys not defined assume the default values.
 
+    Example 1. Basic configuration.
+
     .. code-block:: yaml
 
         host: localhost
@@ -318,6 +320,8 @@ class NameServerConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
         ns_autoclean: 0.0
         storage: memory
     
+    Example 2. Nameserver publicly accessible.
+
     .. code-block:: yaml
 
         host: public

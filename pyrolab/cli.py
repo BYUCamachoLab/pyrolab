@@ -10,7 +10,7 @@ Command Line Interface
 
 Usage: pyrolab [OPTIONS] COMMAND [ARGS]...
 
-Try 'pyrolab --help' for help.
+Try ``pyrolab --help`` for help.
 """
 import platform
 import shutil
