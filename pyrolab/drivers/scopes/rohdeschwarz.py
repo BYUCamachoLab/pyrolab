@@ -294,7 +294,7 @@ class RTO(Scope):
         ======================================  ===========================================================
         3.16 V/div to :math:`\leq` 10 V/div     :math:`\pm` (115 V :math:`-` vertical voltage range :math:`\\times` 5 div)
         1 V/div to :math:`\leq` 3.16 V/div      :math:`\pm` 100 V
-        316 mV/div to :math:`\leq` 1 V/div      :math:`\pm` (11.5 V :math:`-` vertical voltage range * 5 div)
+        316 mV/div to :math:`\leq` 1 V/div      :math:`\pm` (11.5 V :math:`-` vertical voltage range :math:`\\times` 5 div)
         100 mV/div to :math:`\leq` 316 mV/div   :math:`\pm` 10 V
         31.6 mV/div to :math:`\leq` 100 mV/div  :math:`\pm` (1.15 V :math:`-` vertical voltage range :math:`\\times` 5 div)
         1 mV/div to :math:`\leq` 31.6 mV/div    :math:`\pm` 1 V
