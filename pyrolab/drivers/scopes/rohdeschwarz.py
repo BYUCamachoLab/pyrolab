@@ -254,7 +254,7 @@ class RTO(Scope):
         range : float, optional
             Sets the voltage range across the 10 vertical divisions of the diagram
             in V/div. Possible values depend on the coupling: 10 mV to 10 V for 
-            50 :math:`\Omega` coupling, and 10 mV to 100 V for 1 M:math:`\Omega`
+            50 :math:`\Omega` coupling, and 10 mV to 100 V for 1 M :math:`\Omega`
             coupling. Default is 0.5 (see ``CHANnel<m>:RANGe``).
         position : float, optional
             Sets the vertical position of the indicated channel as a graphical value.
@@ -277,26 +277,24 @@ class RTO(Scope):
         The following two tables give the key to the range of possible offset values
         given the coupling and vertical voltage range.
 
-        ..math::
+        Offset at 50 :math:`\Omega` Coupling
 
-            Offset at 50 $\Omega$ Coupling
+        | Vertical Voltage Range | Allowed Offset |
+        |:----------------------:|:--:|
+        | 316 mV/div to :math:`\leq` 1 V/div | :math:`\pm`10 V |
+        | 100 mV/div to :math:`\leq` 316 mV/div | :math:`\pm`3 V |
+        | 1 mV/div to :math:`\leq` 100 mV/div | :math:`\pm`1 V |
 
-            | Vertical Voltage Range | Allowed Offset |
-            |:----------------------:|:--:|
-            | 316 mV/div to $\leq$ 1 V/div | $\pm$10 V |
-            | 100 mV/div to $\leq$ 316 mV/div | $\pm$3 V |
-            | 1 mV/div to $\leq$ 100 mV/div | $\pm$1 V |
+        Offset at 1 M :math:`\Omega` Coupling
 
-            Offset at 1 M$\Omega$ Coupling
-
-            | Vertical Voltage Range | Allowed Offset |
-            |:----------------------:|:--:|
-            | 3.16 V/div to $\leq$ 10 V/div | $\pm$(115 V - vertical voltage range $\times$ 5 div) |
-            | 1 V/div to $\leq$ 3.16 V/div | $\pm$100 V |
-            | 316 mV/div to $\leq$ 1 V/div | $\pm$(11.5 V - vertical voltage range $\times$ 5 div) |
-            | 100 mV/div to $\leq$ 316 mV/div | $\pm$10 V |
-            | 31.6 mV/div to $\leq$ 100 mV/div | $\pm$(1.15 V - vertical voltage range $\times$ 5 div) |
-            | 1 mV/div to $\leq$ 31.6 mV/div | $\pm$1 V |
+        | Vertical Voltage Range | Allowed Offset |
+        |:----------------------:|:--:|
+        | 3.16 V/div to :math:`\leq` 10 V/div | :math:`\pm`(115 V - vertical voltage range $\times$ 5 div) |
+        | 1 V/div to :math:`\leq` 3.16 V/div | :math:`\pm`100 V |
+        | 316 mV/div to :math:`\leq` 1 V/div | :math:`\pm`(11.5 V - vertical voltage range $\times$ 5 div) |
+        | 100 mV/div to :math:`\leq` 316 mV/div | :math:`\pm`10 V |
+        | 31.6 mV/div to :math:`\leq` 100 mV/div | :math:`\pm`(1.15 V - vertical voltage range $\times$ 5 div) |
+        | 1 mV/div to :math:`\leq` 31.6 mV/div | :math:`\pm`1 V |
         
         """
         cmd = 'CHAN{}:STAT {}; COUP {};RANG {};POS {};OFFS {}; INV {}'.format(
