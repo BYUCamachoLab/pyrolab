@@ -282,22 +282,22 @@ class RTO(Scope):
         =====================================  =================
         Vertical Voltage Range                  Allowed Offset
         =====================================  =================
-        316 mV/div to :math:`\leq`1 V/div      :math:`\pm`10 V
-        100 mV/div to :math:`\leq` 316 mV/div  :math:`\pm`3 V
-        1 mV/div to :math:`\leq` 100 mV/div    :math:`\pm`1 V
+        316 mV/div to :math:`\leq` 1 V/div      :math:`\pm` 10 V
+        100 mV/div to :math:`\leq` 316 mV/div  :math:`\pm` 3 V
+        1 mV/div to :math:`\leq` 100 mV/div    :math:`\pm` 1 V
         =====================================  =================
 
-        Offset at 1 M :math:`\Omega` Coupling
+        Offset at 1 M\ :math:`\Omega` Coupling
 
         ======================================  ===========================================================
         Vertical Voltage Range                   Allowed Offset
         ======================================  ===========================================================
-        3.16 V/div to :math:`\leq` 10 V/div     :math:`\pm`(115 V - vertical voltage range `\times` 5 div)
-        1 V/div to :math:`\leq` 3.16 V/div      :math:`\pm`100 V
-        316 mV/div to :math:`\leq` 1 V/div      :math:`\pm`(11.5 V - vertical voltage range `\times` 5 div)
-        100 mV/div to :math:`\leq` 316 mV/div   :math:`\pm`10 V
-        31.6 mV/div to :math:`\leq` 100 mV/div  :math:`\pm`(1.15 V - vertical voltage range `\times` 5 div)
-        1 mV/div to :math:`\leq` 31.6 mV/div    :math:`\pm`1 V
+        3.16 V/div to :math:`\leq` 10 V/div     :math:`\pm` (115 V :math:`-` vertical voltage range :math:`\times` 5 div)
+        1 V/div to :math:`\leq` 3.16 V/div      :math:`\pm` 100 V
+        316 mV/div to :math:`\leq` 1 V/div      :math:`\pm` (11.5 V :math:`-` vertical voltage range :math:`\times` 5 div)
+        100 mV/div to :math:`\leq` 316 mV/div   :math:`\pm` 10 V
+        31.6 mV/div to :math:`\leq` 100 mV/div  :math:`\pm` (1.15 V :math:`-` vertical voltage range :math:`\times` 5 div)
+        1 mV/div to :math:`\leq` 31.6 mV/div    :math:`\pm` 1 V
         ======================================  ===========================================================
         
         """
