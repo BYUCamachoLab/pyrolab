@@ -181,7 +181,7 @@ latest release of isort may not work through VSCode's integrated terminal, and
 it's safest to run it separately through another terminal).
 
 Releases are automatically created when git tags matching the "v*" pattern
-are created.
+are created (e.g. "v0.2.1").
 
 ## Building the Docs
 
