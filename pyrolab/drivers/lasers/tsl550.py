@@ -110,8 +110,8 @@ class TSL550(Laser):
     MINIMUM_WAVELENGTH = 1500
     MAXIMUM_WAVELENGTH = 1630
     # TODO: Isn't the valid range of power dBm -17 to 13 dBm in the manual?
-    MINIMUM_POWER_DBM = -10 
-    MAXIMUM_POWER_DBM = 15
+    MINIMUM_POWER_DBM = -15
+    MAXIMUM_POWER_DBM = 13
     MINIMUM_POWER_ATTENUATION = 0
     MAXIMUM_POWER_ATTENUATION = 30
 
@@ -446,6 +446,7 @@ class TSL550(Laser):
         """
         if val is not None:
             if(val < self.MINIMUM_POWER_MW or val > self.MAXIMUM_POWER_MW):
+                print(self.MINIMUM_POWER_DBM, self.MAXIMUM_POWER_DBM)
                 raise ValueError(f"Power outside of allowed range ({self.MINIMUM_POWER_MW} - {self.MAXIMUM_POWER_MW} mW)")
             log.info(f"Setting power to {val} mW")
             self._set_var("LP", 2, val)

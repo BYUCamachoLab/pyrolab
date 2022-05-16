@@ -38,6 +38,7 @@ import importlib
 
 import logging
 from pathlib import Path
+import sys
 from typing import IO, Any, Dict, List, Optional, Type, Union
 import uuid
 
@@ -311,6 +312,8 @@ class NameServerConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
     The following are examples of valid YAML configurations for nameservers.
     Keys not defined assume the default values.
 
+    Example 1. Basic configuration.
+
     .. code-block:: yaml
 
         host: localhost
@@ -318,6 +321,8 @@ class NameServerConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
         ns_autoclean: 0.0
         storage: memory
     
+    Example 2. Nameserver publicly accessible.
+
     .. code-block:: yaml
 
         host: public
@@ -838,7 +843,8 @@ def reset_config() -> None:
     This function deletes the user configuration file, reverting to the default
     configuration each time PyroLab is started.
     """
-    USER_CONFIG_FILE.unlink(missing_ok=True)
+    if USER_CONFIG_FILE.exists():
+        USER_CONFIG_FILE.unlink()
 
 def export_config(config: PyroLabConfiguration, filename: Union[str, Path]) -> None:
     """
