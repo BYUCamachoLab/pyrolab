@@ -170,7 +170,7 @@ arrays, matplotlib plot objects, custom objects, etc.).
 
 ## Releasing
 
-Make sure you have committed a changelog file titled 
+Make sure you have committed a changelog file under ``docs/changelog`` titled 
 ``<major>.<minor>.<patch>-changelog.md`` before bumping version. Also, the git
 directory should be clean (no uncommitted changes).
 
