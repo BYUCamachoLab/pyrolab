@@ -168,20 +168,34 @@ security is even harder, we resort to using only basic Python types when
 interfacing with hardware (i.e., Python lists, ints, tuples, and not NumPy 
 arrays, matplotlib plot objects, custom objects, etc.).
 
+## Releasing
+
+Make sure you have committed a changelog file titled 
+``<major>.<minor>.<patch>-changelog.md`` before bumping version. Also, the git
+directory should be clean (no uncommitted changes).
+
 To bump version prior to a release, run one of the following commands:
 
-```bash
-bumpversion major
-bumpversion minor
-bumpversion patch
-```
+.. code:: bash
+
+   bumpversion major
+   bumpversion minor
+   bumpversion patch
+
+This will automatically create a git tag in the repository with the 
+corrresponding version number and commit the modified files (where version
+numbers were updated). Pushing the tags (a manual process) to the remote will 
+automatically create a new release. Releases are automatically published to 
+PyPI and GitHub when git tags matching the "v*" pattern are created 
+(e.g. "v0.2.1"), as bumpversion does.
+
+After bumping version, you can view the tags on the local machine by running 
+``git tag``. To push the tags to the remote server and trigger the release
+workflow, you can run ``git push origin <tagname>``.
 
 For code quality, please run isort and black before committing (note that the
 latest release of isort may not work through VSCode's integrated terminal, and
 it's safest to run it separately through another terminal).
-
-Releases are automatically created when git tags matching the "v*" pattern
-are created (e.g. "v0.2.1").
 
 ## Building the Docs
 
