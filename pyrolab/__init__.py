@@ -86,10 +86,12 @@ PYROLABD_DATA.mkdir(parents=True, exist_ok=True)
 NAMESERVER_STORAGE = PYROLAB_DATA_DIR / "nameservers"
 NAMESERVER_STORAGE.mkdir(parents=True, exist_ok=True)
 
+PYROLAB_LOGDIR = PYROLAB_DATA_DIR / "logs"
+PYROLAB_LOGDIR.mkdir(parents=True, exist_ok=True)
+
 LOCKFILE = PYROLABD_DATA / "pyrolabd.lock"
 USER_CONFIG_FILE = CONFIG_DIR / "user_configuration.yaml"
 RUNTIME_CONFIG = PYROLABD_DATA / "runtime_config.yaml"
-PYROLAB_LOGFILE = PYROLAB_DATA_DIR / "pyrolab.log"
 
 
 # Set up logging to file
@@ -103,16 +105,13 @@ def get_loglevel() -> int:
         loglevel = getattr(logging, loglevel.upper())
     except AttributeError:
         loglevel = logging.INFO
-    loglevel = logging.DEBUG
     return loglevel
 
 if len(logging.root.handlers) == 0:    
-    # This is not multiprocess safe, but it's not critical right now
-    logfile = os.getenv("PYROLAB_LOGFILE", PYROLAB_LOGFILE)
-
+    logfile = PYROLAB_LOGDIR / f"pyrolab_{os.getpid()}.log"
     root = logging.getLogger()
     h = logging.handlers.RotatingFileHandler(logfile, 'a', 30000, 10)
-    f = logging.Formatter('%(asctime)s.%(msecs)03d %(process)-5s %(processName)-10s %(name)-12s %(levelname)-8s %(message)s', datefmt="%Y-%m-%d %H:%M:%S")
+    f = logging.Formatter('[%(asctime)s.%(msecs)03d] %(process)-5s %(processName)-10s %(name)-12s %(levelname)-8s %(message)s', datefmt="%Y-%m-%d %H:%M:%S")
     h.setFormatter(f)
     root.addHandler(h)
     root.setLevel(get_loglevel())

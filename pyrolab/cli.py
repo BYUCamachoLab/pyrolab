@@ -17,15 +17,17 @@ import shutil
 import subprocess
 import sys
 import textwrap
-import time
+import fileinput
+import re
 from datetime import date
 from pathlib import Path
 from typing import Optional
+from time import sleep, strptime
 
 import pkg_resources
 import typer
 
-from pyrolab import LOCKFILE, PYROLAB_LOGFILE, RUNTIME_CONFIG, USER_CONFIG_FILE
+from pyrolab import LOCKFILE, PYROLAB_LOGDIR, RUNTIME_CONFIG, USER_CONFIG_FILE # PYROLAB_LOGFILE
 from pyrolab.api import Proxy
 from pyrolab.configure import (
     PyroLabConfiguration,
@@ -140,7 +142,7 @@ def down():
     daemon = get_daemon(suppress_reload_message=True)
     daemon.shutdown()
     while LOCKFILE.exists():
-        time.sleep(0.1)
+        sleep(0.1)
     typer.secho("PyroLab daemon shutdown.", fg=typer.colors.GREEN)
 
 @app.command()
@@ -328,18 +330,21 @@ def logs_clean():
     """
     Deletes all log files.
     """
-    PYROLAB_LOGFILE.unlink(missing_ok=True)
+    [f.unlink() for f in PYROLAB_LOGDIR.glob("*.*")]
 
 @logs_app.command("export")
 def logs_export(filename: str):
     """
     Exports the log file to a file.
     """
-    if PYROLAB_LOGFILE.exists():
-        shutil.copy(PYROLAB_LOGFILE, filename)
-    else:
-        typer.secho("No log file found.", fg=typer.colors.RED)
-        raise typer.Abort()
+    f_names = PYROLAB_LOGDIR.glob('*.*')
+    lines = list(fileinput.input(f_names))
+    t_fmt = "%Y-%m-%d %H:%M:%S.%f" # format of time stamps
+    t_pat = re.compile(r'\[(.+?)\]') # pattern to extract timestamp
+    with Path(filename).open(mode='w') as f:
+        for l in sorted(lines, key=lambda l: strptime(t_pat.search(l).group(1), t_fmt)):
+            f.write(l)
+    typer.secho(f"Exported logs to {filename}", fg=typer.colors.GREEN)
 
 ###############################################################################
 # pyrolab rename
