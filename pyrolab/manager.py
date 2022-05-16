@@ -276,14 +276,11 @@ class DaemonRunner(multiprocessing.Process):
         When the kill signal is received, gracefully shuts down and removes
         its registration from the nameserver.
         """
-        log.info(f"Starting")
+        log.info(f"Starting daemon {self.name}")
 
         # Set Pyro5 settings for daemon
-        log.info("got here")
         self.daemonconfig.update_pyro_config()
-        log.info("also got here")
         daemon, uris = self.setup_daemon()
-        log.info('are we out of the woods')
 
         GLOBAL_CONFIG = PyroLabConfiguration.from_file(RUNTIME_CONFIG)
 
