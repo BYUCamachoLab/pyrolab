@@ -176,11 +176,11 @@ directory should be clean (no uncommitted changes).
 
 To bump version prior to a release, run one of the following commands:
 
-.. code:: bash
-
-   bumpversion major
-   bumpversion minor
-   bumpversion patch
+```
+bumpversion major
+bumpversion minor
+bumpversion patch
+```
 
 This will automatically create a git tag in the repository with the 
 corrresponding version number and commit the modified files (where version
