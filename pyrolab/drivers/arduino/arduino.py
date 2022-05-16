@@ -66,7 +66,7 @@ class BaseArduinoDriver(PyroArduino):
             | ``due``: `Arduino Due <https://store.arduino.cc/products/arduino-due>`_
             | ``nano``: `Arduino Nano <https://store.arduino.cc/products/arduino-nano>`_
         """
-        if hasattr(self.board):
+        if hasattr(self, "board"):
             log.debug("Already connected")
             return True
 
