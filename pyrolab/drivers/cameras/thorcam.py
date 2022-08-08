@@ -40,6 +40,7 @@ from ctypes import *
 from typing import Tuple, Optional
 
 import numpy as np
+import cv2 as cv
 from Pyro5.api import locate_ns, Proxy
 
 from pyrolab.api import expose
@@ -264,7 +265,11 @@ class ThorCamBase(Camera):
         
         while not self.stop_video.is_set():
             log.debug("Getting frame")
-            msg = self.get_frame()
+            encode_param = [int(cv.IMWRITE_JPEG_QUALITY), 90]
+            success, msg = cv.imencode('.jpg', self.get_frame(), encode_param)
+
+            if not success:
+                log.debug("Compression failed")
 
             log.debug("Serializing")
             ser_msg = msg.tobytes()
@@ -487,7 +492,7 @@ class ThorCamClient:
                 message += submessage
 
             # Deserialize the message and break
-            self.last_image = np.frombuffer(message, dtype=np.uint8).reshape(shape)
+            self.last_image = cv.imdecode(np.frombuffer(message, dtype=np.uint8).reshape(shape),1)
             self.clientsocket.send(b'ACK')
 
         self.clientsocket.close()
