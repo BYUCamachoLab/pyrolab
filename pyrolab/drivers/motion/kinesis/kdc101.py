@@ -76,7 +76,7 @@ try:
 except:
     log.warn("Building ThorLabs device list failed; unable to connect to any instruments")
 
-
+@expose
 class HomingMixin:
     def home(self, block=True):
         log.debug(f"Homing KDC101 device '{self.serialno}'")
@@ -622,7 +622,7 @@ class KDC101(KinesisInstrument):
         kcdc.CC_Identify(self._serialno)
 
     # @oneway
-    def go_home(self):
+    def go_home(self, block = True):
         """
         Takes the device home and sets self.homed to true
 
@@ -635,7 +635,8 @@ class KDC101(KinesisInstrument):
         status = kcdc.CC_Home(self._serialno)
         check_error(status)
         self.homed = True
-        self.wait_for_completion()
+        if block:
+            self.wait_for_completion()
         log.debug(f"Homed: KDC101 device '{self.serialno}'")
 
     def move_to(self, pos):
