@@ -2,24 +2,23 @@ from ctypes import *
 import pyvisa
 import time
 
-from pyrolab.drivers.lasers import Laser
+#TODO: Add motor functionality. find a way to track wavelength and other relevant data.
 
-#TODO: Make a test file. Check laser status function return types. Add motor functionality. find a way to track wavelength and other relevant data.
-
-class SacherTech(Laser):
+class SacherTech:
     """
     Driver for the 420nm and 980nm Sachertechnik group lasers 
 
     The laser must already be physically turned on and connected to a USB port
     of some host computer, whether that be a local machine or one hosted by 
-    a PyroLab server.
+    a PyroLab server. The baudrate for the laser object must be initialized to the same
+    rate on the laser for the connection to be successful.
     
     """
 
     def __init__(self) -> None:
         self.var = pyvisa.ResourceManager()    
 
-    def connect(self, port: int, baudrate: int = 57600) -> None:
+    def connect(self, port: int, baudrate: int = 9600) -> None:
         """
         Connects to the laser indicated and sets initial conditions
 
@@ -31,10 +30,11 @@ class SacherTech(Laser):
             Sets the baudrate for the laser.
         """
         self.laser = self.var.open_resource('ASRL' + str(port) + '::INSTR')
+        self.laser.timeout = 2500
         self.laser.baud_rate = baudrate
-        self.laser.query(':SYSTem:Echo 0')
-        self.laser.query(':SYSTem:BAUDrate ' + str(baudrate))
-        self.laser.query(':SYSTem:ACKnowledge 1')
+        self.laser.write(':SYSTem:Echo 0')
+        self.laser.write(':SYSTem:BAUDrate ' + str(baudrate))
+        self.laser.write(':SYSTem:ACKnowledge 0')
 
     def activate_laser(self) -> None: 
         """
@@ -89,7 +89,7 @@ class SacherTech(Laser):
             Boolean to represent whether the piezo is enabled or not
         """
         piezo = self.laser.query(':p:ena?')
-        status = 1 if (piezo == "ON") else 0
+        status = 1 if (piezo == "ON\r\n") else 0
         return status
 
     def laser_status(self) -> bool:
@@ -102,7 +102,7 @@ class SacherTech(Laser):
             Boolean to represent whether the laser is on or off
         """
         lStatus = self.laser.query(':l:stat?')
-        statusBool = 1 if (lStatus == "ON") else 0
+        statusBool = 1 if (lStatus == "ON\r\n") else 0
         return statusBool
 
     def laser_current_status(self) -> float:
@@ -142,7 +142,7 @@ class SacherTech(Laser):
 
     def laser_power(self) -> float:
         """
-        Outputs the current laser power. Only returns a value if the laser has an attachment for measuring output power.
+        Outputs the current laser power
 
         Returns
         -------
@@ -157,5 +157,4 @@ class SacherTech(Laser):
         Closes the connection to the laser and eliminates the resource manager variable
         """
         self.laser.close()
-
 
