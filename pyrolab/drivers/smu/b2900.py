@@ -23,9 +23,9 @@ from pyrolab import __version__
 from pyrolab.drivers.smu import SMU, VISAResourceExtentions
 
 
-class KSSMU(SMU):
+class B2900(SMU):
     """
-    Simple network controller class for Keysight SMUs.
+    Simple network controller class for Keysight B2900 SMU.
 
     This class is used to control the Keysight B2900B/BL SMU. These are not local
     devices, nor native PyroLab objects. Therefore, network device 
@@ -84,7 +84,7 @@ class KSSMU(SMU):
     def timeout(self, ms):
         self.device.timeout = ms
 
-    def query(self, message, delay=None):
+    def query(self, message: str="", delay: float=None):
         """
         A combination of :py:func:`write` and :py:func:`read`.
 
@@ -103,7 +103,7 @@ class KSSMU(SMU):
         """
         return self.device.query(message, delay)
 
-    def write(self, message, termination=None, encoding=None):
+    def write(self, message: str, termination: str=None, encoding: str=None):
         """
         Writes a message to the SMU.
 
@@ -120,7 +120,7 @@ class KSSMU(SMU):
         """
         self.device.write(message, termination, encoding)
     
-    def screenshot(self, path, form='PNG'):
+    def screenshot(self, path: str, form: str='PNG'):
         """
         Takes a screenshot of the scope and saves it to the specified path.
 
@@ -131,8 +131,8 @@ class KSSMU(SMU):
         path : str
             The local path, including filename and extension, of where
             to save the file.
-        form : str
-            Format of the created image. Can be JPG, BMP, PNG, or WMF.
+        form : str, optional
+            Format of the created image. Defaults to PNG. Can be JPG, BMP, PNG, or WMF.
         """
         instrument_save_path = "'C:\\temp\\Last_Screenshot.png\'"
         self.write(f'HCOP:SDUM:FORM {form}')
@@ -141,7 +141,7 @@ class KSSMU(SMU):
         self.device.ext_query_bin_data_to_file('HCOP:SDUM:DATA?', str(path))
         self.device.ext_error_checking()
         
-    def write_block(self, message):
+    def write_block(self, message: str):
         """
         Writes a message to the scope, waits for it to complete, and checks for errors.
 
@@ -168,21 +168,24 @@ class KSSMU(SMU):
         self.device.ext_wait_for_opc()
     
     #measure_ and sweep_ not tested yet
-    def measure_current(self, voltage, compliance, measurement_speed, channel=""):
+    def measure_current(self, voltage: float, compliance: float, power_line_cycles: int=2, channel: int=0):
         """
         Performs a spot measurement of current at the speficied voltage
         
         Parameters
         ----------
-        current : float
+        voltage : float
             Voltage in Volts
         compliance : float
-            Sets voltage limit
-        measurement_speed : float
-            Aperture speed in seconds
+            Safety limit on current, in Amps
+        power_line_cycles : int, optional
+            Duration of measurement in terms of power line cycles, defaults to 2
         channel : int, optional
             Channel number, defaults is 1
         """
+        if channel == 0:
+            channel = ""
+
         #resets device
         self.write("*RST")
         
@@ -197,7 +200,7 @@ class KSSMU(SMU):
         #turns on voltage sensor
         self.write(f":SENS{channel}:FUNC \"CURR\"")
         #sets measurement speed (aperture time)
-        self.write(f":SENS:CURR:APER {measurement_speed}")
+        self.write(f":SENS:CURR:NPLC {power_line_cycles}")
         
         self.device.ext_error_checking()
         
@@ -211,7 +214,7 @@ class KSSMU(SMU):
         self.device.ext_error_checking()
         return measurement
     
-    def measure_voltage(self, current, compliance, measurement_speed, channel=""):
+    def measure_voltage(self, current: float, compliance: float, power_line_cycles: int=2, channel: int=0):
         """
         Performs a spot measurement of voltage at the specified current
         
@@ -220,12 +223,15 @@ class KSSMU(SMU):
         current : float
             Current in Amps
         compliance : float
-            Sets current limit
-        measurement_speed : float
-            Aperture speed in seconds
+            Safety limit on voltage, in Volts
+        power_line_cycles : int, optional
+            Duration of measurement in terms of power line cycles, defaults to 2
         channel : int, optional
             Channel number, default is 1
         """
+        if channel == 0:
+            channel = ""
+        
         #resets device
         self.write("*RST")
         
@@ -241,7 +247,7 @@ class KSSMU(SMU):
         #sets measurement range to auto
         self.write(f":SENS{channel}:VOLT:RANG:AUTO ON")
         #sets measurement speed (aperture time)
-        self.write(f":SENS{channel}:VOLT:APER {measurement_speed}")
+        self.write(f":SENS{channel}:VOLT:NPLC {power_line_cycles}")
         
         self.device.ext_error_checking()
         
@@ -255,7 +261,14 @@ class KSSMU(SMU):
         self.device.ext_error_checking()
         return measurement
     
-    def sweep_voltage(self, start, stop, steps, compliance, measurement_speed, channel="", log=False):
+    def toggle_colors(self):
+        """
+        Toggles color scheme of SMU display
+        """
+        color = self.query(":DISP:CSET?")
+        self.write(":DISP:CSET " + str(int(color) % 2 + 1))
+
+    #def sweep_voltage(self, start, stop, steps, compliance, measurement_speed, channel="", log=False):
         """
         Staircase sweep measurement of current
         
@@ -275,6 +288,7 @@ class KSSMU(SMU):
             Channel number, defaults to 1
         log : bool, optional
             Use logarithmic sweep spacing. Defaults to linear
+        """
         """
         #resets device
         self.write("*RST")
@@ -311,8 +325,8 @@ class KSSMU(SMU):
         self.device.ext_error_checking()
         
         return measurement
-    
-    def sweep_current(self, start, stop, steps, compliance, measurement_speed, channel="", log=False):
+        """
+    #def sweep_current(self, start, stop, steps, compliance, measurement_speed, channel="", log=False):
         """
         Staircase sweep measurement of voltage
         
@@ -332,6 +346,7 @@ class KSSMU(SMU):
             Channel number, defaults to 1
         log : bool, optional
             Use logarithmic sweep spacing. Defaults to linear
+        """
         """
         #resets device
         self.write("*RST")
@@ -368,11 +383,5 @@ class KSSMU(SMU):
         self.device.ext_error_checking()
         
         return measurement
-
-    def toggle_colors(self):
-        """
-        Toggles color scheme of SMU display
-        """
-        color = self.query(":DISP:CSET?")
-        self.write(":DISP:CSET " + str(int(color) % 2 + 1))
+`       """
         
