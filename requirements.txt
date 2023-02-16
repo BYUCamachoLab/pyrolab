@@ -17,3 +17,4 @@ tabulate
 colorama
 black
 isort>=5.0.0
+tabulate
