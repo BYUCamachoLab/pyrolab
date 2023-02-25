@@ -1,0 +1,19 @@
+.abbreviated-description {
+  max-width: 25%;
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.bg-blue {
+  background: linear-gradient(to right, #2980b9, #2c3e50);
+}
+.center {
+  text-align: center;
+}
+.text-font {
+  font-family: 'Outfit', sans-serif;
+}
+.title {
+  font-size: 3em;
+}
