@@ -139,20 +139,20 @@ class PPCL55xBase(Laser):
         baudrate : int
             baudrate of the serial connection (default 9600)
         """
+        log.debug("Entering connect()")
 
         self.latest_register = 0
         self.queue = []
-        self.laser_on = False
         self.max_row_ticket = 0
 
+        if hasattr(self, "device") and self.device.is_open:
+            log.debug("Already connected")
+            return True
         try:
-            self.device = serial.Serial(port,baudrate,timeout=1,
-                parity=serial.PARITY_NONE) #attempt connection with given baudrate
+            self.device = serial.Serial(port, baudrate, timeout=1, parity=serial.PARITY_NONE)
         except serial.SerialException as e:
             self.device.close()
-            raise CommunicationError("Could not connect to laser on port " + port
-            + " with baudrate " + str(baudrate))
-            raise e
+            raise CommunicationError(f"Could not connect to laser on port {port} with baudrate {baudrate}.")
 
     def close(self) -> None:
         """
