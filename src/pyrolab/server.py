@@ -19,6 +19,8 @@ import Pyro5
 from Pyro5.core import URI
 from Pyro5.server import behavior, expose, oneway, serve
 
+from pyrolab.errors import LockAcquisitionError
+
 if TYPE_CHECKING:
     from Pyro5.socketutil import SocketConnection
 
@@ -393,7 +395,7 @@ class LockableDaemon(Daemon):
             if lock_owner is None or lock_owner == conn:
                 return obj
             if lock_owner != conn:
-                raise Exception(f"Pyro object is locked (by '{username or lock_owner}').")
+                raise LockAcquisitionError(username or lock_owner)
 
     def clientDisconnect(self, conn):
         """
