@@ -17,9 +17,8 @@ import sys
 import textwrap
 import fileinput
 import re
-from datetime import date
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Iterable, Optional
 from time import sleep, strptime
 
 import pkg_resources
@@ -67,12 +66,6 @@ def get_daemon(abort=True, suppress_reload_message=False) -> PyroLabDaemon:
 ###############################################################################
 
 app = typer.Typer()
-
-print(f"PyroLab  Copyright © 2020-{date.today().year}  BYU CamachoLab, PyroLab Project Contributors")
-print("This program comes with ABSOLUTELY NO WARRANTY.")
-print("This is free software, and you are welcome to redistribute it under certain conditions.")
-print("See the documentation for more information (https://pyrolab.readthedocs.io).")
-print()
 
 
 def _version_callback(value: bool=True) -> None:
@@ -330,6 +323,17 @@ def logs_clean():
     """
     [f.unlink() for f in PYROLAB_LOGDIR.glob("*.*")]
 
+def try_itr(func: Callable, itr: Iterable, *exceptions, **kwargs):
+    """
+    Tests a function on an iterable, yields iterable if no exception is raised.
+    """
+    for elem in itr:
+        try:
+            func(elem, **kwargs)
+            yield elem
+        except exceptions:
+            pass
+
 @logs_app.command("export")
 def logs_export(filename: str):
     """
@@ -339,6 +343,7 @@ def logs_export(filename: str):
     lines = list(fileinput.input(f_names))
     t_fmt = "%Y-%m-%d %H:%M:%S.%f" # format of time stamps
     t_pat = re.compile(r'\[(.+?)\]') # pattern to extract timestamp
+    lines = list(try_itr(lambda l: strptime(t_pat.search(l).group(1), t_fmt), lines, AttributeError))
     with Path(filename).open(mode='w') as f:
         for l in sorted(lines, key=lambda l: strptime(t_pat.search(l).group(1), t_fmt)):
             f.write(l)
