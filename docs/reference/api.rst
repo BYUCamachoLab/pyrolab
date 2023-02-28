@@ -1,42 +1,75 @@
-.. currentmodule:: pyrolab.api
+.. .. currentmodule:: pyrolab.api
 
 
 pyrolab.api
 ===========
 
 Importing ``pyrolab.api`` or any object from it has one (useful) side effect.
-If a configuration file exists (has been set through the CLI), it will load
-and set PyroLab to use the first listed nameserver configuration. Functions
-such as :py:func:`pyrolab.nameserver.locate_ns` will find the nameserver without needing to
-pass any arguments, such as the hostname of the nameserver.
+If a configuration file exists (has been set through the CLI), it will load and
+set PyroLab to use the first listed nameserver configuration. Functions such as
+:py:func:`pyrolab.api.locate_ns` will therefore find the nameserver
+without needing to pass any arguments, such as the hostname of the nameserver.
 
 
 Services
 --------
 
-* :py:func:`pyrolab.server.expose`
-* :py:func:`pyrolab.server.behavior`
-* :py:func:`pyrolab.server.oneway`
+Wrappers
+~~~~~~~~
+
+.. autofunction:: pyrolab.api.expose
+
+.. autofunction:: pyrolab.api.behavior
+
+.. autofunction:: pyrolab.api.oneway
+
+Classes
+~~~~~~~
 
 * :py:class:`pyrolab.service.Service`
-* :py:class:`pyrolab.api.Proxy`
 
-Server
-------
 
-* :py:func:`pyrolab.api.locate_ns`
-* :py:func:`pyrolab.nameserver.start_ns`
-* :py:func:`pyrolab.nameserver.start_ns_loop`
-* :py:func:`pyrolab.server.serve`
+Server Daemon
+-------------
+
+Functions
+~~~~~~~~~
+
+.. autofunction:: pyrolab.api.locate_ns
+
+.. autofunction:: pyrolab.api.start_ns
+
+.. autofunction:: pyrolab.api.start_ns_loop
+
+.. autofunction:: pyrolab.api.serve
+
+Classes
+~~~~~~~
 
 * :py:class:`pyrolab.server.Daemon`
 * :py:class:`pyrolab.server.LockableDaemon`
 
+
+Client
+------
+
+Classes
+~~~~~~~
+
+.. autoclass:: pyrolab.api.Proxy
+
+
 Configuration
 -------------
 
+Functions
+~~~~~~~~~
+
 * :py:func:`pyrolab.configure.update_config`
 * :py:func:`pyrolab.configure.reset_config`
+
+Classes
+~~~~~~~
 
 * :py:class:`pyrolab.configure.NameServerConfiguration`
 * :py:class:`pyrolab.configure.DaemonConfiguration`

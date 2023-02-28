@@ -1,8 +1,3 @@
-.. PyroLab documentation master file, created by
-   sphinx-quickstart on Wed Nov 10 19:21:42 2021.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 =====================
 PyroLab Documentation
 =====================
@@ -18,84 +13,102 @@ A framework for using remote lab instruments as local resources, built on `Pyro5
 Key Features
 ------------
 
-- Free and open-source software provided under the GPLv3+ License
+- Free and open-source software provided under the GPLv3+ License.
 - Compatible with Python 3.7+.
 - Cross-platform: runs on Windows, MacOS, and Linux.
 - Included device drivers for several scopes and ThorLabs motion controllers.
 - Remotely controlled devices can be accessed through a `Pyro5`_ proxy.
 
-.. panels::
-    :card: + intro-card text-center
-    :column: col-lg-6 col-md-6 col-sm-6 col-xs-12 d-flex
+If you use PyroLab, we'd appreciate you citing our work:
 
-    ---
-    :img-top: _static/images/index_getting_started.svg
 
-    Getting started
-    ^^^^^^^^^^^^^^^
+.. tab-set::
 
-    New to *PyroLab*? Check out the getting started guides. They contain an
-    introduction to *PyroLab's* main concepts and a step-by-step tutorial for
-    beginners.
+    .. tab-item:: Text
 
-    +++
+        Coming soon
 
-    .. link-button:: getting_started
-            :type: ref
-            :text: To the getting started guides
-            :classes: btn-block btn-secondary stretched-link
+    .. tab-item:: BibTeX
 
-    ---
-    :img-top: _static/images/index_user_guide.svg
+        .. code-block:: 
 
-    User guide
-    ^^^^^^^^^^
+            Coming soon
 
-    The user guide provides in-depth information on the key concepts of PyroLab
-    with useful background information and explanation.
 
-    +++
+.. grid:: 1 2 2 2
+    :gutter: 3
 
-    .. link-button:: user_guide
-            :type: ref
-            :text: To the user guide
-            :classes: btn-block btn-secondary stretched-link
+    .. grid-item-card::  Getting Started
 
-    ---
-    :img-top: _static/images/index_api.svg
+        .. image:: /_static/images/index_getting_started.svg
+            :align: center
+            :height: 100
+            :width: 100
 
-    API reference
-    ^^^^^^^^^^^^^
+        New to *PyroLab*? Check out the getting started guides. They contain an
+        introduction to *PyroLab's* main concepts and a step-by-step tutorial for
+        beginners.
 
-    The reference guide contains a detailed description of the PyroLab API. The
-    reference describes how the methods work and which parameters can be used.
-    It also contains a listing of provided hardware drivers. It assumes that
-    you have an understanding of the key concepts.
+        .. button-ref:: getting_started
+            :color: primary
+            :shadow:
+            :expand:
 
-    +++
+            To the getting started guides
 
-    .. link-button:: api_reference
-            :type: ref
-            :text: To the reference guide
-            :classes: btn-block btn-secondary stretched-link
+    .. grid-item-card::  User Guide
 
-    ---
-    :img-top: _static/images/index_contribute.svg
+        .. image:: /_static/images/index_user_guide.svg
+            :align: center
+            :height: 100
+            :width: 100
 
-    Developer guide
-    ^^^^^^^^^^^^^^^
+        The user guide provides in-depth information on the key concepts of PyroLab
+        with useful background information and explanation.
 
-    Want to add your own device driver? Saw a typo in the documentation? Want to improve
-    existing functionalities? The contributing guidelines will guide
-    you through the process of improving PyroLab.
+        .. button-ref:: user_guide
+            :color: primary
+            :shadow:
+            :expand:
 
-    +++
+            To the user guide
 
-    .. link-button:: development
-            :type: ref
-            :text: To the development guide
-            :classes: btn-block btn-secondary stretched-link
+    .. grid-item-card::  API Reference
 
+        .. image:: /_static/images/index_api.svg
+            :align: center
+            :height: 100
+            :width: 100
+
+        The reference guide contains a detailed description of the PyroLab API. The
+        reference describes how the methods work and which parameters can be used.
+        It also contains a listing of provided hardware drivers. It assumes that
+        you have an understanding of the key concepts.
+
+        .. button-ref:: api_reference
+            :color: primary
+            :shadow:
+            :expand:
+
+            To the reference guide
+
+    .. grid-item-card::  Developer Guide
+
+        .. image:: /_static/images/index_contribute.svg
+            :align: center
+            :height: 100
+            :width: 100
+
+        Want to add your own device driver? Saw a typo in the documentation? Want to improve
+        existing functionalities? The contributing guidelines will guide
+        you through the process of improving PyroLab.
+
+        .. button-ref:: development
+            :color: primary
+            :shadow:
+            :expand:
+
+            To the development guide
 
 
 .. toctree::
@@ -106,11 +119,3 @@ Key Features
    user_guide/index
    reference/index
    development/index
-
-
-.. Indices and tables
-.. ------------------
-
-.. * :ref:`genindex`
-.. * :ref:`modindex`
-.. * :ref:`search`

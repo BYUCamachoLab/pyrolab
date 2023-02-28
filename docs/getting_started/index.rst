@@ -14,21 +14,14 @@ For more detailed information, see the user guide.
 .. toctree::
     :maxdepth: 2
 
-    install
     overview
-    pyro5_essentials
+    install
     architecture
     services
     server
     nameserver
     configuration
+    cli
     client
-    fullexample
-
-.. getting_started/usage
-.. getting_started/examples
-.. getting_started/tutorials
-.. getting_started/faq
-.. getting_started/contributing
-.. getting_started/citing
-.. getting_started/license
+    summary
+    license
