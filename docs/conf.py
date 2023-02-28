@@ -25,7 +25,7 @@ copyright = f"2020-{datetime.now().year}, Sequoia Ploeg"
 author = 'Sequoia Ploeg'
 
 # The full version, including alpha/beta/rc tags
-release = '0.2.1'
+release = '0.3.0'
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

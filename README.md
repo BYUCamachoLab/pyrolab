@@ -5,7 +5,7 @@
 ---
 
 <p align="center">
-<img alt="Development version" src="https://img.shields.io/badge/master-v0.2.1-informational">
+<img alt="Development version" src="https://img.shields.io/badge/master-v0.3.0-informational">
 <a href="https://pypi.python.org/pypi/pyrolab"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/pyrolab.svg"></a>
 <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/pyrolab">
 <a href="https://pyrolab.readthedocs.io/"><img alt="Documentation Status" src="https://readthedocs.org/projects/pyrolab/badge/?version=latest"></a>
@@ -184,7 +184,7 @@ corrresponding version number and commit the modified files (where version
 numbers were updated). Pushing the tags (a manual process) to the remote will 
 automatically create a new release. Releases are automatically published to 
 PyPI and GitHub when git tags matching the "v*" pattern are created 
-(e.g. "v0.2.1"), as bumpversion does.
+(e.g. "v0.3.0"), as bumpversion does.
 
 After bumping version, you can view the tags on the local machine by running 
 ``git tag``. To push the tags to the remote server and trigger the release
