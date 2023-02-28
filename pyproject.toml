@@ -65,12 +65,13 @@ dependencies = [
   "Pyro5",
   "pydantic",
   "pyyaml",
-  "appdirs",
   "deprecation",
   "appnope",
   "typer",
   "colorama",
   "tabulate",
+  "requests",
+  "packaging>=23.0",
 ]
 
 # List additional groups of dependencies here (e.g. development

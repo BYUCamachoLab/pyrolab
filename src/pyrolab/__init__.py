@@ -28,13 +28,17 @@ import pathlib
 import platform
 import sys
 
-if sys.version_info < (3, 7, 0):
+# Check if Python version is supported
+pyversion = sys.version_info
+if pyversion < (3, 7, 0):
     raise Exception(
         "PyroLab requires Python 3.7+ (version "
         + platform.python_version()
         + " detected)."
     )
 
+
+# Metadata
 __name__ = "PyroLab"
 __author__ = "CamachoLab"
 __copyright__ = "Copyright 2020, The PyroLab Project"
@@ -48,6 +52,7 @@ __forum_url__ = "https://github.com/sequoiap/pyrolab/issues"
 __website_url__ = "https://camacholab.byu.edu/"
 
 
+# Filter warnings
 import warnings
 
 warnings.filterwarnings("default", category=DeprecationWarning)
@@ -55,42 +60,28 @@ if "PYROLAB_HUSH_DEPRECATION" in os.environ:
     warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
-# Hide a very annoying warnings from appnope about Python 3.12
-with warnings.catch_warnings():
-    warnings.filterwarnings("ignore", category=DeprecationWarning)
-    import appnope
-    appnope.nope()
+# Configuration directories
+# Old api deprecated in 3.11, new api added in 3.9
+if pyversion < (3, 9, 0):
+    base_path = pathlib.Path(__file__).resolve().parent
+else:
+    from importlib.resources import files
+    base_path = files("pyrolab")
+base_path = base_path / "data" / "local"
 
-
-from appdirs import AppDirs
-
-_dirs = AppDirs(__name__, __author__)
-
-# Data Directories
-PYROLAB_DATA_DIR = pathlib.Path(_dirs.user_data_dir)
+# Data directories
+PYROLAB_DATA_DIR = pathlib.Path(base_path)
 PYROLAB_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-# Configuration Directories
-PYROLAB_CONFIG_DIR = PYROLAB_DATA_DIR / "config"
-PYROLAB_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-
-# User config file directory
-CONFIG_DIR = PYROLAB_CONFIG_DIR / "user"
-CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-
-# Background daemon data directory
-PYROLABD_DATA = PYROLAB_DATA_DIR / "pyrolabd"
-PYROLABD_DATA.mkdir(parents=True, exist_ok=True)
-
-NAMESERVER_STORAGE = PYROLAB_DATA_DIR / "nameservers"
+NAMESERVER_STORAGE = PYROLAB_DATA_DIR / "nameserver"
 NAMESERVER_STORAGE.mkdir(parents=True, exist_ok=True)
 
 PYROLAB_LOGDIR = PYROLAB_DATA_DIR / "logs"
 PYROLAB_LOGDIR.mkdir(parents=True, exist_ok=True)
 
-LOCKFILE = PYROLABD_DATA / "pyrolabd.lock"
-USER_CONFIG_FILE = CONFIG_DIR / "user_configuration.yaml"
-RUNTIME_CONFIG = PYROLABD_DATA / "runtime_config.yaml"
+LOCKFILE = PYROLAB_DATA_DIR / "pyrolabd.lock"
+USER_CONFIG_FILE = PYROLAB_DATA_DIR / "user_configuration.yaml"
+RUNTIME_CONFIG = PYROLAB_DATA_DIR / "runtime_config.yaml"
 
 
 # Set up logging to file
@@ -105,6 +96,7 @@ def get_loglevel() -> int:
     except AttributeError:
         loglevel = logging.INFO
     return loglevel
+
 
 if len(logging.root.handlers) == 0:    
     logfile = PYROLAB_LOGDIR / f"pyrolab_{os.getpid()}.log"
@@ -121,3 +113,33 @@ if len(logging.root.handlers) == 0:
 import Pyro5.errors
 
 sys.excepthook = Pyro5.errors.excepthook
+
+
+# Check for updates to PyroLab
+try:
+    import json
+    import requests
+    from requests.adapters import HTTPAdapter
+    from packaging.version import parse
+
+    url = "https://pypi.org/pypi/pyrolab/json"
+    with requests.Session() as s:
+        s.mount('https://pypi.org', HTTPAdapter(max_retries=3))
+        resp = s.get(url).text
+
+    v = json.loads(resp)['info']['version']
+    curver = parse(__version__)
+    latest = parse(v)
+
+    log = logging.getLogger(__name__)
+
+    if curver > latest:
+        message = f"Installed version is greater than the latest version available on PyPI ({curver} > {latest})."
+        warnings.warn(message, stacklevel=2)
+        log.info(message)
+    elif curver < latest:
+        message = f"A new version of PyroLab is available (latest is {latest}, but {curver} is installed)."
+        warnings.warn(message, stacklevel=2)
+        log.info(message)
+except:
+    pass
