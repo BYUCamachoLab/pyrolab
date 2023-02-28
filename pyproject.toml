@@ -84,7 +84,7 @@ tsl550 = ["pyserial"]
 ppcl55x = ["pyserial"]
 rto = ["pyvisa", "pyvisa-py"]
 arduino = ["pyfirmata"]
-monitor = ["flask", "omegaconf"]
+monitor = ["flask", "omegaconf", "waitress"]
 test = ["pytest", "coverage"]
 
 [project.urls]
@@ -96,6 +96,7 @@ test = ["pytest", "coverage"]
 
 [project.scripts]
 pyrolab = "pyrolab.cli:app"
+pyromonitor = "pyromonitor.cli:app"
 
 [tool.setuptools.packages.find]
 where = ["src"]
