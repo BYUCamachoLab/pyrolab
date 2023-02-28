@@ -18,22 +18,19 @@ all new connections are blocked until the lock is released, the client would
 not be able to reconnect to release the lock if not for this feature.)
 """
 
-from pyrolab.api import locate_ns
+from pyrolab.api import locate_ns, Daemon, DaemonConfiguration
 from pyrolab.drivers.sample import SampleAutoconnectInstrument
-from pyrolab.server.locker import create_lockable
-from pyrolab.server import AutoconnectLockableDaemon, srv_profile, DaemonConfiguration
 
 cfg = DaemonConfiguration(servertype="multiplex")
-srv_profile.use(cfg)
+cfg.update_pyro_config()
 
-daemon = AutoconnectLockableDaemon()
+daemon = Daemon()
 ns = locate_ns(host="localhost")
-SS = create_lockable(SampleAutoconnectInstrument)
-uri = daemon.register(SS, connect_params={"address": "0.0.0.0", "port": 8080})
-ns.register("test.SampleAutoconnectInstrument", uri, metadata={"This instrument supports autoconnect()."})
+uri = daemon.register(SampleAutoconnectInstrument, connect_params={"address": "0.0.0.0", "port": 8080})
+ns.register("test.autoconnectable", uri, metadata={"This instrument supports autoconnect()."})
 
 print("SERVER READY")
 try:
     daemon.requestLoop()
 finally:
-    ns.remove("test.SampleAutoconnectInstrument")
+    ns.remove("test.autoconnectable")
