@@ -18,19 +18,17 @@ all new connections are blocked until the lock is released, the client would
 not be able to reconnect to release the lock if not for this feature.)
 """
 
-from pyrolab.api import locate_ns
+from pyrolab.api import locate_ns, LockableDaemon, DaemonConfiguration
 from pyrolab.drivers.sample import SampleService
-from pyrolab.server.locker import create_lockable
-from pyrolab.server import LockableDaemon, srv_profile, DaemonConfiguration
 
 cfg = DaemonConfiguration(servertype="multiplex")
-srv_profile.use(cfg)
+cfg.update_pyro_config()
+
+ns = locate_ns(host="localhost")
 
 daemon = LockableDaemon()
-ns = locate_ns(host="localhost")
-SS = create_lockable(SampleService)
-# SS = behavior(SS, instance_mode="single")
-SS._pyroInstancing = ("single", None)
+SS = SampleService
+SS.set_behavior("single")
 uri = daemon.register(SS)
 ns.register("test.SampleService", uri, metadata={"You can put lists of strings here!"})
 
