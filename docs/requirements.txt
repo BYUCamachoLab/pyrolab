@@ -7,7 +7,6 @@ sphinx_design==0.3.0
 sphinx-copybutton==0.5.1
 sphinx-togglebutton==0.3.2
 linkify-it-py==2.0.0
-
-# pyyaml==6.0
-# pydantic==1.9.0
-# Pyro5==5.13.1
+pydantic==1.10.5
+pyyaml==6.0
+Pyro5==5.14
