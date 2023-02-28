@@ -36,20 +36,14 @@ from ctypes import (
     cast,
     create_string_buffer,
 )
-from ctypes.wintypes import DWORD, WORD
 from typing import Any, Dict, List
 
-from Pyro5.server import oneway
 from thorlabs_kinesis import kcube_dcservo as kcdc
 from thorlabs_kinesis._utils import c_dword, c_word
 
 from pyrolab.api import expose
 from pyrolab.drivers.motion.kinesis import ERROR_CODES, KinesisInstrument
-from pyrolab.drivers.motion.kinesis.exceptions import (
-    KinesisCommunicationError,
-    KinesisDLLError,
-    KinesisMotorError,
-)
+
 
 log = logging.getLogger(__name__)
 
@@ -60,11 +54,11 @@ KCube_DC_Servo_Device_ID = 27
 def check_error(status):
     if status != 0:
         if status > 0 and status <= 21:
-            raise KinesisCommunicationError(ERROR_CODES[status], errcode=status)
+            raise ConnectionError(f"{ERROR_CODES[status]} ({status})")
         elif (status >= 32 and status <= 36) or (status >= 41 and status <= 43):
-            raise KinesisDLLError(ERROR_CODES[status], errcode=status)
+            raise OSError(f"{ERROR_CODES[status]} ({status})")
         elif( status >= 37 and status <= 39) or (status >= 44 and status <= 47):
-            raise KinesisMotorError(ERROR_CODES[status], errcode=status)
+            raise RuntimeError(f"{ERROR_CODES[status]} ({status})")
         raise RuntimeError(ERROR_CODES[status])
 
 
@@ -89,7 +83,6 @@ class HomingMixin:
 # message from previous non-blocking calls don't get consumed by new requestors.
 
 
-@expose
 class KDC101(KinesisInstrument):
     """
     A KCube DC Servo motor. 
@@ -724,7 +717,7 @@ class KDC101(KinesisInstrument):
         status = kcdc.CC_MoveAtVelocity(self._serialno, direction)
         try:
             check_error(status)
-        except KinesisMotorError as e:
+        except RuntimeError as e:
             # If it's just an invalid position error, we can ignore it
             if e.errcode == 38:
                 pass

@@ -23,24 +23,16 @@ Code also available in the PyroLab repository under ``/extras/arduino``.
 
    pyfirmata
 """
+
 import logging
 
 from pyfirmata import ANALOG, INPUT, OUTPUT, PWM, SERVO, Arduino, ArduinoDue, ArduinoMega, ArduinoNano, util
-from Pyro5.api import expose
 
 from pyrolab.drivers.arduino import Arduino as PyroArduino
-from pyrolab.errors import PyroLabError
+from pyrolab.api import expose
 
 
 log = logging.getLogger(__name__)
-
-
-class UnknownBoardException(PyroLabError):
-    """
-    Error raised when the arduino board name is unknown or not supported
-    """
-    def __init__(self, message="Unknown board"):
-        super().__init__(message)
 
 
 @expose
@@ -63,6 +55,11 @@ class BaseArduinoDriver(PyroArduino):
             | ``mega``: `Arduino Mega <https://store.arduino.cc/products/arduino-mega-2560-rev3>`_
             | ``due``: `Arduino Due <https://store.arduino.cc/products/arduino-due>`_
             | ``nano``: `Arduino Nano <https://store.arduino.cc/products/arduino-nano>`_
+
+        Raises
+        ------
+        ValueError
+            If the board type is not supported.
         """
         if hasattr(self, "board"):
             log.debug("Already connected")
@@ -79,7 +76,7 @@ class BaseArduinoDriver(PyroArduino):
         elif board == "nano":
             self.board = ArduinoNano(self.port)
         else:
-            raise UnknownBoardException("Unknown board " + board)
+            raise ValueError(f"Unknown board '{board}'")
         
         self.it = util.Iterator(self.board)
         self.it.start()

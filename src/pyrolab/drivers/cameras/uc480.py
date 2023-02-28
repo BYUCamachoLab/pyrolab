@@ -40,7 +40,6 @@ except:
 
 from pyrolab.api import expose
 from pyrolab.drivers.cameras.thorcam import ThorCamBase, ThorCamClient
-from pyrolab.errors import PyroLabError
 
 
 log = logging.getLogger(__name__)
@@ -77,7 +76,7 @@ class UC480(ThorCamBase):
         if hasattr(self, "handle"):
             tc.PixelClock(self.handle, 6, byref(pixelclock), sizeof(pixelclock))
         else:
-            raise PyroLabError("Cannot set pixelclock before connecting to device.")
+            raise ConnectionError("Cannot set pixelclock before connecting to device.")
 
     @property
     @expose
@@ -94,7 +93,7 @@ class UC480(ThorCamBase):
         if hasattr(self, "handle"):
             tc.SetExposure(self.handle, 12 , exposure_c, sizeof(exposure_c))
         else:
-            raise PyroLabError("Cannot set exposure before connecting to device.")
+            raise ConnectionError("Cannot set exposure before connecting to device.")
 
     @property
     @expose
@@ -111,7 +110,7 @@ class UC480(ThorCamBase):
         if hasattr(self, "handle"):
             tc.SetFrameRate(self.handle, c_double(framerate), byref(s_framerate))
         else:
-            raise PyroLabError("Cannot set framerate before connecting to device.")
+            raise ConnectionError("Cannot set framerate before connecting to device.")
 
     def connect(self, 
                 serialno: str, 
@@ -200,7 +199,7 @@ class UC480(ThorCamBase):
                 self.handle = handle
                 break
             elif(i == num.value - 1):
-                raise PyroLabError("Camera not found")
+                raise ConnectionError("Camera not found")
             else:
                 error = tc.ExitCamera(handle)
                 if error != 0:

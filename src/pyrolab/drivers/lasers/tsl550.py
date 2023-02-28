@@ -31,7 +31,7 @@ from serial.tools import list_ports
 
 from pyrolab.api import behavior, expose
 from pyrolab.drivers.lasers import Laser
-from pyrolab.errors import CommunicationError
+
 
 log = logging.getLogger(__name__)
 
@@ -183,7 +183,7 @@ class TSL550(Laser):
         try:
             self.device = serial.Serial(port, baudrate=baudrate, timeout=timeout)
         except serial.SerialException as e:
-            raise CommunicationError("Could not connect to laser on port " + port)
+            raise ConnectionError("Could not connect to laser on port " + port)
         self.device.flushInput()
         self.device.flushOutput()
         self.query_delay = query_delay
