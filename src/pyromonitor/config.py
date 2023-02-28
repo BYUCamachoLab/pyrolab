@@ -3,6 +3,7 @@ from omegaconf import OmegaConf
 
 _defaultcfg = {
     "nameserver": "camacholab.ee.byu.edu",
+    "update_period": 300,
 }
 
-conf = OmegaConf.create(_defaultcfg)
+CONFIG = OmegaConf.create(_defaultcfg)

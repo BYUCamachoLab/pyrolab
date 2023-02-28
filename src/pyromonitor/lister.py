@@ -1,26 +1,47 @@
-from flask import Blueprint, flash, g, redirect, render_template, request, url_for
+from typing import NamedTuple
+from threading import Timer
 
 from pyrolab.api import locate_ns, Proxy
-from pyrolab.errors import LockAcquisitionError
+from flask import Blueprint, flash, g, redirect, render_template, request, url_for
+
+from pyromonitor.config import CONFIG
 
 
 bp = Blueprint('lister', __name__)
 
-ns = locate_ns("camacholab.ee.byu.edu")
-instruments: dict = ns.list(return_metadata=True)
-instruments.pop("Pyro.NameServer") # no need to display the nameserver
-for inst, vals in instruments.items():
-    try:
-        p = Proxy(ns.lookup(inst))
-        p.autoconnect()
-        instruments[inst] = *vals, "Available"
-    except LockAcquisitionError as e:
-        instruments[inst] = *vals, "Locked"
-    except:
-        instruments[inst] = *vals, "Unavailable"
+
+class InstrumentStatus(NamedTuple):
+    name: str
+    uri: str
+    description: str
+    version: str
+    status: str
+
+
+def refresh_status():
+    with locate_ns(CONFIG.nameserver) as ns:
+        instruments: dict = ns.list(return_metadata=True) # {name: (uri, description)}
+        instruments.pop("Pyro.NameServer") # no need to display the nameserver
+        
+    status = []
+    for name, (uri, description) in instruments.items():
+        if len(description) > 80:
+            description = description[:77] + "..."
+        try:
+            with Proxy(ns.lookup(name)) as p:
+                version = p.pyrolab_version()
+                status.append(InstrumentStatus(name, uri, description, version, "Available"))
+        except ConnectionRefusedError as e:
+            status.append(InstrumentStatus(name, uri, description, "", "Locked"))
+        except Exception as e:
+            print(e)
+            status.append(InstrumentStatus(name, uri, description, "", "Unreachable"))
+
+    return status
+
 
 @bp.route('/', methods=["GET"])
 def listall():
-    global instruments
+    status = refresh_status()
 
-    return render_template('base.html', instruments=instruments, list=list, update_time="now")
+    return render_template('base.html', status=status, update_time="now")
