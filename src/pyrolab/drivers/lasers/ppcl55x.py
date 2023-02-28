@@ -29,13 +29,14 @@ from typing import List
 
 import serial
 import numpy as np
-from Pyro5.api import expose
 from scipy.constants import speed_of_light as C_SPEED
+
+from pyrolab.drivers.lasers import Laser
+from pyrolab.api import expose, behavior
+
 
 log = logging.getLogger(__name__)
 
-from pyrolab.drivers.lasers import Laser
-from pyrolab.errors import CommunicationError
 
 ITLA_NOERROR=0x00
 ITLA_EXERROR=0x01
@@ -97,6 +98,7 @@ WRITE_ONLY=0
 WRITE_READ=1
 
 
+@behavior(instance_mode="single")
 @expose
 class PPCL55xBase(Laser):
     """
@@ -118,9 +120,9 @@ class PPCL55xBase(Laser):
     # MAXIMUM_POWER_DBM : float
     #     The maximum power of the laser in dBm (value 13.5).
 
-    MINIMUM_WAVELENGTH = 1500
-    MAXIMUM_WAVELENGTH = 1600
-    MINIMUM_POWER_DBM = 7
+    MINIMUM_WAVELENGTH = 1500.0
+    MAXIMUM_WAVELENGTH = 1600.0
+    MINIMUM_POWER_DBM = 7.0
     MAXIMUM_POWER_DBM = 13.5
 
     MINIMUM_FREQUENCY = C_SPEED / MAXIMUM_WAVELENGTH
@@ -152,7 +154,7 @@ class PPCL55xBase(Laser):
             self.device = serial.Serial(port, baudrate, timeout=1, parity=serial.PARITY_NONE)
         except serial.SerialException as e:
             self.device.close()
-            raise CommunicationError(f"Could not connect to laser on port {port} with baudrate {baudrate}.")
+            raise ConnectionError(f"Could not connect to laser on port {port} with baudrate {baudrate}.")
 
     def close(self) -> None:
         """
@@ -527,8 +529,39 @@ class PPCL550(PPCL55xBase):
         The minimum power of the laser in dBm (value 7).
     MAXIMUM_POWER_DBM : float
         The maximum power of the laser in dBm (value 13.5).
-    """
 
+    Examples
+    --------
+    .. code-block:: python
+
+        import time
+        from pyrolab.drivers.lasers.ppcl550 import PPCL550
+
+        # choose the correct COM port 
+        laser = PPCL55x(port="COM6")
+
+        # set the power wavelength and channel
+        laser.setPower(13.5)
+        laser.setWavelength(1550)
+        laser.setChannel(1)
+
+        # turn the laser on
+        laser.on()
+        time.sleep(10)
+
+        # adjust the power to 10 dBm
+        laser.setPower(10)
+        time.sleep(10)
+
+        # change the wavelength to 1570 nm
+        laser.setWavelength(1570)
+        time.sleep(10)
+        
+        laser.off()
+        laser.close()
+    """
+    # The 550 laser has a range of 1515-1570 nm, power range of 6-13.5 dBm
+    # TODO: Verify the above statement
     MINIMUM_WAVELENGTH = 1529
     MAXIMUM_WAVELENGTH = 1566
     MINIMUM_POWER_DBM = 7
@@ -555,8 +588,39 @@ class PPCL551(PPCL55xBase):
         The minimum power of the laser in dBm (value 7).
     MAXIMUM_POWER_DBM : float
         The maximum power of the laser in dBm (value 13.5).
-    """
 
+    Examples
+    --------
+    .. code-block:: python
+
+        import time
+        from pyrolab.drivers.lasers.ppcl550 import PPCL551
+        
+        # choose the correct COM port 
+        laser = PPCL551(minWL=1569, maxWL=1625, port="COM5")
+
+        # set the power wavelength and channel
+        laser.setPower(13.5)
+        laser.setWavelength(1570)
+        laser.setChannel(1)
+
+        # turn the laser on
+        laser.on()
+        time.sleep(10)
+
+        # adjust the power to 10 dBm
+        laser.setPower(10)
+        time.sleep(10)
+
+        # change the wavelength to 1600 nm
+        laser.setWavelength(1600)
+        time.sleep(10)
+        
+        laser.off()
+        laser.close()
+    """
+    # The 551 laser has a range of 1569-1625 nm, power range of 6-13.5 dBm
+    # TODO: Verify the above statement
     MINIMUM_WAVELENGTH = 1572
     MAXIMUM_WAVELENGTH = 1609
     MINIMUM_POWER_DBM = 7
