@@ -1,8 +1,8 @@
 .. _getting_started_architecture:
 
 
-Pyro5 Architecture
-==================
+Network Architecture
+====================
 
 
 On the shoulders of giants...
@@ -23,17 +23,17 @@ Definitions
 
 There are four important concepts from Pyro5 that are important in PyroLab:
 
-#. Services (remote resource implementations, instrument drivers, data processing routines)
-#. Servers (machines that host remote resources, are physically connect to instruments, etc.)
-#. Nameservers (an optional "phonebook" making locating servers and services easy)
-#. Clients (machines that are aggregating and accessing remote resources)
+#. Services (API's for remote resources, instrument drivers, data processing routines)
+#. Servers (machines that host remote resources, are physically connected to instruments, etc.)
+#. Nameservers (an optional "phonebook," making locating servers and services easy)
+#. Clients (machines that aggregate and access remote resources)
 
-PyroLab "services" are objects that are remotely accessible. These might be
+PyroLab **services** are objects that are remotely accessible. These might be
 hardware devices, long running calculations, or perhaps an interface providing
 an API for interacting with filesystems on a remote machine; it all depends on
 what methods your services provide. 
 
-The machine that hosts your services is called a "server" and runs one or more
+The machine that hosts your services is called a **server** and runs one or more
 "daemon" processes that listen for requests on a port (one port per daemon).
 Each daemon runs in its own process, so the failure of one daemon doesn't
 affect another. Each daemon controls one or more services. Therefore, multiple
@@ -44,7 +44,7 @@ depending on how many daemons are configured. There are different run
 configurations for daemons, which are described in detail in the `user guide
 <user_guide_servers>`_.
 
-A "nameserver" acts as a phonebook. Daemons can be configured to register
+A **nameserver** acts as a phonebook. Daemons can be configured to register
 themselves with a nameserver when they're started up. In essence, they send a
 notification to the server that they're up, and they send over a list of
 services that can now be accessed. They provide the name of the service, as
@@ -56,7 +56,7 @@ machine; all parts of a PyroLab network could in theory be running on a single
 machine. The fact that they interact by making requests that are handled on 
 certain ports is what makes them a network.
 
-A "client" is your local machine, when you're using it to connect to remote
+A **client** is your local machine, when you're using it to connect to remote
 resources. You access remote resources by using a
 :py:class:`~pyrolab.api.Proxy`. A Proxy takes a URI that identifies a service
 to be connected to. Usually, you will ask the nameserver for the location of

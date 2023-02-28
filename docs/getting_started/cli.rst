@@ -82,7 +82,7 @@ status command:
 It will print to the terminal a nicely formatted table detailing all the 
 running processes daemons and nameservers:
 
-.. code-block:: bash
+.. code-block:: text
 
     NAMESERVER    CREATED              STATUS        URI
     ------------  -------------------  ------------  -----

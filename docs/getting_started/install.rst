@@ -11,7 +11,7 @@ users.
 Considerations
 --------------
 
-1. **Is this installation serving as a client?** 
+1. **Is this installation serving as a client (accessing remote resources)?** 
    The PyroLab client is designed to be platform agnostic. It should work on
    any OS, regardless of the OS running the server.
 2. **Is this installation serving as a server (providing services/instruments)?** 
@@ -51,8 +51,8 @@ preinstall.
 
 For drivers or services that have packages installable from PyPI, a pip install
 with extras is sufficient (see below). Some drivers may require additional 3rd
-party software to be installed (such as ThorLabs' Kinesis DLL's), see the
-respetive drivers' documentation.
+party software to be installed (such as ThorLabs' Kinesis DLL's), so see the
+respective drivers' documentation.
 
 
 Installing with pip
@@ -75,19 +75,19 @@ You can install the extras (or multiple of them) using the following command:
    pip install pyrolab[feature]
    pip install pyrolab[feature1,feature2,feature3]
 
-Available extras:
+Presently available extras are:
 
 * ``tsl550`` (Santec TSL-550 Laser)
 * ``ppcl55x`` (Pure Photonics Lasers)
 * ``rto`` (Rohde-Schwarz Oscilloscopes)
 * ``arduino``
-* ``monitor`` (The web interface for nameservers) 
+* ``monitor`` (Web interface for monitoring services registered with nameservers) 
 
 
 Installing from git
 ^^^^^^^^^^^^^^^^^^^
 
-You can also install directly from git by first cloning the repository. After
+You can also install from git by first cloning the repository. After
 cloning, we still recommend using an "editable" pip install to setup all the
 paths and register the command line program. That looks like this:
 
@@ -126,3 +126,6 @@ data by running one of the following:
 
    # If running from the source directory
    python -m pyrolab.cli --show-data-dir
+
+You never really should manage these files yourself, though. But if you see 
+them show up, there's no need for concern.
