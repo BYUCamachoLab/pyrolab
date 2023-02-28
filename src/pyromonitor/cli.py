@@ -71,8 +71,7 @@ def up(
     from waitress import serve
     uri = f'{CONFIG.host}:{CONFIG.port}'
     
-    print("")
-    print(f"    Serving on http://{uri}")
-    print(f"    (press CTRL+C to quit)")
+    print(f"\n    Serving on http://{uri}")
+    print(f"    (press CTRL+C to quit)\n")
 
     serve(webapp, listen=uri, threads=4, clear_untrusted_proxy_headers=True)
