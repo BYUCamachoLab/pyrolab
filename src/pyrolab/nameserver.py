@@ -16,15 +16,13 @@ from typing import Callable
 
 from Pyro5.nameserver import BroadcastServer, NameServerDaemon, start_ns
 
-from pyrolab import PYROLAB_DATA_DIR
+from pyrolab import NAMESERVER_STORAGE
 from pyrolab.configure import NameServerConfiguration
 
 log = logging.getLogger(__name__)
 
 
-NAMESERVER_DATA_DIR = PYROLAB_DATA_DIR / "nameserver" / "data"
-NAMESERVER_DATA_DIR.mkdir(parents=True, exist_ok=True)
-STORAGE_FILE = NAMESERVER_DATA_DIR / "storage"
+STORAGE_FILE = NAMESERVER_STORAGE / "storage"
 
 
 # # Inheriting from the Nameserver
