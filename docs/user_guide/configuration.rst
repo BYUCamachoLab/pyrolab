@@ -1,5 +1,9 @@
+Configuration
+=============
+
+
 Nameservers
-===========
+-----------
 
 Note that, regardless of whether it is present in the file, the default
 configuration is always available. It has the following settings:
@@ -7,7 +11,7 @@ configuration is always available. It has the following settings:
 .. code-block:: yaml
     
     nameservers:
-        - default:
+        default:
             host: localhost
             broadcast: false
             ns_port: 9090
@@ -23,6 +27,7 @@ careful and make sure you actually want to change the default.
 
 
 Daemons
+-------
 
 Note that, regardless of whether it is present in the file, the default
 configuration is always available. It has the following settings:
@@ -30,7 +35,7 @@ configuration is always available. It has the following settings:
 .. code-block:: yaml
     
     daemons:
-        - default:
+        default:
             classname: Daemon
             host: localhost
             servertype: thread
@@ -40,6 +45,9 @@ overridden. Many places in PyroLab read the default configuration, so be
 careful and make sure you actually want to change the default.
 
 
+Services
+--------
 
-You can also specify "auto n" where n is an integer to generate a
-random name of n words for any kind of object.
+.. todo::
+
+    Coming soon.

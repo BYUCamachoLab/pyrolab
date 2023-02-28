@@ -1,11 +1,17 @@
+.. _getting_started_nameserver:
+
+
 Nameserver Configuration
 ========================
 
-A nameserver configuration is necessary whether it's on the machine actually
-hosting a nameserver or on a machine that will be hosting services that will 
-be registered with the nameserver. In either case, it uses the information
-stored in a :py:class:`NameServerConfiguration` object to setup or locate 
-nameservers.
+A nameserver configuration is necessary when:
+
+* The machine is hosting a nameserver.
+* The machine is hosting services that will be registered with a nameserver. 
+
+In either case, it uses the information stored in a
+:py:class:`~pyrolab.configure.NameServerConfiguration` object to setup or
+locate nameservers.
 
 Let's take a look at the nameserver configuration class.
 
@@ -24,8 +30,8 @@ As with the server configuration, in the YAML representation of the
 nameserver's configuration, only the keys that are different from the defaults
 need to be define. Undefined fields assume their default values.
 
-We can work with NameServerConfiguration objects either through a text YAML
-file, or by using the actual Python object. Let's see how that would look:
+We can work with :py:class:`~pyrolab.configure.NameServerConfiguration`
+objects either through a text YAML file, or by using the actual Python object:
 
 .. code-block:: python
    :caption: The default nameserver configuration, interacting directly with 
@@ -45,10 +51,9 @@ file, or by using the actual Python object. Let's see how that would look:
    >>> config.host, config.ns_port
    ('public', 2022)
 
-These objects have a :py:func:`pyrolab.configure.YAMLMixin.yaml` method that 
+These objects have a :py:func:`~pyrolab.configure.YAMLMixin.yaml` method that 
 can be used to dump the configuration to a valid YAML file. It accepts a 
-parameter that allows you to dump only the values that differ from the default. 
-Let's see how that would look:
+parameter that allows you to dump only the values that differ from the default:
 
 .. code-block:: python
    :caption: The default nameserver configuration, interacting with the YAML
@@ -77,8 +82,8 @@ Let's see how that would look:
    ns_autoclean: 30.0
    storage: sql
 
-You can run a simple nameserver by simply passing one of these objects to 
-:py:func:`pyrolab.nameserver.start_ns_loop`.
+You can launch a simple nameserver by simply passing one of these objects to 
+:py:func:`pyrolab.api.start_ns_loop`.
 
 .. code-block:: python
    :caption: Starting a nameserver, continuing using the config from above.

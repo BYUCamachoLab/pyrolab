@@ -1,13 +1,126 @@
-[build-system]
-requires = [
-    "setuptools>=51",
-    "wheel"
+[project]
+name = "PyroLab"
+version = "0.2.1"
+description = "A framework for using remote lab instruments as local resources built on Pyro5"
+readme = "README.md"
+requires-python = ">=3.7"
+license = {file = "LICENSE"}
+keywords = [
+    "PyroLab", 
+    "Pyro5", 
+    "Pyro", 
+    "lab", 
+    "instrument", 
+    "remote", 
+    "resources", 
+    "framework", 
+    "laboratory", 
+    "instrumentation", 
+    "hardware", 
+    "science", 
+    "remote", 
+    "network", 
+    "integration"
 ]
+
+# This should be your name or the name of the organization who originally
+# authored the project, and a valid email address corresponding to the name
+# listed.
+authors = [
+  {name = "Sequoia Ploeg", email = "sequoiap4@gmail.com" },
+  {name = "BYU CamachoLab", email = "camacho@byu.edu"}
+]
+
+# This should be your name or the names of the organization who currently
+# maintains the project, and a valid email address corresponding to the name
+# listed.
+maintainers = [
+  {name = "Sequoia Ploeg", email = "sequoiap4@gmail.com" },
+  {name = "BYU CamachoLab", email = "camacho@byu.edu"}
+]
+
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Education",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Developers",
+  "Topic :: Scientific/Engineering",
+  "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3 :: Only",
+  "Operating System :: MacOS",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: OS Independent",
+]
+
+dependencies = [
+  "numpy",
+  "scipy",
+  "Pyro5",
+  "pydantic",
+  "pyyaml",
+  "deprecation",
+  "appnope",
+  "typer",
+  "colorama",
+  "tabulate",
+  "requests",
+  "packaging>=23.0",
+]
+
+# List additional groups of dependencies here (e.g. development
+# dependencies). Users will be able to install these using the "extras"
+# syntax, for example:
+#
+#   $ pip install sampleproject[dev]
+[project.optional-dependencies]
+tsl550 = ["pyserial"]
+ppcl55x = ["pyserial"]
+rto = ["pyvisa", "pyvisa-py"]
+arduino = ["pyfirmata"]
+monitor = ["flask", "omegaconf", "waitress"]
+test = ["pytest", "coverage"]
+
+[project.urls]
+"Homepage" = "https://pyrolab.readthedocs.io/en/latest/"
+"Documentation" = "https://pyrolab.readthedocs.io/en/latest/"
+"Source" = "https://github.com/BYUCamachoLab/pyrolab"
+"Bug Reports" = "https://github.com/BYUCamachoLab/pyrolab/issues"
+"Research Group" = "https://camacholab.byu.edu/"
+
+[project.scripts]
+pyrolab = "pyrolab.cli:app"
+pyromonitor = "pyromonitor.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["pyrolab", "pyromonitor"]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--maxfail=2 -rf"
+testpaths = ["tests"]
+console_output_style = "progress"
+filterwarnings = ["ignore::UserWarning", "ignore::DeprecationWarning"]
+
+[build-system]
+requires = ["setuptools>=62.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.isort]
 profile = "black"
 extend_skip_glob = "api.py"
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+line_length = 88
 known_third_party = [
     "Pyro5",
     "matplotlib",

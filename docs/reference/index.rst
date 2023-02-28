@@ -16,7 +16,6 @@ elsewhere, or for machines using PyroLab drivers locally.
    :maxdepth: 2
 
    api
-   analysis
    drivers
 
 Deployment API
@@ -30,7 +29,6 @@ For configuring and deploying PyroLab instances.
    cli
    configure
    server
-   errors
    nameserver
    service
 
