@@ -70,6 +70,7 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+docs/reference/api/
 
 # PyBuilder
 target/
@@ -132,3 +133,7 @@ dmypy.json
 .vscode/
 sandbox/
 tests/data/config_test.yaml
+.DS_Store
+
+# Local data
+src/pyrolab/data/local/
