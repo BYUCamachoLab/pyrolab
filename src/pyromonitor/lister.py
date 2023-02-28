@@ -19,6 +19,10 @@ _timer = None
 _status: List[InstrumentStatus] = []
 _last_updated = None
 
+AVAILABLE = "Available"
+LOCKED = "Locked"
+UNREACHABLE = "Unreachable"
+
 
 class InstrumentStatus(NamedTuple):
     name: str
@@ -98,11 +102,11 @@ def refresh_status() -> None:
         try:
             with Proxy(ns.lookup(name)) as p:
                 version = p.pyrolab_version()
-                status.append(InstrumentStatus(name, uri, description, version, "Available"))
+                status.append(InstrumentStatus(name, uri, description, version, AVAILABLE))
         except ConnectionRefusedError as e:
-            status.append(InstrumentStatus(name, uri, description, "", "Locked"))
+            status.append(InstrumentStatus(name, uri, description, "", LOCKED))
         except Exception as e:
-            status.append(InstrumentStatus(name, uri, description, "", "Unreachable"))
+            status.append(InstrumentStatus(name, uri, description, "", UNREACHABLE))
 
     _last_updated = datetime.now()
     _status = status
@@ -115,8 +119,11 @@ def listall():
     global _status
 
     updated = f"{time_elapsed_human_readable(_last_updated)} ago"
+    status = sorted([stat for stat in _status if stat.status == AVAILABLE], key=lambda x: x.name) + \
+             sorted([stat for stat in _status if stat.status == LOCKED], key=lambda x: x.name) + \
+             sorted([stat for stat in _status if stat.status == UNREACHABLE], key=lambda x: x.name)
 
-    return render_template('base.html', status=_status, update_time=updated)
+    return render_template('base.html', status=status, update_time=updated)
 
 
 refresh_status()
