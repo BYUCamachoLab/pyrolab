@@ -16,6 +16,7 @@ from typing import Dict
 from pyrolab.api import Service, behavior, expose
 
 
+
 @behavior(instance_mode="single")
 @expose
 class LibraryCatalog(Service):
@@ -56,7 +57,7 @@ class LibraryCatalog(Service):
             The number of copies to check out (default 1).
         """
         if title not in self.catalog:
-            raise ValueError(f"Cannot checkout: Book '{title}' not found.")
+            raise LookupError(f"Cannot checkout: Book '{title}' not found.")
         if self.catalog[title] < quantity:
             raise ValueError(f"Cannot checkout: Not enough copies of {title}.")
         self.catalog[title] -= quantity
@@ -73,7 +74,7 @@ class LibraryCatalog(Service):
             The number of copies to check in (default 1).
         """
         if title not in self.catalog:
-            raise ValueError(f"Cannot checkin: Book '{title}' not found.")
+            raise LookupError(f"Cannot checkin: Book '{title}' not found.")
         self.catalog[title] += quantity
 
     def add_book(self, title: str, quantity: int = 1) -> None:
@@ -99,11 +100,12 @@ class LibraryCatalog(Service):
             The title of the book to remove.
         """
         if title not in self.catalog:
-            raise ValueError(f"Cannot remove: Book '{title}' not found.")
+            raise LookupError(f"Cannot remove: Book '{title}' not found.")
         del self.catalog[title]
 
 
 if __name__ == "__main__":
+    # Test the library code outside of the context of pyrolab
     books = {
         "The Hobbit": 3,
         "The Lord of the Rings": 2,
