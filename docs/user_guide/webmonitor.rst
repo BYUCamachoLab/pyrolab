@@ -45,6 +45,14 @@ defaults:
     ns_port: 9090
     polling: 300
 
+* ``host`` is the location to serve the web app, either localhost or your own
+  IP address.
+* ``port`` is the port to serve the web app on.
+* ``nameserver`` is the domain of the nameserver to monitor.
+* ``ns_port`` is the port the nameserver is exposed on.
+* ``polling`` is the period in seconds between refreshes. The web monitor works
+  by attempting to ping every listed service at a set refresh rate.
+
 You can write your own configuration file and persist it within pyromonitor.
 Only non-default keys need to be specified in this file, although you may 
 specify all keys and values if you wish. Load the config file in pyromonitor
