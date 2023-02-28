@@ -36,10 +36,11 @@ storage_type
     Specify the storage mechanism to use. You have several options:
 
     * ``memory``: fast, volatile in-memory database. This is the default.
-    * ``dbm``: dbm-style persistent database table. Filename must be provided
-      (see the ``storage_file`` option). This storage type does not support metadata.
-    * ``sql``: sqlite persistent database. Filename must be provided 
-      (see the ``storage_file`` option).
+    * ``dbm``: persistent database using dbm. Optionally provide the filename 
+      to use (ignore for PyroLab to create automatically). This storage type 
+      does not support metadata.
+    * ``sql``: persistent database using sqlite. Optionally provide the 
+      filename to use (ignore for PyroLab to create automatically).
 storage_file
     The filename (full path) to use for the storage if the mechanism is not 
     ``memory``. Default is an automatic program data directory, so does not 
