@@ -19,10 +19,9 @@ import time
 from ctypes import c_char_p, c_int, c_short
 from typing import Any, Dict, List
 
-from Pyro5.server import oneway
 from thorlabs_kinesis import benchtop_piezo as bp
 
-from pyrolab.api import expose
+from pyrolab.api import expose, oneway
 from pyrolab.drivers.motion.kinesis import KinesisInstrument
 
 

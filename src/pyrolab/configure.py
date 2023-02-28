@@ -32,13 +32,13 @@ Note the difference between the two ``servertypes``:
 """
 
 from __future__ import annotations
-import importlib
 
+import uuid
+import importlib
 import logging
 from pathlib import Path
-import sys
 from typing import IO, Any, Dict, List, Optional, Type, Union
-import uuid
+
 
 import Pyro5
 from pydantic import BaseModel, BaseSettings, validator
@@ -46,17 +46,16 @@ from pydantic.fields import PrivateAttr
 from yaml import dump, load
 from yaml.constructor import ConstructorError
 from yaml.nodes import MappingNode
-
-from pyrolab.server import Daemon
-from pyrolab.service import Service
-
 try:
     from yaml import CLoader as Loader
 except ImportError:
     from yaml import Loader
 
+from pyrolab.server import Daemon
+from pyrolab.service import Service
 from pyrolab import NAMESERVER_STORAGE, USER_CONFIG_FILE
 from pyrolab.utils import generate_random_name, get_ip
+
 
 log = logging.getLogger(__name__)
 
@@ -412,26 +411,37 @@ class DaemonConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
     classname : str, optional
         The name of the Daemon class to use (default is basic "Daemon").
     host : str, optional
-        The hostname of the local server, or the string "public", which 
-        is converted to the host's public IP address (default "localhost").
-    ns_host : str, optional
-        The hostname of the nameserver (default "localhost").
-    ns_port : int, optional
-        The port of the nameserver (default 9090).
-    ns_bcport : int, optional
-        The port of the broadcast server (default 9091).
-    ns_bchost : bool, optional
-        Whether to broadcast the nameserver (default None).
+        The hostname of the local server, or the string "public", which is
+        converted to the host's public IP address (default "localhost").
+    port : int, optional
+        Port to bind the server on (default 0, which means to pick a random
+        port).
+    unixsocket : str, optional
+        The name of a Unix domain socket to use instead of a TCP/IP socket
+        (default None, which means don't use).
+    nathost : str, optional
+        Hostname to use in published addresses (useful when running behind a
+        NAT firewall/router). Default is None which means to just use the
+        normal host. For more details about NAT, see the Pyro5 docs about using
+        Pyro5 behind a NAT router/firewall.
+    natport : int, optional
+        Port to use in published addresses (useful when running behind a NAT
+        firewall/router). If you use 0 here (default), Pyro will replace the
+        NAT-port by the internal port number to facilitate one-to-one NAT port
+        mappings.
     servertype : str, optional
         Either ``thread`` or ``multiplex`` (default "thread").
     nameservers : List[str], optional
-        Whether to register the daemon itself with known nameservers. Useful
+        Whether to register the *daemon itself* with known nameservers. Useful
         if the daemon provides functions for managing local instruments that
-        would be useful to remote clients.
+        would be useful to remote clients. Services declare their own
+        nameserver registrations; belonging to a daemon that registers itself
+        with a specific nameserver does not mean that its services will also be
+        registered with that nameserver.
 
     Examples
     --------
-    The following is an example of a valid configuration file "daemons" 
+    The following is an example of a valid configuration file "daemons"
     section. Keys not defined assume the default values.
 
     .. code-block:: yaml
@@ -489,10 +499,6 @@ class ServiceConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
 
     Parameters
     ----------
-    name : str
-        A unique human-readable name for identifying the instrument. If you're
-        not creative, you can use :py:func:`pyrolab.utils.generate_random_name`
-        to generate a random name.
     module : str
         The PyroLab module the class belongs to, as a string.
     classname : str

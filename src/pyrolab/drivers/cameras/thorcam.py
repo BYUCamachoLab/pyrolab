@@ -39,10 +39,10 @@ from typing import Tuple, Optional
 
 import numpy as np
 import cv2 as cv
-from Pyro5.api import locate_ns, Proxy
 
 from pyrolab.api import expose
 from pyrolab.drivers.cameras import Camera
+from pyrolab.api import locate_ns, Proxy
 
 
 log = logging.getLogger(__name__)

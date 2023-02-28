@@ -24,7 +24,6 @@ Python ``multiprocessing`` module.
 
 from __future__ import annotations
 
-import importlib
 import logging
 import multiprocessing
 import threading
@@ -32,7 +31,7 @@ import time
 from datetime import datetime
 from multiprocessing import current_process
 from multiprocessing.queues import Queue
-from typing import TYPE_CHECKING, Dict, List, Tuple, Type
+from typing import TYPE_CHECKING, Dict, Tuple
 
 from Pyro5.core import locate_ns
 
@@ -49,7 +48,6 @@ if TYPE_CHECKING:
         ServiceConfiguration,
     )
     from pyrolab.server import Daemon
-    from pyrolab.service import Service
 
 
 log = logging.getLogger(__name__)

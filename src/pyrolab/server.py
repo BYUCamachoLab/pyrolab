@@ -17,9 +17,7 @@ from typing import TYPE_CHECKING, Callable, Optional, Type
 
 import Pyro5
 from Pyro5.core import URI
-from Pyro5.server import behavior, expose, oneway, serve
-
-from pyrolab.errors import LockAcquisitionError
+from Pyro5.server import expose
 
 if TYPE_CHECKING:
     from Pyro5.socketutil import SocketConnection
@@ -85,6 +83,14 @@ class Lockable:
     for use with local instruments. Additionally, any service registered with
     a :py:class:`LockableDaemon` will automatically have this mixin added to 
     it.
+
+    Examples
+    --------
+    .. code-block:: python
+
+        class MyCustomService(Service, Lockable):
+            def __init__(self, *args, **kwargs):
+                pass
     """
     def lock(self, user: str="") -> bool:
         """
@@ -186,6 +192,27 @@ class Daemon(Pyro5.server.Daemon):
             The prepared class.
         """
         return cls
+    
+    @expose
+    def ping(self) -> bool:
+        """
+        Returns a bool (True) to indicate that the Daemon is alive and can be
+        communicated with.
+
+        Returns
+        -------
+        result : bool
+            True, meaning communication was established.
+        """
+        return True
+    
+    @expose
+    def pyrolab_version(self) -> str:
+        """
+        Return the version of PyroLab running the device.
+        """
+        from pyrolab import __version__
+        return __version__
 
 
 class LockableDaemon(Daemon):
@@ -353,18 +380,6 @@ class LockableDaemon(Daemon):
         else:
             return True
 
-    @expose
-    def ping(self) -> str:
-        """
-        Returns a string to indicate that the Daemon is alive.
-
-        Returns
-        -------
-        result : str
-            A string to indicate that the Daemon is alive.
-        """
-        return "pong"
-
     def _getInstance(self, clazz, conn):
         """
         Find or create a new instance of the class.
@@ -385,7 +400,7 @@ class LockableDaemon(Daemon):
         
         Raises
         ------
-        Exception
+        ConnectionRefusedError
             If an instance exists but is locked by a different connection.
         """
         self._last_requestor = conn
@@ -395,7 +410,7 @@ class LockableDaemon(Daemon):
             if lock_owner is None or lock_owner == conn:
                 return obj
             if lock_owner != conn:
-                raise LockAcquisitionError(username or lock_owner)
+                raise ConnectionRefusedError(f"Pyro object is locked (by '{username or lock_owner}')")
 
     def clientDisconnect(self, conn):
         """
