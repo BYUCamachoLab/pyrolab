@@ -24,7 +24,7 @@ from time import sleep, strptime
 import pkg_resources
 import typer
 
-from pyrolab import LOCKFILE, PYROLAB_LOGDIR, RUNTIME_CONFIG, USER_CONFIG_FILE # PYROLAB_LOGFILE
+from pyrolab import LOCKFILE, PYROLAB_LOGDIR, RUNTIME_CONFIG, USER_CONFIG_FILE
 from pyrolab.api import Proxy
 from pyrolab.configure import (
     PyroLabConfiguration,
@@ -65,7 +65,7 @@ def get_daemon(abort=True, suppress_reload_message=False) -> PyroLabDaemon:
 # pyrolab --version
 ###############################################################################
 
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 
 
 def _version_callback(value: bool=True) -> None:
