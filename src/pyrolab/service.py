@@ -14,6 +14,9 @@ from __future__ import annotations
 import logging
 from typing import Callable, Optional
 
+from pyrolab.server import expose
+
+
 log = logging.getLogger(__name__)
 
 
@@ -56,3 +59,24 @@ class Service:
         if instance_creator and not callable(instance_creator):
             raise TypeError("instance_creator must be a callable")
         cls._pyroInstancing = (instance_mode, instance_creator)
+
+    @expose
+    def ping(self) -> bool:
+        """
+        Returns a bool (True) to indicate that the Daemon is alive and can be
+        communicated with.
+
+        Returns
+        -------
+        result : bool
+            True, meaning communication was established.
+        """
+        return True
+    
+    @expose
+    def pyrolab_version(self) -> str:
+        """
+        Return the version of PyroLab running the device.
+        """
+        from pyrolab import __version__
+        return __version__
