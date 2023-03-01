@@ -2,11 +2,32 @@
 <html>
   <head>
     <title>{% block title %}{% endblock %} PyroLab Monitor</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"> -->
     <link rel="stylesheet" href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300&display=swap" rel="stylesheet">
+    <style>
+      .abbreviated-description {
+        max-width: 25%;
+        display: inline-block;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+      .bg-blue {
+        background: linear-gradient(to right, #2980b9, #2c3e50);
+      }
+      .center {
+        text-align: center;
+      }
+      .text-font {
+        font-family: 'Outfit', sans-serif;
+      }
+      .title {
+        font-size: 3em;
+      }
+    </style>
   </head>
   <!-- Table based off https://bbbootstrap.com/snippets/tailwind-css-responsive-table-45362330# -->
   <body class="bg-blue">
