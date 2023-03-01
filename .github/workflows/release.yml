@@ -25,17 +25,14 @@ jobs:
       - name: Build
         run: |
           python -m build
-      - name: Get version number
-        id: get_version
-        run: echo "VERSION=$(python3 -c 'import pyrolab; print(pyrolab.__version__)')" >> $GITHUB_ENV
       - name: Load Release text
         id: get_text
         run: |
-          BODY=$(cat ./docs/changelog/${{ env.VERSION }}-changelog.md)
+          BODY=$(cat ./docs/changelog/${{ github.ref_name }}-changelog.md)
           BODY="${BODY//'%'/'%25'}"
           BODY="${BODY//$'\n'/'%0A'}"
           BODY="${BODY//$'\r'/'%0D'}"
-          echo "::set-output name=BODY::$BODY"
+          echo "BODY=$BODY" >> $GITHUB_OUTPUT
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.5.0
         with:
