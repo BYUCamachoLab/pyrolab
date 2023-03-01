@@ -119,8 +119,7 @@ def listall():
     global _status
 
     updated = f"{time_elapsed_human_readable(_last_updated)} ago"
-    status = sorted([stat for stat in _status if stat.status == AVAILABLE], key=lambda x: x.name) + \
-             sorted([stat for stat in _status if stat.status == LOCKED], key=lambda x: x.name) + \
+    status = sorted([stat for stat in _status if stat.status in [AVAILABLE, LOCKED]], key=lambda x: x.name) + \
              sorted([stat for stat in _status if stat.status == UNREACHABLE], key=lambda x: x.name)
 
     return render_template('base.html', status=status, update_time=updated)
