@@ -27,7 +27,7 @@ jobs:
           python -m build
       - name: Get version number
         id: get_version
-        run: echo "VERSION=$(python3 -c 'import pyrolab; print(pyrolab.__version__)'" >> $GITHUB_ENV
+        run: echo "VERSION=$(python3 -c 'import pyrolab; print(pyrolab.__version__)')" >> $GITHUB_ENV
       - name: Load Release text
         id: get_text
         run: |
