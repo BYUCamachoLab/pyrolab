@@ -133,11 +133,7 @@ try:
 
     log = logging.getLogger(__name__)
 
-    if curver > latest:
-        message = f"Installed version is greater than the latest version available on PyPI ({curver} > {latest})."
-        warnings.warn(message, stacklevel=2)
-        log.info(message)
-    elif curver < latest:
+    if curver < latest:
         message = f"A new version of PyroLab is available (latest is {latest}, but {curver} is installed)."
         warnings.warn(message, stacklevel=2)
         log.info(message)
