@@ -171,15 +171,34 @@ class Daemon(Pyro5.server.Daemon):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
+    def register(self, obj_or_class, objectId=None, force=False, weak=False):
+        """
+        Register a Pyro object under the given id. 
+        
+        Note that this object is now only known inside this daemon, it is not
+        automatically available in a name server. This method returns a URI for
+        the registered object. Pyro checks if an object is already registered,
+        unless you set force=True. You can register a class or an object
+        (instance) directly. For a class, Pyro will create instances of it to
+        handle the remote calls according to the instance_mode (set via @expose
+        on the class). The default there is one object per session (=proxy
+        connection). If you register an object directly, Pyro will use that
+        single object for all remote calls. With weak=True, only weak reference
+        to the object will be stored, and the object will get unregistered from
+        the daemon automatically when garbage-collected.
+        """
+        obj_or_class = self._prepare_class(obj_or_class)
+        return super().register(obj_or_class, objectId=objectId, force=force, weak=weak)
+
     @staticmethod
-    def prepare_class(cls) -> Type[Service]:
+    def _prepare_class(cls) -> Type[Service]:
         """
         Performs any actions on the class required for the given Daemon.
 
         Some classes require mixins to be added in order for certain 
-        functionality to work. When the ProcessManager prepares to run a Daemon,
-        the child process will call this method on the class before registering
-        the class.
+        functionality to work. This method is called by 
+        :py:meth:`pyrolab.server.Daemon.register` before passing the 
+        registration on to the Pyro5 daemon.
 
         Parameters
         ----------
@@ -260,7 +279,7 @@ class LockableDaemon(Daemon):
         self.locked_instances = {}
 
     @staticmethod
-    def prepare_class(cls) -> Type[Service]:
+    def _prepare_class(cls) -> Type[Service]:
         """
         Dynamically create a new class that is also based on Lockable.
 
@@ -275,12 +294,16 @@ class LockableDaemon(Daemon):
         class
             A subclass that inherits from the original class and ``Lockable``.
         """
+        if issubclass(type(cls), Daemon):
+            return cls
+        
         DynamicLockable = type(
             cls.__name__ + "Lockable",
             (cls, Lockable, ),
             {}
         )
         return DynamicLockable
+
 
     def _lock(self, pyroId: str, conn: SocketConnection, user: str="") -> bool:
         """
@@ -411,6 +434,7 @@ class LockableDaemon(Daemon):
                 return obj
             if lock_owner != conn:
                 raise ConnectionRefusedError(f"Pyro object is locked (by '{username or lock_owner}')")
+        return obj
 
     def clientDisconnect(self, conn):
         """

@@ -218,9 +218,6 @@ class DaemonRunner(multiprocessing.Process):
         for sname, sconfig in self.serviceconfigs.items():
             log.info(f"Registering service '{sname}'")
             service = sconfig._get_service()
-
-            log.debug("Preparing daemon class")
-            service = daemon.prepare_class(service)
             
             log.debug("Getting service uri")
             uri = daemon.register(service)
