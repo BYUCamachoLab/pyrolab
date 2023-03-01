@@ -9,6 +9,7 @@ _defaultcfg = {
     "nameserver": "localhost",
     "ns_port": 9090,
     "polling": 300,
+    "subfolder": "",
 }
 
 

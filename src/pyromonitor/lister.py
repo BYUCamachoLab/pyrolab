@@ -113,7 +113,7 @@ def refresh_status() -> None:
     reset_timer()
 
 
-@bp.route('/', methods=["GET"])
+@bp.route(f'/{CONFIG.subfolder}', methods=["GET"])
 def listall():
     global _last_updated
     global _status
