@@ -26,10 +26,10 @@ serve:
 	cd docs/_build/html && python3 -m http.server
 
 format:
-	black pal
+	black src/pyrolab
 
 mypy:
-	mypy -p pal
+	mypy -p src/pyrolab
 
 # lint:
 # 	flake8 .
@@ -62,7 +62,7 @@ major:
 	bumpversion major
 
 release:
-	VERSION=$(shell python3 -c "import pal; print(pal.__version__)") && \
+	VERSION=$(shell python3 -c "import pyrolab; print(pyrolab.__version__)") && \
 	echo Releasing version $$VERSION && \
 	TAG_NAME=v$$VERSION && \
 	git push origin $$TAG_NAME
