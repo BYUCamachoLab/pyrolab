@@ -70,6 +70,15 @@ Scopes
 
    rohdeschwarz
 
+Source-measure units
+--------------------
+.. currentmodule:: pyrolab.drivers.smu
+.. autosummary::
+   :toctree: api/
+   :recursive:
+
+   keysight
+
 Motion
 ------
 .. currentmodule:: pyrolab.drivers.motion
