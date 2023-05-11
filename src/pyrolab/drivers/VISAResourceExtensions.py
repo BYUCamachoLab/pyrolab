@@ -1,11 +1,9 @@
-# -*- coding: utf-8 -*-
-#
 # Copyright © PyroLab Project Contributors
 # Licensed under the terms of the GNU GPLv3+ License
 # (see pyrolab/__init__.py for details)
 
 """
-VISA Resource ExtensionS
+VISA Resource Extensions
 ========================
 
 PyVISA Visa.Resource class extension methods and 2 new exception types

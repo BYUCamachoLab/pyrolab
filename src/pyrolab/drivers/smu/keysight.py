@@ -1,12 +1,10 @@
-# -*- coding: utf-8 -*-
-#
 # Copyright © PyroLab Project Contributors
 # Licensed under the terms of the GNU GPLv3+ License
 # (see pyrolab/__init__.py for details)
 
 """
 Keysight B2900/BL series SMU
-=====================================
+============================
 
 .. admonition:: Dependencies
    :class: note
@@ -20,7 +18,8 @@ import time
 import pyvisa as visa
 
 from pyrolab import __version__
-from pyrolab.drivers.smu import SMU, VISAResourceExtentions
+from pyrolab.drivers import VISAResourceExtensions
+from pyrolab.drivers.smu import SMU
 
 
 class B2900(SMU):
