@@ -1,6 +1,6 @@
 [project]
 name = "PyroLab"
-version = "0.3.0"
+version = "0.3.1"
 description = "A framework for using remote lab instruments as local resources built on Pyro5"
 readme = "README.md"
 requires-python = ">=3.7"
