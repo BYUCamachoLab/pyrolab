@@ -6,21 +6,21 @@ readme = "README.md"
 requires-python = ">=3.7"
 license = {file = "LICENSE"}
 keywords = [
-    "PyroLab", 
-    "Pyro5", 
-    "Pyro", 
-    "lab", 
-    "instrument", 
-    "remote", 
-    "resources", 
-    "framework", 
-    "laboratory", 
-    "instrumentation", 
-    "hardware", 
-    "science", 
-    "remote", 
-    "network", 
-    "integration"
+  "PyroLab", 
+  "Pyro5", 
+  "Pyro", 
+  "lab", 
+  "instrument", 
+  "remote", 
+  "resources", 
+  "framework", 
+  "laboratory", 
+  "instrumentation", 
+  "hardware", 
+  "science", 
+  "remote", 
+  "network", 
+  "integration",
 ]
 
 # This should be your name or the name of the organization who originally
@@ -66,7 +66,6 @@ dependencies = [
   "pydantic",
   "pyyaml",
   "deprecation",
-  "appnope",
   "typer",
   "colorama",
   "tabulate",

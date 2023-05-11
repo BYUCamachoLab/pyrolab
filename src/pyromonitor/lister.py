@@ -96,7 +96,10 @@ def refresh_status() -> None:
         
     status = []
     for name, (uri, description) in instruments.items():
-        description = list(description)[0]
+        try:
+            description = list(description)[0]
+        except:
+            description = 'Not available'
         if len(description) > 80:
             description = description[:77] + "..."
         try:
