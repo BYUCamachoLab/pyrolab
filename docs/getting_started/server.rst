@@ -1,17 +1,21 @@
-Server (and Service) Configuration
-==================================
+.. _getting_started_daemon:
+
+
+Daemon Configuration
+====================
 
 While servers, often referred to as daemons in the PyroLab docs, and services
 registered through them can be thought about and developed separately, in
-deployment, their configurations are inextricably linked. Hence this section
-will again reference services, in addition to servers.
+deployment, their configurations are linked. Hence this section will again
+reference services, in addition to servers.
 
 Server daemons and service configurations are only important for host machines
 providing services to a PyroLab network. For a client simply connecting to the
 network to utilize available PyroLab services, there is no need to configure
 servers or services.
 
-Let's take a look at the server configuration class, ``DaemonConfiguration``.
+Let's take a look at the server configuration class,
+:py:class:`~pyrolab.configure.DaemonConfiguration`.
 
 ----
 
@@ -32,7 +36,8 @@ model that loads the file will automatically populate the missing fields with
 the default values.
 
 We can work with DaemonConfiguration objects either through a text YAML file,
-or by constructing the actual Python object. Let's see how that would look:
+or by constructing the actual Python object. For now, we'll use Python
+directly:
 
 .. code-block:: python
    :caption: The default server configuration, interacting directly with 
@@ -52,10 +57,9 @@ or by constructing the actual Python object. Let's see how that would look:
    >>> config.module, config.classname, config.host, config.port
    ('pyrolab.daemon', 'LockableDaemon', 'public', 2022)
 
-These objects have a :py:func:`pyrolab.configure.YAMLMixin.yaml` method that 
-can be used to dump the configuration to a valid YAML file. It can accept a 
-parameter that allows you to dump only the values that differ from the default. 
-Let's see how that would look:
+These objects have a :py:func:`~pyrolab.configure.YAMLMixin.yaml` method that
+can be used to dump the configuration to a YAML file. It accepts a parameter
+that allows you to dump only the values that differ from the default:
 
 .. code-block:: python
    :caption: The default server configuration, interacting with the YAML
@@ -71,7 +75,7 @@ Let's see how that would look:
    unixsocket: null
    nathost: null
    natport: 0
-   servertype: thre
+   servertype: thread
 
 .. code-block:: python
    :caption: Modified server configuration, interacting with the YAML 
@@ -83,24 +87,3 @@ Let's see how that would look:
    classname: LockableDaemon
    host: public
    port: 2022
-
-.. You can run a simple server by simply passing one of these objects to 
-.. :py:func:`pyrolab.nameserver.start_ns_loop`.
-
-.. .. code-block:: python
-..    :caption: Starting a nameserver, continuing using the config from above.
-
-..    >>> from pyrolab.nameserver import start_ns_loop
-..    >>> start_ns_loop(config)
-
-.. So a complete script for starting up a nameserver that is visible to other 
-.. machines on the network would look like this:
-
-.. .. code-block:: python
-..    :caption: Simplest, complete script for running a nameserver visible to 
-..       other machines on the network.
-
-..    >>> from pyrolab.configure import NameServerConfiguration
-..    >>> from pyrolab.nameserver import start_ns_loop
-..    >>> config = NameServerConfiguration(host="public")
-..    >>> start_ns_loop(config)

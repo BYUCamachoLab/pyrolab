@@ -10,10 +10,15 @@ pytest>=6.0.1
 bump2version>=1.0.0 
 pyfirmata
 pyyaml
-appnope
 pydantic
 typer
 tabulate
 colorama
 black
 isort>=5.0.0
+tabulate==0.9.0
+flask==2.2.3
+jinja2==3.1.2
+omegaconf==2.3.0
+build==0.10.0
+waitress==2.1.2

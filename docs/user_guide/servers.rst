@@ -30,9 +30,9 @@ having to run lengthy Python scripts. Failures that result in the termination
 of PyroLab processes, such as power outages, are easily recovered from; since
 the connected instruments are known to the program, it can reload them
 automatically upon startup, registering them again with the appropriate
-`nameserver <user_guide_nameservers>`_ (see how to configure your machine to
-automatically start PyroLab on startup at `Deployment
-<user_guide_deployment>`_).
+:ref:`nameserver <user_guide_nameservers>` (see how to configure your machine
+to automatically start PyroLab on startup at :ref:`Deployment
+<user_guide_deployment>`).
 
 Another reason to split services up between different daemons is because any
 given daemon can run in one of two ``servertype`` modes.
@@ -88,12 +88,11 @@ simultaneously. But if you have multiple services on a multiplexed server,
 calls will execute one after the other, and will wait for all previous calls
 to execute, too.
 
-**Thought experiment**
-   
-   Suppose you have 
-
 Be aware when you define your daemons that you don't define too many; each 
 will be started as a separate process, so if you're running a lot of daemons,
 they won't actually be running simultaneously; your computer doesn't have
-enough processors. Most of the time, you can just put all the services on a
-threaded server.
+enough processors. *Most of the time*, you can just put all the services on a
+threaded server. It's in the situation of a long-running function that blocks
+where you might consider separating services between daemons so that you don't
+lose the ability to contact other services or functions while awaiting the
+return value of a blocking function.

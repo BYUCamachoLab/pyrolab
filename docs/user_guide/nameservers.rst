@@ -36,10 +36,11 @@ storage_type
     Specify the storage mechanism to use. You have several options:
 
     * ``memory``: fast, volatile in-memory database. This is the default.
-    * ``dbm``: dbm-style persistent database table. Filename must be provided
-      (see the ``storage_file`` option). This storage type does not support metadata.
-    * ``sql``: sqlite persistent database. Filename must be provided 
-      (see the ``storage_file`` option).
+    * ``dbm``: persistent database using dbm. Optionally provide the filename 
+      to use (ignore for PyroLab to create automatically). This storage type 
+      does not support metadata.
+    * ``sql``: persistent database using sqlite. Optionally provide the 
+      filename to use (ignore for PyroLab to create automatically).
 storage_file
     The filename (full path) to use for the storage if the mechanism is not 
     ``memory``. Default is an automatic program data directory, so does not 
@@ -55,21 +56,21 @@ this:
 .. code-block:: yaml
 
     nameservers:
-        - default:
+        default:
             host: localhost
             ns_port: 9090
             ns_bchost: localhost
             ns_bcport: 9091
             ns_autoclean: 0.0
             storage_type: memory
-        - production:
+        production:
             host: camacholab.ee.byu.edu
             ns_port: 9090
             ns_bchost: null
             ns_bcport: 9091
             ns_autoclean: 15.0
             storage_type: sql
-        - development:
+        development:
             host: localhost
             ns_port: 9090
 
@@ -79,13 +80,14 @@ Launching a nameserver
 
 Using the command line interface
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-If PyroLab is installed in the system path and a configuration file exists 
-(either internally within PyroLab or at a location you specify), you can launch 
-a nameserver with the following command:
+If PyroLab is installed in the system path and a configuration file exists, you
+can import the configuration and launch a nameserver with the following
+commands:
 
 .. code-block:: bash
 
-    $ pyrolab nameserver -c ./ns_cfg.yml -l production
+    $ pyrolab config update ./ns_cfg.yml
+    $ pyrolab start nameserver production
 
 
 Using a script
@@ -112,6 +114,10 @@ sometimes the software (or the hardware) may crash without the chance to
 handle housekeeping calls. This is why the nameserver can periodically ping
 all known services to check if they are still alive.
 
+The "autoclean" configuration value is a polling period, in seconds, to check
+in with registered services. If it's set to ``0.0``, autoclean is turned off.
+Any other value indicates the frequency with which to check connectivity.
+
 Additionally, because services can come back online with the same name and
 notify the nameserver of their availability, the nameserver will not block
 registrations of new services with the same name. Be sure when you're writing
@@ -123,7 +129,7 @@ none of the names you're using are already used by the register, or you may
 Free connections to the nameserver quickly
 ------------------------------------------
 
-From the `Pyro5 docs <https://pyro5.readthedocs.io/en/latest/nameserver.html#free-connections-to-the-ns-quickly>`_`:
+From the `Pyro5 docs <https://pyro5.readthedocs.io/en/latest/nameserver.html#free-connections-to-the-ns-quickly>`_:
 
     By default the Name server uses a Pyro socket server based on whatever
     configuration is the default. Usually that will be a threadpool based

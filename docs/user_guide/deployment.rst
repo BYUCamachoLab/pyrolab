@@ -81,15 +81,32 @@ Using the Startup folder
 6. Click "Next".
 7. Type a name for the shortcut (such as "pyrolabd"), and click "Finish".
 
-macOS
-^^^^^
+Linux and macOS
+^^^^^^^^^^^^^^^
 
-Your mac os crontab as well.
+We recommend using crontab on MacOS as well. You'll want to write an executable
+script that activates whatever necessary environments you have, if PyroLab
+isn't installed in the global Python interpreter (which, for the record is
+usually a bad idea). Here's an example ``autolaunch.sh``:
 
-Linux
-^^^^^
+.. code-block:: bash
 
-The easiest way to run pyrolabd is by running a cron job set to run at startup.
+   source env/bin/activate 
+   pyrolab up
+
+Then you'll register it with cron to run it, for example, on startup. To launch
+cron:
+
+.. code-block:: bash
+
+   sudo crontab -e
+
+Then enter a line similar to the one below:
+
+.. code-block:: bash
+
+   @reboot /path/to/autolaunch.sh
+
 
 Starting the Daemon
 -------------------
@@ -100,6 +117,7 @@ The CLI is really just a glorified client; the PyroLab daemon is listening
 on some localhost port, and the CLI simply sends commands to the daemon. The
 CLI is not the instance of PyroLab that is actually managing what would be 
 considered the "PyroLab program."
+
 
 Launching from the command line
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -114,6 +132,7 @@ If PyroLab has been configured with a user-defined file, the daemon will
 automatically load that configuration. (This does not imply that all the 
 listed services will be started; for that to happen, they must be listed in
 the ``autolaunch`` section of the configuration file.)
+
 
 Force launching the daemon
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -142,3 +161,20 @@ perhaps in the terminal). To force start a new daemon, simply run:
 .. code-block:: python
 
    pyrolab up --force
+
+You might consider making sure that your process has actually died before 
+forcing a new one to launch. On Windows, you can simply reference the Task
+Manager. On \*nix based systems, you can follow the instructions below.
+
+
+Where did my instances go?
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+PyroLab runs a daemon in the background that monitor and spawns all daemon
+servers as their own process. If you're concerned the master daemon was
+orphaned, you should be able to find all background pyrolab daemons by running
+(on \*nix):
+
+.. code-block:: bash
+
+   ps aux | grep pyrolabd

@@ -101,7 +101,7 @@ become available to the :py:class:`Proxy`. So, a list of mixins is maintained
 here, as these functions are not documented with each driver but may be 
 available to them.
 
-* :py:class:`pyrolab.daemon.Lockable`
+* :py:class:`~pyrolab.server.Lockable`
 
 Debugging/Sample Services
 -------------------------

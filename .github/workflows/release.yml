@@ -12,9 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: '3.x'
       - name: Install dependencies
@@ -25,17 +25,18 @@ jobs:
       - name: Build
         run: |
           python -m build
+          pip install -e .
       - name: Get version number
         id: get_version
-        run: echo ::set-output name=VERSION::$(python3 -c "import pyrolab; print(pyrolab.__version__)")
+        run: echo "VERSION=$(python3 -c 'import pyrolab; print(pyrolab.__version__)')" >> $GITHUB_ENV
       - name: Load Release text
         id: get_text
         run: |
-          BODY=$(cat ./docs/changelog/${{ steps.get_version.outputs.VERSION }}-changelog.md)
+          BODY=$(cat ./docs/changelog/${{ env.VERSION }}-changelog.md)
           BODY="${BODY//'%'/'%25'}"
           BODY="${BODY//$'\n'/'%0A'}"
           BODY="${BODY//$'\r'/'%0D'}"
-          echo "::set-output name=BODY::$BODY"
+          echo "BODY=$BODY" >> $GITHUB_OUTPUT
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.5.0
         with:
@@ -48,7 +49,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
           tag_name: ${{ github.ref }}
-          release_name: PyroLab ${{ steps.get_version.outputs.VERSION }}
-          body: ${{ steps.get_text.outputs.BODY }}
+          release_name: PyroLab ${{ env.VERSION }}
+          body: ${{ env.BODY }}
           draft: false
           prerelease: false

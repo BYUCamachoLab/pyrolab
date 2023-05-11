@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+  <head>
+    <title>{% block title %}{% endblock %} PyroLab Monitor</title>
+    <!-- <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"> -->
+    <link rel="stylesheet" href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300&display=swap" rel="stylesheet">
+    <style>
+      .abbreviated-description {
+        max-width: 25%;
+        display: inline-block;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+      .bg-blue {
+        background: linear-gradient(to right, #2980b9, #2c3e50);
+      }
+      .center {
+        text-align: center;
+      }
+      .text-font {
+        font-family: 'Outfit', sans-serif;
+      }
+      .title {
+        font-size: 3em;
+      }
+    </style>
+  </head>
+  <!-- Table based off https://bbbootstrap.com/snippets/tailwind-css-responsive-table-45362330# -->
+  <body class="bg-blue">
+    <nav class="center">
+      <h1 class="text-font title">PyroLab Monitor</h1>
+    </nav>
+    <section class="content">
+      {% for message in get_flashed_messages() %}
+        <div class="flash">{{ message }}</div>
+      {% endfor %}
+
+      <p class="center text-font">Last updated: {{ update_time }} </p>
+
+      <div class="min-h-screen py-5">
+        <div class='overflow-x-auto w-full'>
+          <table class='mx-auto max-w-4xl w-full whitespace-nowrap rounded-lg bg-white divide-y divide-gray-300 overflow-hidden'>
+            <thead class="bg-gray-900">
+                <tr class="text-white text-left">
+                    <th class="font-semibold text-sm uppercase px-6 py-4"> Name </th>
+                    <th class="font-semibold text-sm uppercase px-6 py-4 text-center"> Status </th>
+                    <th class="font-semibold text-sm uppercase px-6 py-4"> Description </th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+              {% for instrument in status  %}
+                <tr>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center space-x-3">
+                      <div>
+                          <p> {{ instrument.name }} </p>
+                          <p class="text-gray-500 text-sm font-semibold tracking-wide"> PYROLAB {{ instrument.version }} </p>
+                      </div>
+                    </div>
+                  </td>
+                  {% if instrument.status == "Available" %}
+                  <td class="px-6 py-4 text-center"> <span class="text-white text-sm w-1/3 pb-1 bg-green-600 font-semibold px-2 rounded-full"> {{ instrument.status }} </span> </td>
+                  {% elif instrument.status == "Locked" %}
+                  <td class="px-6 py-4 text-center"> <span class="text-white text-sm w-1/3 pb-1 bg-red-600 font-semibold px-2 rounded-full"> {{ instrument.status }} </span> </td>
+                  {% else %}
+                  <td class="px-6 py-4 text-center"> <span class="text-white text-sm w-1/3 pb-1 bg-yellow-600 font-semibold px-2 rounded-full"> {{ instrument.status }} </span> </td>
+                  {% endif %}
+                  <td class="px-6 py-4">
+                    <p class=""> {{ instrument.description }} </p>
+                    <p class="text-gray-500 text-sm font-semibold tracking-wide"> {{ instrument.uri }} </p>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <footer class="center">
+      <p>BYU CamachoLab</p>
+    </footer>
+  </body>
+  
+  <script src="https://cdn.jsdelivr.net/gh/alpinejs/alpine@v2.x.x/dist/alpine.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+</html>

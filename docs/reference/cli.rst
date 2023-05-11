@@ -27,15 +27,3 @@ pyrolab.cli
      start   Start a nameserver or daemon (and its services).
      stop    Stop a nameserver or daemon (and its services).
      up      Start the background PyroLab daemon.
-
-
-Where did my instances go?
---------------------------
-
-You should be able to find all background pyrolab daemons by running (on Unix):
-
-.. code-block:: bash
-
-   ps aux | grep pyrolabd
-
-Output of ``pyrolab --help``:
