@@ -65,6 +65,7 @@ release:
 	VERSION=$(shell python3 -c "import pyrolab; print(pyrolab.__version__)") && \
 	echo Releasing version $$VERSION && \
 	TAG_NAME=v$$VERSION && \
+	git push && \
 	git push origin $$TAG_NAME
 
 ###############################################################################
