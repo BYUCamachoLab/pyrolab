@@ -63,7 +63,8 @@ import time
 import pyvisa as visa
 
 from pyrolab import __version__
-from pyrolab.drivers.scopes import Scope, VISAResourceExtentions
+from pyrolab.drivers import VISAResourceExtensions
+from pyrolab.drivers.scopes import Scope
 
 
 class RTO(Scope):
