@@ -177,7 +177,7 @@ class SMCV100B(Function_Generator):
 
     def set_amp_offset(self, offset: int):
         """
-        Sets the amplitude offset of the VSG.
+        Sets the amplitude level offset of the VSG.
 
         Parameters
         ----------
@@ -209,7 +209,7 @@ class SMCV100B(Function_Generator):
         self.write_block(f"SOUR:SWE:POW:STEP:LOG {step}")
         self.write_block(f"SOUR:SWE:POW:DWEL1 {dwell}")
         self.write_block(f"TRIG:PSW:SOUR SING")
-        self.write(f"TRIG:PSW:IMM")
+        self.write_block(f"TRIG:PSW:IMM")
 
     def amp_running(self):
         """
@@ -259,6 +259,17 @@ class SMCV100B(Function_Generator):
         """
         self.write_block(f"SOUR:FREQ:FIX {frequency}")
 
+    def set_phase(self, phase: int):
+        """
+        Sets the phase of the VSG.
+
+        Parameters
+        ----------
+        phase : int
+            Sets the phase of the signal (in degrees)
+        """
+        self.write_block(f"SOUR:PHAS {phase}")
+
     def sweep_freq_lin(self, start: int, stop: int, step: int, dwell: int = 1):
         """
         Sweeps the frequency of the VSG linearly between two values with a
@@ -282,7 +293,7 @@ class SMCV100B(Function_Generator):
         self.write_block(f"SOUR:SWE:FREQ:STEP:LIN {step}")
         self.write_block(f"SOUR:SWE:FREQ:DWEL1 {dwell}")
         self.write_block(f"TRIG:FSW:SOUR SING")
-        self.write(f"TRIG:FSW:IMM")
+        self.write_block(f"TRIG:FSW:IMM")
 
     def sweep_freq_log(self, start: int, stop: int, step: int, dwell: int = 1):
         """
@@ -309,7 +320,7 @@ class SMCV100B(Function_Generator):
         self.write_block(f"SOUR:SWE:FREQ:STEP:LOG {step}")
         self.write_block(f"SOUR:SWE:FREQ:DWEL1 {dwell}")
         self.write_block(f"TRIG:FSW:SOUR SING")
-        self.write(f"TRIG:FSW:IMM")
+        self.write_block(f"TRIG:FSW:IMM")
 
     def freq_running(self):
         """
