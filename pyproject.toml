@@ -1,7 +1,7 @@
 [project]
-name = "PyroLab"
+name = "pyrolab"
 version = "0.3.1"
-description = "A framework for using remote lab instruments as local resources built on Pyro5"
+description = "A framework for using remote lab instruments as local resources built on Pyro5."
 readme = "README.md"
 requires-python = ">=3.7"
 license = {file = "LICENSE"}
@@ -83,8 +83,37 @@ tsl550 = ["pyserial"]
 ppcl55x = ["pyserial"]
 rto = ["pyvisa", "pyvisa-py"]
 arduino = ["pyfirmata"]
-monitor = ["flask", "omegaconf", "waitress"]
 test = ["pytest", "coverage"]
+dev = [
+  "notebook",
+  "pytest",
+  "mypy",
+  "coverage",
+  "flake8 >= 4.0.1",
+  "isort >= 5.10.1",
+  "black >= 22.1.0",
+  "autopep8 >= 1.6.0",
+  "twine >= 4.0.0",
+  "build >= 0.10.0",
+  "pre-commit",
+  "bump2version ~= 1.0.1",
+]
+docs = [
+  "sphinx-book-theme ~= 0.3.3",
+  "jupyter-book ~= 0.13.2",
+  "sphinx-design ~= 0.1.0",
+  "matplotlib",
+  "numpy",
+  "numpydoc",
+  # "sphinx-tippy",
+  # sphinx==5.3.0
+  # linkify-it-py==2.0.0
+  # sphinxcontrib-bibtex==2.5.0
+]
+
+[tool.setuptools.packages.find]
+include = ["pyrolab"]
+namespaces = false
 
 [project.urls]
 "Homepage" = "https://pyrolab.readthedocs.io/en/latest/"
@@ -95,11 +124,6 @@ test = ["pytest", "coverage"]
 
 [project.scripts]
 pyrolab = "pyrolab.cli:app"
-pyromonitor = "pyromonitor.cli:app"
-
-[tool.setuptools.packages.find]
-where = ["src"]
-include = ["pyrolab", "pyromonitor"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"

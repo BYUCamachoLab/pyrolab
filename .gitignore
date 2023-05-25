@@ -136,5 +136,4 @@ tests/data/config_test.yaml
 .DS_Store
 
 # Local data
-src/pyrolab/data/local/
-src/pyromonitor/localdata/
+pyrolab/data/local/
