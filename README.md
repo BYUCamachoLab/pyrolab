@@ -61,9 +61,15 @@ pip install -e .
 
 ## Web Monitor
 
-PyroLab comes with a web application that can monitor your nameserver and 
+There's a web application that can monitor your PyroLab nameserver and 
 provide an easy-to-access status board. It's a Flask app that can be served
-using a production grade server. To run:
+using a production grade server. Install it using pip:
+
+```
+pip install pyromonitor
+```
+
+To run:
 
 ```
 pyromonitor up
