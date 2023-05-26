@@ -178,6 +178,7 @@ class SMCV100B(Function_Generator):
     def set_amp_offset(self, offset: int):
         """
         Sets the amplitude level offset of the VSG.
+        NOT a DC offset.
 
         Parameters
         ----------
@@ -258,6 +259,17 @@ class SMCV100B(Function_Generator):
             Sets the frequency of the signal (in Hz)
         """
         self.write_block(f"SOUR:FREQ:FIX {frequency}")
+
+    def set_freq_offset(self, offset: int):
+        """
+        Sets the frequency offset of the VSG.
+
+        Parameters
+        ----------
+        offset : int
+            Sets the frequency offset of the signal (in Hz)
+        """
+        self.write_block(f"SOUR:FREQ:OFFS {offset}")
 
     def set_phase(self, phase: int):
         """
