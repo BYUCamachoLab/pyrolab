@@ -345,7 +345,7 @@ class SMCV100B(FunctionGenerator):
         """
         return self.query("SOUR:SWE:FREQ:RUNN?")
 
-    def freq_step_up(self, step: int = 1e6):
+    def freq_step_up(self, step: float = 1e6):
         """
         Steps the frequency of the VSG up by one step.
 
@@ -358,7 +358,7 @@ class SMCV100B(FunctionGenerator):
         self.write_block(f"SOUR:FREQ:STEP:MODE USER")
         self.write_block(f"SOUR:FREQ:FIX UP")
 
-    def freq_step_down(self, step: int = 1e6):
+    def freq_step_down(self, step: float = 1e6):
         """
         Steps the frequency of the VSG down by one step.
 
