@@ -1,5 +1,4 @@
 Pyro5>=5.10
-appdirs
 deprecation>=2.1.0
 pyserial>=3.4
 pyvisa>=1.10.1
@@ -17,8 +16,3 @@ colorama
 black
 isort>=5.0.0
 tabulate==0.9.0
-flask==2.2.3
-jinja2==3.1.2
-omegaconf==2.3.0
-build==0.10.0
-waitress==2.1.2

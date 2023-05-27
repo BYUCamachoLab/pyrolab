@@ -5,7 +5,7 @@
 ---
 
 <p align="center">
-<img alt="Development version" src="https://img.shields.io/badge/master-v0.3.0-informational">
+<img alt="Development version" src="https://img.shields.io/badge/master-v0.3.2-informational">
 <a href="https://pypi.python.org/pypi/pyrolab"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/pyrolab.svg"></a>
 <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/pyrolab">
 <a href="https://pyrolab.readthedocs.io/"><img alt="Documentation Status" src="https://readthedocs.org/projects/pyrolab/badge/?version=latest"></a>
@@ -61,9 +61,15 @@ pip install -e .
 
 ## Web Monitor
 
-PyroLab comes with a web application that can monitor your nameserver and 
+There's a web application that can monitor your PyroLab nameserver and 
 provide an easy-to-access status board. It's a Flask app that can be served
-using a production grade server. To run:
+using a production grade server. Install it using pip:
+
+```
+pip install pyromonitor
+```
+
+To run:
 
 ```
 pyromonitor up
@@ -184,7 +190,7 @@ corrresponding version number and commit the modified files (where version
 numbers were updated). Pushing the tags (a manual process) to the remote will 
 automatically create a new release. Releases are automatically published to 
 PyPI and GitHub when git tags matching the "v*" pattern are created 
-(e.g. "v0.3.0"), as bumpversion does.
+(e.g. "v0.3.2"), as bumpversion does.
 
 After bumping version, you can view the tags on the local machine by running 
 ``git tag``. To push the tags to the remote server and trigger the release
