@@ -31,7 +31,7 @@ PPCL55X
 The code found in the following files were included in Pyrolab with some
 modifications:
 
-pyrolab/drivers/lasers/pplaser.py
+pyrolab/drivers/lasers/ppcl55x.py
 
 The original source is available at 
 https://www.pure-photonics.com/s/ITLA_v3-CUSTOMER.PY

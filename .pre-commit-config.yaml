@@ -1,28 +1,28 @@
-# repos:
-# - repo: https://github.com/pre-commit/pre-commit-hooks
-#   rev: v2.3.0
-#   hooks:
-#   - id: check-yaml
-#   - id: check-json
-#   - id: check-merge-conflict
-#   - id: mixed-line-ending
-#   - id: end-of-file-fixer
-#     files: photonic_schemas/.*
-#   - id: trailing-whitespace
-#     files: photonic_schemas/.*
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v2.3.0
+  hooks:
+  - id: check-yaml
+  - id: check-json
+  - id: check-merge-conflict
+  - id: mixed-line-ending
+  - id: end-of-file-fixer
+    files: pyrolab/.*
+  - id: trailing-whitespace
+    files: pyrolab/.*
 
-# - repo: https://github.com/psf/black
-#   rev: 23.3.0
-#   hooks:
-#   - id: black
+- repo: https://github.com/psf/black
+  rev: 23.3.0
+  hooks:
+  - id: black
 
-# - repo: https://github.com/pycqa/isort
-#   rev: 5.12.0
-#   hooks:
-#   - id: isort
-#     name: isort (python)
-#     files: photonic_schemas/.*
-#     args: [--profile, black, --filter-files]
+- repo: https://github.com/pycqa/isort
+  rev: 5.12.0
+  hooks:
+  - id: isort
+    name: isort (python)
+    files: photonic_schemas/.*
+    args: [--profile, black, --filter-files]
 
 # - repo: https://github.com/adamchainz/blacken-docs
 #   rev: 1.13.0
