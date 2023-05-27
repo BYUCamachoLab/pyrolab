@@ -4,7 +4,7 @@
 
 """
 Function Generators
-===
+===================
 
 Submodule containing drivers for various function generators.
 """
@@ -12,5 +12,5 @@ Submodule containing drivers for various function generators.
 from pyrolab.drivers import Instrument
 
 
-class Function_Generator(Instrument):
+class FunctionGenerator(Instrument):
     pass

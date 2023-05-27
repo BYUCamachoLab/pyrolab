@@ -4,7 +4,7 @@
 
 """
 R&S SMCV100B series VSG
-============================
+=======================
 
 .. admonition:: Dependencies
    :class: note
@@ -13,15 +13,15 @@ R&S SMCV100B series VSG
    | NI-VISA *or* pyvisa-py
 """
 
-import time
+from typing import Optional
 
 import pyvisa as visa
-from .VISAResourceExtentions import *
-from pyrolab import __version__
-from pyrolab.drivers.function_generators import Function_Generator
+
+from pyrolab.drivers import VISAResourceExtensions
+from pyrolab.drivers.function_generators import FunctionGenerator
 
 
-class SMCV100B(Function_Generator):
+class SMCV100B(FunctionGenerator):
     """
     Simple network controller class for R&S SMCV100B VSG.
 
@@ -35,7 +35,7 @@ class SMCV100B(Function_Generator):
         """
         Network device detection not supported.
 
-        Becuase R&S VSGs are connected to using the IP address,
+        Because R&S VSGs are connected to using the IP address,
         this function does not detect them and instead always returns an empty
         list.
         """
@@ -82,7 +82,7 @@ class SMCV100B(Function_Generator):
     def timeout(self, ms):
         self.device.timeout = ms
 
-    def query(self, message: str = "", delay: float = None):
+    def query(self, message: str = "", delay: Optional[float] = None):
         """
         A combination of :py:func:`write` and :py:func:`read`.
 
@@ -96,7 +96,7 @@ class SMCV100B(Function_Generator):
         """
         return self.device.query(message, delay)
 
-    def write(self, message: str, termination: str = None, encoding: str = None):
+    def write(self, message: str, termination: Optional[str] = None, encoding: Optional[str] = None):
         """
         Writes a message to the VSG.
 
