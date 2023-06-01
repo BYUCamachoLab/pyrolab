@@ -23,6 +23,7 @@ from time import sleep, strptime
 
 import pkg_resources
 import typer
+from Pyro5.errors import CommunicationError
 
 from pyrolab import LOCKFILE, PYROLAB_LOGDIR, RUNTIME_CONFIG, USER_CONFIG_FILE
 from pyrolab.api import Proxy
@@ -38,7 +39,11 @@ from pyrolab.pyrolabd import InstanceInfo, PyroLabDaemon
 def get_daemon(abort=True, suppress_reload_message=False) -> PyroLabDaemon:
     if LOCKFILE.exists():
         ii = InstanceInfo.parse_file(LOCKFILE)
-        DAEMON = Proxy(ii.uri)
+        try:
+            DAEMON = Proxy(ii.uri)
+            DAEMON._pyroBind()
+        except CommunicationError:
+            raise ConnectionRefusedError("Daemon unreachable, restart with --force.")
         if not suppress_reload_message and RUNTIME_CONFIG.exists():
             if RUNTIME_CONFIG.stat().st_mtime < USER_CONFIG_FILE.stat().st_mtime:
                 typer.secho(
@@ -90,7 +95,6 @@ def main(
 @app.command()
 def up(
     port: int = typer.Option(None, "--port", "-p", help="Port to use for the PyroLab daemon."),
-    force: bool = typer.Option(False, "--force", "-f", help="Force launch of the daemon (only if you're positive it has died!)."),
 ):
     """
     Start the background PyroLab daemon.
@@ -98,7 +102,11 @@ def up(
     Only use the `--force` flag if you're sure the daemon is dead, or you may
     orphan the process.
     """
-    daemon = get_daemon(abort=False, suppress_reload_message=True)
+    try:
+        daemon = get_daemon(abort=False, suppress_reload_message=True)
+    except ConnectionRefusedError:
+        daemon = None
+        force = True
     if daemon is None or force:
         if force and LOCKFILE.exists():
             LOCKFILE.unlink()
