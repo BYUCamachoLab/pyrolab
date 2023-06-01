@@ -43,7 +43,7 @@ def get_daemon(abort=True, suppress_reload_message=False) -> PyroLabDaemon:
             DAEMON = Proxy(ii.uri)
             DAEMON._pyroBind()
         except CommunicationError:
-            raise ConnectionRefusedError("Daemon unreachable, restart with --force.")
+            raise ConnectionRefusedError("Could not connect to daemon.")
         if not suppress_reload_message and RUNTIME_CONFIG.exists():
             if RUNTIME_CONFIG.stat().st_mtime < USER_CONFIG_FILE.stat().st_mtime:
                 typer.secho(
@@ -104,6 +104,7 @@ def up(
     """
     try:
         daemon = get_daemon(abort=False, suppress_reload_message=True)
+        force = False
     except ConnectionRefusedError:
         daemon = None
         force = True
