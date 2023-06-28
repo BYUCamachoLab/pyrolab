@@ -38,64 +38,64 @@ from pyrolab.api import expose, behavior
 log = logging.getLogger(__name__)
 
 
-ITLA_NOERROR=0x00
-ITLA_EXERROR=0x01
-ITLA_AEERROR=0x02
-ITLA_CPERROR=0x03
-ITLA_NRERROR=0x04
-ITLA_CSERROR=0x05
-ITLA_ERROR_SERPORT=0x01
-ITLA_ERROR_SERBAUD=0x02
+ITLA_NOERROR = 0x00
+ITLA_EXERROR = 0x01
+ITLA_AEERROR = 0x02
+ITLA_CPERROR = 0x03
+ITLA_NRERROR = 0x04
+ITLA_CSERROR = 0x05
+ITLA_ERROR_SERPORT = 0x01
+ITLA_ERROR_SERBAUD = 0x02
 
-REG_Nop=0x00
-REG_Mfgr=0x02
-REG_Model=0x03
-REG_Serial=0x04
-REG_Release=0x06
-REG_Gencfg=0x08
-REG_AeaEar=0x0B
-REG_Iocap=0x0D
-REG_Ear=0x10
-REG_Dlconfig=0x14
-REG_Dlstatus=0x15
-REG_Channel=0x30
-REG_Power=0x31
-REG_Resena=0x32
-REG_Grid=0x34
-REG_Fcf1=0x35
-REG_Fcf2=0x36
-REG_Lfo1=0x40
-REG_Lfo2=0x41
-REG_Oop=0x42
-REG_Opsl=0x50
-REG_Opsh=0x51
-REG_Lfl1=0x52
-REG_Lfl2=0x53
-REG_Lfh1=0x54
-REG_Lfh2=0x55
-REG_Currents=0x57
-REG_Temps=0x58
-REG_Ftf=0x62
-REG_Mode=0x90
-REG_PW=0xE0
-REG_Csweepsena=0xE5
-REG_Csweepamp=0xE4
-REG_Cscanamp=0xE4
-REG_Cscanon=0xE5
-REG_Csweepon=0xE5
-REG_Csweepoffset=0xE6
-REG_Cscanoffset=0xE6
-REG_Cscansled=0xF0
-REG_Cscanf1=0xF1
-REG_Cscanf2=0xF2
-REG_CjumpTHz=0xEA
-REG_CjumpGHz=0xEB
-REG_CjumpSled=0xEC
-REG_Cjumpon=0xED
-REG_Cjumpoffset=0xE6
+REG_Nop = 0x00
+REG_Mfgr = 0x02
+REG_Model = 0x03
+REG_Serial = 0x04
+REG_Release = 0x06
+REG_Gencfg = 0x08
+REG_AeaEar = 0x0B
+REG_Iocap = 0x0D
+REG_Ear = 0x10
+REG_Dlconfig = 0x14
+REG_Dlstatus = 0x15
+REG_Channel = 0x30
+REG_Power = 0x31
+REG_Resena = 0x32
+REG_Grid = 0x34
+REG_Fcf1 = 0x35
+REG_Fcf2 = 0x36
+REG_Lfo1 = 0x40
+REG_Lfo2 = 0x41
+REG_Oop = 0x42
+REG_Opsl = 0x50
+REG_Opsh = 0x51
+REG_Lfl1 = 0x52
+REG_Lfl2 = 0x53
+REG_Lfh1 = 0x54
+REG_Lfh2 = 0x55
+REG_Currents = 0x57
+REG_Temps = 0x58
+REG_Ftf = 0x62
+REG_Mode = 0x90
+REG_PW = 0xE0
+REG_Csweepsena = 0xE5
+REG_Csweepamp = 0xE4
+REG_Cscanamp = 0xE4
+REG_Cscanon = 0xE5
+REG_Csweepon = 0xE5
+REG_Csweepoffset = 0xE6
+REG_Cscanoffset = 0xE6
+REG_Cscansled = 0xF0
+REG_Cscanf1 = 0xF1
+REG_Cscanf2 = 0xF2
+REG_CjumpTHz = 0xEA
+REG_CjumpGHz = 0xEB
+REG_CjumpSled = 0xEC
+REG_Cjumpon = 0xED
+REG_Cjumpoffset = 0xE6
 
-WRITE_ONLY=0
-WRITE_READ=1
+WRITE_ONLY = 0
+WRITE_READ = 1
 
 
 @behavior(instance_mode="single")
@@ -105,32 +105,28 @@ class PPCL55xBase(Laser):
     Base class for a generic Pure Photonics Tunable Laser. Do not instantiate.
 
     The laser must already be physically powered and connected to a USB port
-    of some host computer, whether that be a local machine or one hosted by 
-    a PyroLab server. Methods such as :py:func:`on` and :py:func:`off` will 
+    of some host computer, whether that be a local machine or one hosted by
+    a PyroLab server. Methods such as :py:func:`on` and :py:func:`off` will
     simply turn the laser diode on and off, not the laser itself.
     """
-    # Attributes
-    # ----------
-    # MINIMUM_WAVELENGTH : float
-    #     The minimum wavelength of the laser in nanometers (value 1500).
-    # MAXIMUM_WAVELENGTH : float
-    #     The maximum wavelength of the laser in nanometers (value 1600).
-    # MINIMUM_POWER_DBM : float
-    #     The minimum power of the laser in dBm (value 7).
-    # MAXIMUM_POWER_DBM : float
-    #     The maximum power of the laser in dBm (value 13.5).
 
-    MINIMUM_WAVELENGTH = 1500.0
-    MAXIMUM_WAVELENGTH = 1600.0
-    MINIMUM_POWER_DBM = 7.0
-    MAXIMUM_POWER_DBM = 13.5
-
-    MINIMUM_FREQUENCY = C_SPEED / MAXIMUM_WAVELENGTH
-    MAXIMUM_FREQUENCY = C_SPEED / MINIMUM_WAVELENGTH
-    MINIMUM_POWER_MW = 10**(MINIMUM_POWER_DBM/10)
-    MAXIMUM_POWER_MW = 10**(MAXIMUM_POWER_DBM/10)
-
-    def connect(self, port: str="", baudrate: int=9600) -> None:
+    @property
+    def MINIMUM_FREQUENCY(self):
+        return C_SPEED / self.MAXIMUM_WAVELENGTH
+    
+    @property
+    def MAXIMUM_FREQUENCY(self):
+        return C_SPEED / self.MINIMUM_WAVELENGTH
+    
+    @property
+    def MINIMUM_POWER_MW(self):
+        return 10 ** (self.MINIMUM_POWER_DBM / 10)
+    
+    @property
+    def MAXIMUM_POWER_MW(self):
+        return 10 ** (self.MAXIMUM_POWER_DBM / 10)
+    
+    def connect(self, port: str = "", baudrate: int = 9600) -> None:
         """
         Connects to and initializes the laser. All parameters are keyword arguments.
 
@@ -151,10 +147,13 @@ class PPCL55xBase(Laser):
             log.debug("Already connected")
             return True
         try:
-            self.device = serial.Serial(port, baudrate, timeout=1, parity=serial.PARITY_NONE)
+            self.device = serial.Serial(
+                port, baudrate, timeout=1, parity=serial.PARITY_NONE
+            )
         except serial.SerialException as e:
-            self.device.close()
-            raise ConnectionError(f"Could not connect to laser on port {port} with baudrate {baudrate}.")
+            raise ConnectionError(
+                f"Could not connect to laser on port {port} with baudrate {baudrate}."
+            )
 
     def close(self) -> None:
         """
@@ -162,8 +161,8 @@ class PPCL55xBase(Laser):
         """
 
         self.device.close()
-    
-    def power_mW(self,power: float=None) -> float:
+
+    def power_mW(self, power: float = None) -> float:
         """
         Set the power on the laser.
 
@@ -178,23 +177,30 @@ class PPCL55xBase(Laser):
             Integer representing error message, 0 if no error.
         """
         if power is not None:
-            if(power < self.MINIMUM_POWER_MW or power > self.MAXIMUM_POWER_MW):
-                raise ValueError("Inputed power not in acceptable range "
-                + str(self.MINIMUM_POWER_MW) + " to " + str(self.MAXIMUM_POWER_MW))
+            if power < self.MINIMUM_POWER_MW or power > self.MAXIMUM_POWER_MW:
+                raise ValueError(
+                    "Inputed power not in acceptable range "
+                    + str(self.MINIMUM_POWER_MW)
+                    + " to "
+                    + str(self.MAXIMUM_POWER_MW)
+                )
 
-            sendPower = int(np.log10(power) * 1000)  #scale the power inputed
-            #on the REG_Power register, send the power
-            self._communicate(REG_Power,sendPower,1)
+            sendPower = int(np.log10(power) * 1000)  # scale the power inputed
+            # on the REG_Power register, send the power
+            self._communicate(REG_Power, sendPower, 1)
         else:
-            message = self._communicate(REG_Oop,0,0)
-            power = np.round(np.power(10.0,(256.0*message[2] + message[3])/1000.0)*100.0)/100.0
-            if power > self.MAXIMUM_POWER_MW*1.1:
+            message = self._communicate(REG_Oop, 0, 0)
+            power = (
+                np.round(
+                    np.power(10.0, (256.0 * message[2] + message[3]) / 1000.0) * 100.0
+                )
+                / 100.0
+            )
+            if power > self.MAXIMUM_POWER_MW * 1.1:
                 power = 0
             return power
 
-
-
-    def power_dBm(self,power: float=None) -> float:
+    def power_dBm(self, power: float = None) -> float:
         """
         Set the power on the laser.
 
@@ -202,27 +208,31 @@ class PPCL55xBase(Laser):
         ----------
         power : float
             Power that the laser will be set to in dBm
-        
+
         Returns
         -------
         int
             Integer representing error message, 0 if no error.
         """
         if power is not None:
-            if(power < self.MINIMUM_POWER_DBM or power > self.MAXIMUM_POWER_DBM):
-                raise ValueError("Inputed power not in acceptable range "
-                + str(self.MINIMUM_POWER_DBM) + " to " + str(self.MAXIMUM_POWER_DBM))
-            sendPower = int(power*100)  #scale the power inputed
-            #on the REG_Power register, send the power
-            self._communicate(REG_Power,sendPower,1)
+            if power < self.MINIMUM_POWER_DBM or power > self.MAXIMUM_POWER_DBM:
+                raise ValueError(
+                    "Inputed power not in acceptable range "
+                    + str(self.MINIMUM_POWER_DBM)
+                    + " to "
+                    + str(self.MAXIMUM_POWER_DBM)
+                )
+            sendPower = int(power * 100)  # scale the power inputed
+            # on the REG_Power register, send the power
+            self._communicate(REG_Power, sendPower, 1)
         else:
-            message = self._communicate(REG_Oop,0,0)
-            power = (256.0*message[2] + message[3])/100.0
-            if power > self.MAXIMUM_POWER_DBM*1.1:
+            message = self._communicate(REG_Oop, 0, 0)
+            power = (256.0 * message[2] + message[3]) / 100.0
+            if power > self.MAXIMUM_POWER_DBM * 1.1:
                 power = 0
             return power
 
-    def set_channel(self,channel: int) -> int:
+    def set_channel(self, channel: int) -> int:
         """
         Set the channel (should always be 1)
 
@@ -230,17 +240,17 @@ class PPCL55xBase(Laser):
         ----------
         channel : int
             channel that the laser is on
-        
+
         Returns
         -------
         int
             Integer representing error message, 0 if no error.
         """
-        #on the REG_Channel register, send the channel
-        response = self._communicate(REG_Channel,channel,1)  
+        # on the REG_Channel register, send the channel
+        response = self._communicate(REG_Channel, channel, 1)
         return response
-    
-    def set_mode(self,mode: int) -> int:
+
+    def set_mode(self, mode: int) -> int:
         """
         Set the mode of operation for the laser
 
@@ -251,22 +261,22 @@ class PPCL55xBase(Laser):
             | 0: Regular mode
             | 1: No dither mode
             | 2: Clean mode
-        
+
         Returns
         -------
         int
             Integer representing error message, 0 if no error.
         """
-        #on the REG_Mode register, send the mode
-        response = self._communicate(REG_Mode,mode,1)
+        # on the REG_Mode register, send the mode
+        response = self._communicate(REG_Mode, mode, 1)
         return response
-    
-    def frequency(self,frequency: float=None) -> float:
+
+    def frequency(self, frequency: float = None) -> float:
         """
         Set the frequncy of the laser.
-        
+
         .. important::
-            Laser must be off in order to set the frequency. Therefore, if the 
+            Laser must be off in order to set the frequency. Therefore, if the
             laser is not off this function will turn it off, set the frequency,
             then turn it back on.
 
@@ -274,48 +284,51 @@ class PPCL55xBase(Laser):
         ----------
         frequency : float
             Frequency of the laser to be set in THz
-        
+
         Returns
         -------
         int
             Integer representing error message, 0 if no error.
         """
         if frequency is not None:
-            #if the wavelength is not in the allowed range
-            if(frequency < self.MINIMUM_FREQUENCY or frequency > self.MAXIMUM_FREQUENCY):
-                raise ValueError("Inputed frequency not in acceptable range "
-                + str(self.MINIMUM_FREQUENCY) + " to " + str(self.MAXIMUM_FREQUENCY))
-            
-            frequency = np.round(frequency*10.0)/10.0
-            freq_t = int(frequency/1000)
-            #convert the wavelength to frequency for each register
-            freq_g = int(frequency*10) - freq_t*10000    
+            # if the wavelength is not in the allowed range
+            if frequency < self.MINIMUM_FREQUENCY or frequency > self.MAXIMUM_FREQUENCY:
+                raise ValueError(
+                    "Inputed frequency not in acceptable range "
+                    + str(self.MINIMUM_FREQUENCY)
+                    + " to "
+                    + str(self.MAXIMUM_FREQUENCY)
+                )
 
-            if self.power_dBm() > 0:   #if the laser is currently on
+            frequency = np.round(frequency * 10.0) / 10.0
+            freq_t = int(frequency / 1000)
+            # convert the wavelength to frequency for each register
+            freq_g = int(frequency * 10) - freq_t * 10000
+
+            if self.power_dBm() > 0:  # if the laser is currently on
                 self.off()
-                self._communicate(REG_Fcf1,freq_t,1)
-                self._communicate(REG_Fcf2,freq_g,1)
+                self._communicate(REG_Fcf1, freq_t, 1)
+                self._communicate(REG_Fcf2, freq_g, 1)
                 while self.frequency() != frequency:
                     time.sleep(0.01)
                 self.on()
             else:
-                self._communicate(REG_Fcf1,freq_t,1)
-                self._communicate(REG_Fcf2,freq_g,1)
+                self._communicate(REG_Fcf1, freq_t, 1)
+                self._communicate(REG_Fcf2, freq_g, 1)
         else:
-            t_message = self._communicate(REG_Lfo1,0,0)
-            g_message = self._communicate(REG_Lfo2,0,0)
-            freq_t = 256.0*t_message[2] + t_message[3]
-            freq_g = 256.0*g_message[2] + g_message[3]
-            frequency = freq_t*1000.0 + freq_g/10.0
+            t_message = self._communicate(REG_Lfo1, 0, 0)
+            g_message = self._communicate(REG_Lfo2, 0, 0)
+            freq_t = 256.0 * t_message[2] + t_message[3]
+            freq_g = 256.0 * g_message[2] + g_message[3]
+            frequency = freq_t * 1000.0 + freq_g / 10.0
             return frequency
 
-
-    def wavelength(self,wavelength: float=None) -> float:
+    def wavelength(self, wavelength: float = None) -> float:
         """
         Set the wavelength of the laser.
-        
+
         .. important::
-            Laser must be off in order to set the wavelength. Therefore, if the 
+            Laser must be off in order to set the wavelength. Therefore, if the
             laser is not off this function will turn it off, set the wavelength,
             then turn it back on.
 
@@ -323,41 +336,48 @@ class PPCL55xBase(Laser):
         ----------
         wavelength : float
             Wavelength of the laser to be set in nm
-        
+
         Returns
         -------
         int
             Integer representing error message, 0 if no error.
         """
-        
-        if wavelength is not None:
-            #if the wavelength is not in the allowed range
-            if(wavelength < self.MINIMUM_WAVELENGTH or wavelength > self.MAXIMUM_WAVELENGTH):
-                raise ValueError("Inputed wavelength not in acceptable range "
-                + str(self.MINIMUM_WAVELENGTH) + " to " + str(self.MAXIMUM_WAVELENGTH))
-            
-            frequency = np.round(C_SPEED/wavelength*10.0)/10.0
-            freq_t = int(frequency/1000)
-            #convert the wavelength to frequency for each register
-            freq_g = int(frequency*10) - freq_t*10000    
 
-            if self.power_dBm() > 0:   #if the laser is currently on
+        if wavelength is not None:
+            # if the wavelength is not in the allowed range
+            if (
+                wavelength < self.MINIMUM_WAVELENGTH
+                or wavelength > self.MAXIMUM_WAVELENGTH
+            ):
+                raise ValueError(
+                    "Inputed wavelength not in acceptable range "
+                    + str(self.MINIMUM_WAVELENGTH)
+                    + " to "
+                    + str(self.MAXIMUM_WAVELENGTH)
+                )
+
+            frequency = np.round(C_SPEED / wavelength * 10.0) / 10.0
+            freq_t = int(frequency / 1000)
+            # convert the wavelength to frequency for each register
+            freq_g = int(frequency * 10) - freq_t * 10000
+
+            if self.power_dBm() > 0:  # if the laser is currently on
                 self.off()
-                self._communicate(REG_Fcf1,freq_t,1)
-                self._communicate(REG_Fcf2,freq_g,1)
+                self._communicate(REG_Fcf1, freq_t, 1)
+                self._communicate(REG_Fcf2, freq_g, 1)
                 while self.frequency() != frequency:
                     time.sleep(0.01)
                 self.on()
             else:
-                self._communicate(REG_Fcf1,freq_t,1)
-                self._communicate(REG_Fcf2,freq_g,1)
+                self._communicate(REG_Fcf1, freq_t, 1)
+                self._communicate(REG_Fcf2, freq_g, 1)
         else:
-            t_message = self._communicate(REG_Lfo1,0,0)
-            g_message = self._communicate(REG_Lfo2,0,0)
-            freq_t = 256.0*t_message[2] + t_message[3]
-            freq_g = 256.0*g_message[2] + g_message[3]
-            frequency = freq_t*1000.0 + freq_g/10.0
-            wavelength = np.round(C_SPEED/frequency*1000.0)/1000.0
+            t_message = self._communicate(REG_Lfo1, 0, 0)
+            g_message = self._communicate(REG_Lfo2, 0, 0)
+            freq_t = 256.0 * t_message[2] + t_message[3]
+            freq_g = 256.0 * g_message[2] + g_message[3]
+            frequency = freq_t * 1000.0 + freq_g / 10.0
+            wavelength = np.round(C_SPEED / frequency * 1000.0) / 1000.0
             return wavelength
 
     def on(self) -> int:
@@ -369,11 +389,11 @@ class PPCL55xBase(Laser):
         int
             Integer representing error message, 0 if no error.
         """
-        #start communication by sending 8 to REG_Resena register
-        response = self._communicate(REG_Resena,8,1)
+        # start communication by sending 8 to REG_Resena register
+        response = self._communicate(REG_Resena, 8, 1)
         for i in range(10):
-            #send 0 to REG_Nop to allow time for laser diode to turn on
-            response = self._communicate(REG_Nop,0,0)
+            # send 0 to REG_Nop to allow time for laser diode to turn on
+            response = self._communicate(REG_Nop, 0, 0)
         self.is_on = True
         return response
 
@@ -386,17 +406,17 @@ class PPCL55xBase(Laser):
         int
             Integer representing error message, 0 if no error.
         """
-        #stop communication by sending 0 to REG_Resena register
-        response = self._communicate(REG_Resena,0,1)
+        # stop communication by sending 0 to REG_Resena register
+        response = self._communicate(REG_Resena, 0, 1)
         for i in range(10):
-            #send 0 to REG_Nop to allow time for laser diode to turn on
-            response = self._communicate(REG_Nop,0,0)
+            # send 0 to REG_Nop to allow time for laser diode to turn on
+            response = self._communicate(REG_Nop, 0, 0)
         self.is_on = False
         return response
 
-    def _communicate(self,register: int,data: int,write_read: int) -> int:
+    def _communicate(self, register: int, data: int, write_read: int) -> int:
         """
-        Function that implements the commmunication with the laser. It will 
+        Function that implements the commmunication with the laser. It will
         first send a message then receive a response if wanted.
 
         Parameters
@@ -423,23 +443,24 @@ class PPCL55xBase(Laser):
         self.queue.append(row_ticket)
         lock.release()
         while self.queue[0] != row_ticket:
-            row_ticket=row_ticket
-        data_byte_0 = int(data/256)
-        data_byte_1 = int(data - data_byte_0*256)
-        self.latest_register = register      #modify bytes for sending
-        message = [write_read,register,data_byte_0,data_byte_1]
-        self._send(message)  #send the message
-        received_message = self._receive()    #receive the response from the laser
+            row_ticket = row_ticket
+        data_byte_0 = int(data / 256)
+        data_byte_1 = int(data - data_byte_0 * 256)
+        self.latest_register = register  # modify bytes for sending
+        message = [write_read, register, data_byte_0, data_byte_1]
+        self._send(message)  # send the message
+        received_message = self._receive()  # receive the response from the laser
         lock.acquire()
         self.queue.pop(0)
         lock.release()
         # error_message = int(received_message[0] & 0x03)
-        return(received_message)
+        return received_message
 
     """
     Function sends message of four bytes to the laser.
     """
-    def _send(self,message: List[int]) -> None:
+
+    def _send(self, message: List[int]) -> None:
         """
         Sends message of four bytes to the laser after calculating the checksum
 
@@ -448,17 +469,19 @@ class PPCL55xBase(Laser):
         message : List[int]
             Message that will be sent to the laser
         """
-        message[0] = message[0] | int(self._checksum(message))*16    #calculate checksum
+        message[0] = (
+            message[0] | int(self._checksum(message)) * 16
+        )  # calculate checksum
         log.debug(f"sending message: {message}")
         self.device.flush()
-        #construct the bytes from the inputed message
-        send_bytes = array.array('B',message).tobytes()  
-        self.device.write(send_bytes)  #write the bytes on the serial connection
+        # construct the bytes from the inputed message
+        send_bytes = array.array("B", message).tobytes()
+        self.device.write(send_bytes)  # write the bytes on the serial connection
 
     def _receive(self) -> List[int]:
         """
         Receives and verifies message from the laser with checksum
-        
+
         Returns
         -------
         List[int]
@@ -470,26 +493,28 @@ class PPCL55xBase(Laser):
         """
 
         reference_time = time.time()
-        while self.device.inWaiting()<4:  #wait until 4 bytes are received
-            if(time.time() > reference_time + 0.5): #if it takes longer than 0.5 seconds break
-                return(0xFF,0xFF,0xFF,0xFF)
+        while self.device.inWaiting() < 4:  # wait until 4 bytes are received
+            if (
+                time.time() > reference_time + 0.5
+            ):  # if it takes longer than 0.5 seconds break
+                return (0xFF, 0xFF, 0xFF, 0xFF)
         try:
-            num = self.device.inWaiting() #get number of bytes for debugging purposes
+            num = self.device.inWaiting()  # get number of bytes for debugging purposes
             message = []
-            bytes_read = self.device.read(num)  #read the four bytes from serial
+            bytes_read = self.device.read(num)  # read the four bytes from serial
             for b in bytes_read:
-                message.append(b)   #construct array of bytes from the message
+                message.append(b)  # construct array of bytes from the message
             message = message[0:4]
         except:
             raise CommunicationError("No response from laser")
-        if self._checksum(message) == message[0] >> 4: # ensure the checksum is correct
+        if self._checksum(message) == message[0] >> 4:  # ensure the checksum is correct
             log.debug(f"message received: {message[2]} {message[3]}")
-            return(message) #return the message received
+            return message  # return the message received
         else:
-            #if the checksum is wrong, log a CS error
+            # if the checksum is wrong, log a CS error
             raise CommunicationError("Incorrect checksum returned")
 
-    def _checksum(self,message: List[int]) -> int:     #calculate checksum
+    def _checksum(self, message: List[int]) -> int:  # calculate checksum
         """
         Calculate the checksum of a message
 
@@ -497,15 +522,15 @@ class PPCL55xBase(Laser):
         ----------
         message : List[int]
             Four-byte message that will be used to produce a checksum
-        
+
         Returns
         -------
         int
             Calculated checksum
         """
 
-        bip_8=(message[0] & 0x0f) ^ message[1] ^ message[2] ^ message[3]
-        bip_4=((bip_8 & 0xf0) >> 4) ^ (bip_8 & 0x0f)
+        bip_8 = (message[0] & 0x0F) ^ message[1] ^ message[2] ^ message[3]
+        bip_4 = ((bip_8 & 0xF0) >> 4) ^ (bip_8 & 0x0F)
         return bip_4
 
 
@@ -515,18 +540,18 @@ class PPCL550(PPCL55xBase):
     Driver for a Pure Photonic PPCL550 series laser.
 
     The laser must already be physically powered and connected to a USB port
-    of some host computer, whether that be a local machine or one hosted by 
-    a PyroLab server. Methods such as :py:func:`on` and :py:func:`off` will 
+    of some host computer, whether that be a local machine or one hosted by
+    a PyroLab server. Methods such as :py:func:`on` and :py:func:`off` will
     simply turn the laser diode on and off, not the laser itself.
 
     Attributes
     ----------
     MINIMUM_WAVELENGTH : float
-        The minimum wavelength of the laser in nanometers (value 1529).
+        The minimum wavelength of the laser in nanometers (value 1515).
     MAXIMUM_WAVELENGTH : float
-        The maximum wavelength of the laser in nanometers (value 1566).
+        The maximum wavelength of the laser in nanometers (value 1570).
     MINIMUM_POWER_DBM : float
-        The minimum power of the laser in dBm (value 7).
+        The minimum power of the laser in dBm (value 6).
     MAXIMUM_POWER_DBM : float
         The maximum power of the laser in dBm (value 13.5).
 
@@ -537,7 +562,7 @@ class PPCL550(PPCL55xBase):
         import time
         from pyrolab.drivers.lasers.ppcl550 import PPCL550
 
-        # choose the correct COM port 
+        # choose the correct COM port
         laser = PPCL55x(port="COM6")
 
         # set the power wavelength and channel
@@ -556,15 +581,15 @@ class PPCL550(PPCL55xBase):
         # change the wavelength to 1570 nm
         laser.setWavelength(1570)
         time.sleep(10)
-        
+
         laser.off()
         laser.close()
     """
+
     # The 550 laser has a range of 1515-1570 nm, power range of 6-13.5 dBm
-    # TODO: Verify the above statement
-    MINIMUM_WAVELENGTH = 1529
-    MAXIMUM_WAVELENGTH = 1566
-    MINIMUM_POWER_DBM = 7
+    MINIMUM_WAVELENGTH = 1515
+    MAXIMUM_WAVELENGTH = 1570
+    MINIMUM_POWER_DBM = 6
     MAXIMUM_POWER_DBM = 13.5
 
 
@@ -574,18 +599,18 @@ class PPCL551(PPCL55xBase):
     Driver for a Pure Photonic PPCL551 series laser.
 
     The laser must already be physically powered and connected to a USB port
-    of some host computer, whether that be a local machine or one hosted by 
-    a PyroLab server. Methods such as :py:func:`on` and :py:func:`off` will 
+    of some host computer, whether that be a local machine or one hosted by
+    a PyroLab server. Methods such as :py:func:`on` and :py:func:`off` will
     simply turn the laser diode on and off, not the laser itself.
 
     Attributes
     ----------
     MINIMUM_WAVELENGTH : float
-        The minimum wavelength of the laser in nanometers (value 1572).
+        The minimum wavelength of the laser in nanometers (value 1569).
     MAXIMUM_WAVELENGTH : float
-        The maximum wavelength of the laser in nanometers (value 1609).
+        The maximum wavelength of the laser in nanometers (value 1625).
     MINIMUM_POWER_DBM : float
-        The minimum power of the laser in dBm (value 7).
+        The minimum power of the laser in dBm (value 6).
     MAXIMUM_POWER_DBM : float
         The maximum power of the laser in dBm (value 13.5).
 
@@ -595,8 +620,8 @@ class PPCL551(PPCL55xBase):
 
         import time
         from pyrolab.drivers.lasers.ppcl550 import PPCL551
-        
-        # choose the correct COM port 
+
+        # choose the correct COM port
         laser = PPCL551(minWL=1569, maxWL=1625, port="COM5")
 
         # set the power wavelength and channel
@@ -615,13 +640,13 @@ class PPCL551(PPCL55xBase):
         # change the wavelength to 1600 nm
         laser.setWavelength(1600)
         time.sleep(10)
-        
+
         laser.off()
         laser.close()
     """
+
     # The 551 laser has a range of 1569-1625 nm, power range of 6-13.5 dBm
-    # TODO: Verify the above statement
-    MINIMUM_WAVELENGTH = 1572
-    MAXIMUM_WAVELENGTH = 1609
-    MINIMUM_POWER_DBM = 7
+    MINIMUM_WAVELENGTH = 1569
+    MAXIMUM_WAVELENGTH = 1625
+    MINIMUM_POWER_DBM = 6
     MAXIMUM_POWER_DBM = 13.5
