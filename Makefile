@@ -26,10 +26,10 @@ serve:
 	cd docs/_build/html && python3 -m http.server
 
 format:
-	black src/pyrolab
+	black pyrolab
 
 mypy:
-	mypy -p src/pyrolab
+	mypy -p pyrolab
 
 # lint:
 # 	flake8 .
