@@ -20,6 +20,7 @@ import re
 from pathlib import Path
 from typing import Callable, Iterable, Optional
 from time import sleep, strptime
+from tabulate import tabulate
 
 import pkg_resources
 import typer
@@ -88,7 +89,7 @@ def _show_data_dir(value: bool=True) -> None:
 @app.callback()
 def main(
     version: bool = typer.Option(False, "--version", "-v", help="Show the version and exit.", callback=_version_callback, is_eager=True),
-    show_data_dir: bool = typer.Option(False, "--data-dir", help="Show the data directories and exit.", callback=_show_data_dir, is_eager=True),
+    show_data_dir: bool = typer.Option(False, "--data", "-d", help="Show the data directories and exit.", callback=_show_data_dir, is_eager=True),
 ):
     return
 
@@ -248,75 +249,46 @@ def stop_daemon(name: Optional[str] = typer.Argument(None, help="Name of the ser
 # pyrolab info
 ###############################################################################
 
-info_app = typer.Typer()
-app.add_typer(info_app, name="info", help="Print details about a nameserver, daemon, or service.")
-
-@info_app.command("nameserver")
-def info_nameserver(
-    name: str, 
-):
+@app.command()
+def info():
     """
-    Get information on a nameserver.
+    Show details about the current PyroLab configuration.
     """
     if RUNTIME_CONFIG.exists():
         config = PyroLabConfiguration.from_file(RUNTIME_CONFIG)
     elif USER_CONFIG_FILE.exists():
         config = PyroLabConfiguration.from_file(USER_CONFIG_FILE)
     else:
-        typer.secho("No configuration file found.", fg=typer.colors.RED)
+        typer.secho("No configuration installed.", fg=typer.colors.RED)
         raise typer.Exit()
 
-    if name in config.nameservers:
-        info = textwrap.indent(str(config.nameservers[name].yaml()), '  ')
-        typer.echo(f"{name}\n{info}")
-    else:
-        typer.secho("Nameserver not found.", fg=typer.colors.RED)
-        raise typer.Exit()
+    ns_data = []
+    for name in config.nameservers:
+        ns_data.append({"name": name, **config.nameservers[name].dict()})
+    for item in ns_data:
+        item["ns_autoclean"] = f'{item["ns_autoclean"]} sec' if item["ns_autoclean"] else "Off"
+    if ns_data:
+        typer.echo("\nNameservers")
+        typer.echo(tabulate(ns_data, headers="keys", tablefmt="rounded_grid"))
 
-@info_app.command("daemon")
-def info_daemon(
-    name: str, 
-):
-    """
-    Get information on a daemon.
-    """
-    if RUNTIME_CONFIG.exists():
-        config = PyroLabConfiguration.from_file(RUNTIME_CONFIG)
-    elif USER_CONFIG_FILE.exists():
-        config = PyroLabConfiguration.from_file(USER_CONFIG_FILE)
-    else:
-        typer.secho("No configuration file found.", fg=typer.colors.RED)
-        raise typer.Exit()
+    daemon_data = []
+    for name in config.daemons:
+        daemon_data.append({"name": name, **config.daemons[name].dict()})
+    for item in daemon_data:
+        item["nameservers"] = "".join([f"- {name}\n" for name in item["nameservers"]])
+    if daemon_data:
+        typer.echo("\nDaemons")
+        typer.echo(tabulate(daemon_data, headers="keys", tablefmt="rounded_grid"))
 
-    if name in config.daemons:
-        info = textwrap.indent(str(config.daemons[name].yaml()), '  ')
-        typer.echo(f"{name}\n{info}")
-    else:
-        typer.secho("Daemon not found.", fg=typer.colors.RED)
-        raise typer.Exit()
-
-@info_app.command("service")
-def info_service(
-    name: str, 
-):
-    """
-    Get information on a service.
-    """
-    if RUNTIME_CONFIG.exists():
-        config = PyroLabConfiguration.from_file(RUNTIME_CONFIG)
-    elif USER_CONFIG_FILE.exists():
-        config = PyroLabConfiguration.from_file(USER_CONFIG_FILE)
-    else:
-        typer.secho("No configuration file found.", fg=typer.colors.RED)
-        raise typer.Exit()
-
-    if name in config.services:
-        info = textwrap.indent(str(config.services[name].yaml()), '  ')
-        typer.echo(f"{name}\n{info}")
-    else:
-        typer.secho("Service not found.", fg=typer.colors.RED)
-        typer.echo(config.services.keys())
-        raise typer.Exit()
+    service_data = []
+    for name in config.services:
+        service_data.append({"name": name, **config.services[name].dict()})
+    for item in service_data:
+        item["parameters"] = "".join([f"{k}: {v}\n" for k, v in item["parameters"].items()])
+        item["nameservers"] = "".join([f"- {name}\n" for name in item["nameservers"]])
+    if service_data:
+        typer.echo("\nServices")    
+        typer.echo(tabulate(service_data, headers="keys", tablefmt="rounded_grid"))
 
 ###############################################################################
 # pyrolab logs

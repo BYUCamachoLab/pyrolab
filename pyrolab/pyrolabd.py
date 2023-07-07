@@ -93,13 +93,13 @@ class PyroLabDaemon:
         else:
             self.gconfig = GlobalConfiguration.instance()
 
-        log.info("Autolaunching Pyrolab entities.")
+        log.info("Autolaunching PyroLab entities.")
         autodetails = self.gconfig.config.autolaunch
         for ns in autodetails.nameservers:
             self.start_nameserver(ns)
         for daemon in autodetails.daemons:
             self.start_daemon(daemon)
-        log.info("PyroLab daemon started.")
+        log.info("PyroLab background daemon started.")
 
     def reload(self) -> bool:
         """
