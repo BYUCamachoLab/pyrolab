@@ -14,11 +14,11 @@ from Pyro5.core import locate_ns
 from Pyro5.server import behavior, expose, oneway, serve
 from pyrolab import USER_CONFIG_FILE
 from pyrolab.configure import (
-    PyroLabConfiguration, 
-    NameServerConfiguration, 
-    DaemonConfiguration, 
-    ServiceConfiguration, 
-    reset_config, 
+    PyroLabConfiguration,
+    NameServerConfiguration,
+    DaemonConfiguration,
+    ServiceConfiguration,
+    reset_config,
     update_config,
 )
 from pyrolab.server import Daemon, LockableDaemon
@@ -47,7 +47,7 @@ __all__ = [
 ]
 
 # If a user config file exists, load the first listed nameserver by default,
-# so that locate_ns "just works." 
+# so that locate_ns "just works."
 if USER_CONFIG_FILE.exists():
     cfg = PyroLabConfiguration.from_file(USER_CONFIG_FILE)
     nscfg = next(iter(cfg.nameservers.values()))

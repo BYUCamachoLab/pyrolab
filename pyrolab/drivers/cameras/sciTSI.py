@@ -10,13 +10,13 @@ Driver for a Thorlabs Scientific Camera.
 
 .. attention::
 
-   Presently Windows only. 
-   
+   Presently Windows only.
+
    Requires ThorCam software. Download it at `thorlabs.com`_.
 
    .. _thorlabs.com: https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam
 
-   Potential future Linux support, since ThorLabs does provide a Windows and 
+   Potential future Linux support, since ThorLabs does provide a Windows and
    Linux SDK.
 
 .. admonition:: Dependencies
@@ -37,6 +37,7 @@ from pyrolab.api import expose
 
 log = logging.getLogger(__name__)
 
+
 @expose
 class SCICAM(ThorCamBase):
     """
@@ -48,7 +49,7 @@ class SCICAM(ThorCamBase):
         The size of the header used to communicate the size of the message
         (10 bytes is a safe size).
     """
-    
+
     @property
     @expose
     def exposure(self) -> int:
@@ -62,26 +63,27 @@ class SCICAM(ThorCamBase):
         self._exposure = exposure
         min_exposure = c_longlong()
         max_exposure = c_longlong()
-        error = tc.GetExposureTimeRange(self.handle,min_exposure,max_exposure)
-        if(exposure < min_exposure.value):
+        error = tc.GetExposureTimeRange(self.handle, min_exposure, max_exposure)
+        if exposure < min_exposure.value:
             exposure = min_exposure.value
-        if(exposure > max_exposure.value):
+        if exposure > max_exposure.value:
             exposure = max_exposure.value
         exp_c = c_longlong(exposure)
-        error = tc.SetExposure(self.handle,exp_c)
+        error = tc.SetExposure(self.handle, exp_c)
         log.debug(f"exposure set with error {error}")
 
-    def connect(self, 
-                serialno: str,
-                local: bool = False,
-                bit_depth: int = 8,
-                color: bool = True,
-                exposure: int = 90, 
-                brightness: int = 5
+    def connect(
+        self,
+        serialno: str,
+        local: bool = False,
+        bit_depth: int = 8,
+        color: bool = True,
+        exposure: int = 90,
+        brightness: int = 5,
     ):
         """
         Opens the serial communication with the Thorlabs camera.
-        
+
         Sets some low-level values, including the bit depth and camera name.
 
         Parameters
@@ -91,10 +93,10 @@ class SCICAM(ThorCamBase):
         color : bool, optional
             Whether the camera is in color mode or not (default True).
         exposure: int, optional
-            In milliseconds, the time the shutter is open on the camera 
+            In milliseconds, the time the shutter is open on the camera
             (default 10,000).
         brightness : int
-            Integer (range 1-10) defining the brightness, where 5 leaves the 
+            Integer (range 1-10) defining the brightness, where 5 leaves the
             brightness unchanged.
         """
         self.local = local
@@ -102,9 +104,9 @@ class SCICAM(ThorCamBase):
         ser_no_list = create_string_buffer(4096)
         length = c_int(4096)
         error = tc.OpenSDK()
-        error = tc.DiscoverAvailableCameras(ser_no_list,length)
+        error = tc.DiscoverAvailableCameras(ser_no_list, length)
         log.debug(f"serial number list: {str(ser_no_list.value.decode()).strip()}")
-        if(str(serialno) == str(ser_no_list.value.decode()).strip()):
+        if str(serialno) == str(ser_no_list.value.decode()).strip():
             self.handle = c_void_p()
             log.debug("camera found")
             error = tc.OpenCamera(ser_no_list.value, self.handle)
@@ -113,16 +115,16 @@ class SCICAM(ThorCamBase):
         log.debug("setting exposure...")
         self.exposure = exposure
         self.find_sensor_size()
-    
+
     def find_sensor_size(self):
         height = c_int()
-        error = tc.GetImageHeight(self.handle,height)
+        error = tc.GetImageHeight(self.handle, height)
         width = c_int()
-        error = tc.GetImageWidth(self.handle,width)
+        error = tc.GetImageWidth(self.handle, width)
         self.height = int(height.value)
         self.width = int(width.value)
-        self.roi_shape = [int(self.width/2),int(self.height/2)]
-        self.roi_pos = [0,0]
+        self.roi_shape = [int(self.width / 2), int(self.height / 2)]
+        self.roi_pos = [0, 0]
         log.debug(f"sensor size found {self.width} x {self.height}")
 
     def get_frame(self):
@@ -140,12 +142,17 @@ class SCICAM(ThorCamBase):
         metadata_size_in_bytes = c_int()
         log.debug("getting frame...")
         while frame_count.value == 0:
-            tc.GetFrameOrNull(self.handle, image_buffer, frame_count, metadata_pointer, metadata_size_in_bytes)
+            tc.GetFrameOrNull(
+                self.handle,
+                image_buffer,
+                frame_count,
+                metadata_pointer,
+                metadata_size_in_bytes,
+            )
         image_buffer._wrapper = self
-        raw = np.ctypeslib.as_array(image_buffer,shape=(self.height,self.width))
-        bayer =  self._bayer_convert(raw)
+        raw = np.ctypeslib.as_array(image_buffer, shape=(self.height, self.width))
+        bayer = self._bayer_convert(raw)
         return self._obtain_roi(bayer)
-        
 
     @expose
     def start_capture(self):
@@ -161,7 +168,7 @@ class SCICAM(ThorCamBase):
         ip_address : str
             The delivery IP address of the video stream.
         """
-        error = tc.ArmCamera(self.handle,c_int(2))
+        error = tc.ArmCamera(self.handle, c_int(2))
         error = tc.IssueSoftwareTrigger(self.handle)
         if not self.local:
             time.sleep(1)
@@ -192,8 +199,8 @@ class SCICAM(ThorCamBase):
         Raises
         ------
         PyroLabError
-            Error to signal that the connection to the camera was closed 
-            abruptly or another error was thrown upon closing (usually 
+            Error to signal that the connection to the camera was closed
+            abruptly or another error was thrown upon closing (usually
             safely ignorable).
         """
         try:

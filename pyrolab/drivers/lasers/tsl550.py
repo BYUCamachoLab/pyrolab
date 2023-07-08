@@ -11,7 +11,7 @@ Driver for the Santec TSL-550 Tunable Laser.
 .. note::
 
    The Santec TSL-550 has proprietary drivers loaded on a DVD that should be
-   included with your laser. These drivers---which among other things, makes 
+   included with your laser. These drivers---which among other things, makes
    the USB connection appear as a serial port---may need to be installed first.
 
 .. admonition:: Dependencies
@@ -43,16 +43,16 @@ class TSL550(Laser):
     Driver for the Santec TSL-550 laser.
 
     The laser must already be physically turned on and connected to a USB port
-    of some host computer, whether that be a local machine or one hosted by 
-    a PyroLab server. Methods such as :py:func:`on` and :py:func:`off` will 
+    of some host computer, whether that be a local machine or one hosted by
+    a PyroLab server. Methods such as :py:func:`on` and :py:func:`off` will
     simply turn the laser diode on and off, not the laser itself.
 
     .. warning::
 
-       An unidentifiable bug results in the return value of some functions 
-       being the setting of the laser BEFORE the update (instead of the 
-       commanded setting). To verify some value has been set to the commanded 
-       value, simply call its respective function a second time without any 
+       An unidentifiable bug results in the return value of some functions
+       being the setting of the laser BEFORE the update (instead of the
+       commanded setting). To verify some value has been set to the commanded
+       value, simply call its respective function a second time without any
        arguments.
 
     Attributes
@@ -71,7 +71,7 @@ class TSL550(Laser):
         The maximum internal attenuation of the laser is dB (value 30).
     SWEEP_OFF : int
         Constant to compare against the value of :py:func:`sweep_status` (value 0).
-    SWEEP_RUNNING : int 
+    SWEEP_RUNNING : int
         Constant to compare against the value of :py:func:`sweep_status` (value 1).
     SWEEP_PAUSED : int
         Constant to compare against the value of :py:func:`sweep_status` (value 2).
@@ -94,7 +94,7 @@ class TSL550(Laser):
         (False, False, True, False): 9,
         (False, True, True, False): 10,
         (False, False, True, True): 11,
-        (False, True, True, True): 12
+        (False, True, True, True): 12,
     }
     SWEEP_MODE_MAP_REV = {num: settings for settings, num in SWEEP_MODE_MAP.items()}
 
@@ -113,10 +113,10 @@ class TSL550(Laser):
     MINIMUM_POWER_ATTENUATION = 0
     MAXIMUM_POWER_ATTENUATION = 30
 
-    MINIMUM_FREQUENCY = C/1000/MAXIMUM_WAVELENGTH
-    MAXIMUM_FREQUENCY = C/1000/MINIMUM_WAVELENGTH
-    MINIMUM_POWER_MW = 10**(MINIMUM_POWER_DBM/10)
-    MAXIMUM_POWER_MW = 10**(MAXIMUM_POWER_DBM/10)
+    MINIMUM_FREQUENCY = C / 1000 / MAXIMUM_WAVELENGTH
+    MAXIMUM_FREQUENCY = C / 1000 / MINIMUM_WAVELENGTH
+    MINIMUM_POWER_MW = 10 ** (MINIMUM_POWER_DBM / 10)
+    MAXIMUM_POWER_MW = 10 ** (MAXIMUM_POWER_DBM / 10)
 
     @staticmethod
     def detect_devices() -> List[Dict[str, Any]]:
@@ -128,7 +128,7 @@ class TSL550(Laser):
         List[Dict[str, Any]]
             Each item in the list contains a dictionary for a unique laser.
             A dictionary from the list can be passed to ``connect()`` to
-            connect to the laser. If no device is detected, an empty list 
+            connect to the laser. If no device is detected, an empty list
             is returned.
         """
         device_info = []
@@ -139,9 +139,14 @@ class TSL550(Laser):
 
         return device_info
 
-
-    def connect(self, port: str="", baudrate: int=9600, terminator: str="\r",
-            timeout: int=100, query_delay: float=0.05) -> bool:
+    def connect(
+        self,
+        port: str = "",
+        baudrate: int = 9600,
+        terminator: str = "\r",
+        timeout: int = 100,
+        query_delay: float = 0.05,
+    ) -> bool:
         """
         Connects to and initializes the laser. All parameters are keyword arguments.
 
@@ -192,7 +197,7 @@ class TSL550(Laser):
         self.terminator = terminator.encode("ASCII")
 
         # Make sure the shutter is on
-        #self.is_on = True
+        # self.is_on = True
         self.query("SU")
         shutter = self.close_shutter()
 
@@ -257,8 +262,8 @@ class TSL550(Laser):
         command : str
             The VISA command to send to the device.
         query_delay : float, optional
-            The query delay to use between write and read operations. If None, 
-            defaults to ``self.query_delay`` (can be set in ``__init__``). 
+            The query delay to use between write and read operations. If None,
+            defaults to ``self.query_delay`` (can be set in ``__init__``).
             Default is None.
 
         Returns
@@ -291,7 +296,7 @@ class TSL550(Laser):
             The response from the laser.
         """
         if val is not None:
-            command = ("{}{:."+str(precision)+"f}").format(name, val)
+            command = ("{}{:." + str(precision) + "f}").format(name, val)
         else:
             command = name
 
@@ -302,13 +307,13 @@ class TSL550(Laser):
         """
         Query the device to identify itself.
 
-        Places strings of device information such as the name, firmware, and 
+        Places strings of device information such as the name, firmware, and
         version in the output queue, which is subsequently read and returned.
 
         | Output format is a string:
-        | SANTEC,TSL-550,########,****.****  
-        | # field = serial number of the device in 8 digits.  
-        | * field = firmware version as 4 digits + .(period) + 4 digits.  
+        | SANTEC,TSL-550,########,****.****
+        | # field = serial number of the device in 8 digits.
+        | * field = firmware version as 4 digits + .(period) + 4 digits.
 
         Returns
         -------
@@ -321,7 +326,7 @@ class TSL550(Laser):
         'SANTEC,TSL-550,06020001,0001.0000'
         """
         log.info("Sending IDENT to laser")
-        return self.query('*IDN?')
+        return self.query("*IDN?")
 
     def on(self) -> None:
         """
@@ -329,7 +334,7 @@ class TSL550(Laser):
 
         Note that the wavlength on the display will change to the center
         of the band (ex. 1665) while the photodiode is stabalizing and then
-        return to its previously set value when finished. 
+        return to its previously set value when finished.
         """
         log.info("Turning on laser")
         self.is_on = True
@@ -343,11 +348,11 @@ class TSL550(Laser):
         self.is_on = False
         self.query("LF")
 
-    def wavelength(self, val: float=None) -> float:
+    def wavelength(self, val: float = None) -> float:
         """
-        Sets the output wavelength, and returns nothing. 
-        
-        If a value is not specified, returns the currently set wavelength. The 
+        Sets the output wavelength, and returns nothing.
+
+        If a value is not specified, returns the currently set wavelength. The
         wavelength value is in nanometers. The minimum step size is 0.0001 nm.
 
         Parameters
@@ -372,15 +377,17 @@ class TSL550(Laser):
         >>> laser.wavelength(1560.123)
         """
         if val is not None:
-            if(val < self.MINIMUM_WAVELENGTH or val > self.MAXIMUM_WAVELENGTH):
-                raise ValueError(f"Wavelength outside of allowed range ({self.MINIMUM_WAVELENGTH} - {self.MAXIMUM_WAVELENGTH} nm)")
+            if val < self.MINIMUM_WAVELENGTH or val > self.MAXIMUM_WAVELENGTH:
+                raise ValueError(
+                    f"Wavelength outside of allowed range ({self.MINIMUM_WAVELENGTH} - {self.MAXIMUM_WAVELENGTH} nm)"
+                )
             log.info(f"Setting wavelength to {val} nm")
             self._set_var("WA", 4, val)
             return
         else:
             return self._set_var("WA", 4, val)
 
-    def frequency(self, val: float=None) -> float:
+    def frequency(self, val: float = None) -> float:
         """
         Tune the laser to a new frequency.
 
@@ -404,26 +411,28 @@ class TSL550(Laser):
         >>> laser.frequency(192.0000)
         """
         if val is not None:
-            if(val < self.MINIMUM_FREQUENCY or val > self.MAXIMUM_FREQUENCY):
-                raise ValueError(f"Frequency outside of allowed range ({self.MINIMUM_FREQUENCY} - {self.MAXIMUM_FREQUENCY} THz)")
+            if val < self.MINIMUM_FREQUENCY or val > self.MAXIMUM_FREQUENCY:
+                raise ValueError(
+                    f"Frequency outside of allowed range ({self.MINIMUM_FREQUENCY} - {self.MAXIMUM_FREQUENCY} THz)"
+                )
             log.info(f"Setting frequency to {val} THz")
             self._set_var("FQ", 5, val)
             return
         else:
             return self._set_var("FQ", 5, val)
 
-    def power_mW(self, val: float=None) -> float:
+    def power_mW(self, val: float = None) -> float:
         """
         Set the output optical power in milliwatts.
-        
+
         This functionality will only work in automatic power mode. It can be set
         while the photodiode is turned on or off.
-        
+
         If a value is not specified, returns the current power. The current
         power being the actual live power coming out of the laser. If the
         photodiode is off, the power read out will be 0.0mW even if it has been
         set to a different value.
-        
+
         The valid range is 0.02 - 20 (mW, typical) with a minimum step of 0.01 (mW).
 
         Parameters
@@ -443,22 +452,24 @@ class TSL550(Laser):
         >>> laser.power_mW(10)
         """
         if val is not None:
-            if(val < self.MINIMUM_POWER_MW or val > self.MAXIMUM_POWER_MW):
+            if val < self.MINIMUM_POWER_MW or val > self.MAXIMUM_POWER_MW:
                 print(self.MINIMUM_POWER_DBM, self.MAXIMUM_POWER_DBM)
-                raise ValueError(f"Power outside of allowed range ({self.MINIMUM_POWER_MW} - {self.MAXIMUM_POWER_MW} mW)")
+                raise ValueError(
+                    f"Power outside of allowed range ({self.MINIMUM_POWER_MW} - {self.MAXIMUM_POWER_MW} mW)"
+                )
             log.info(f"Setting power to {val} mW")
             self._set_var("LP", 2, val)
             return
         else:
             return self._set_var("LP", 2, val)
 
-    def power_dBm(self, val: float=None) -> float:
+    def power_dBm(self, val: float = None) -> float:
         """
         Set the output optical power in decibel-milliwatts (dBm).
-        
+
         This functionality will only work in automatic power mode. It can be
         set while the photodiode is turned on or off.
-        
+
         If a value is not specified, returns the current power. The current
         power being the actual live power coming out of the laser. If the
         photodiode is off, the power read out will be -40dBm even if it has been
@@ -489,18 +500,20 @@ class TSL550(Laser):
         >>> laser.power_dBm(3)
         """
         if val is not None:
-            if(val < self.MINIMUM_POWER_DBM or val > self.MAXIMUM_POWER_DBM):
-                raise ValueError(f"Power outside of allowed range ({self.MINIMUM_POWER_DBM} - {self.MAXIMUM_POWER_DBM} dBm)")
+            if val < self.MINIMUM_POWER_DBM or val > self.MAXIMUM_POWER_DBM:
+                raise ValueError(
+                    f"Power outside of allowed range ({self.MINIMUM_POWER_DBM} - {self.MAXIMUM_POWER_DBM} dBm)"
+                )
             log.info(f"Setting power to {val} dBm")
             self._set_var("OP", 2, val)
             return
         else:
             return self._set_var("OP", 2, val)
 
-    def power_att(self, val: float=None) -> float:
+    def power_att(self, val: float = None) -> float:
         """
         Sets the internal attenuator value.
-        
+
         This functionality will only work in  manual power mode. It can be set
         while the photodiode is turned on or off.
 
@@ -531,8 +544,13 @@ class TSL550(Laser):
         >>> laser.power_att(28)
         """
         if val is not None:
-            if(val < self.MINIMUM_POWER_ATTENUATION or val > self.MAXIMUM_POWER_ATTENUATION):
-                raise ValueError(f"Attenuation outside allowed range ({self.MINIMUM_POWER_ATTENUATION} - {self.MAXIMUM_POWER_ATTENUATION} dBm)")
+            if (
+                val < self.MINIMUM_POWER_ATTENUATION
+                or val > self.MAXIMUM_POWER_ATTENUATION
+            ):
+                raise ValueError(
+                    f"Attenuation outside allowed range ({self.MINIMUM_POWER_ATTENUATION} - {self.MAXIMUM_POWER_ATTENUATION} dBm)"
+                )
             log.info(f"Setting power to {val} dBm")
             self._set_var("AT", 2, val)
             return
@@ -542,7 +560,7 @@ class TSL550(Laser):
     def power_auto(self) -> None:
         """
         Turn on automatic power control.
-        
+
         In this mode, use the functions power_dBm() and power_mW() to set the
         output power. There is a feedback look in the laser that adjusts the
         attenuation from its output power reading to set the output power precisely.
@@ -557,12 +575,12 @@ class TSL550(Laser):
     def power_manual(self) -> None:
         """
         Turn on manual power control.
-        
+
         In this mode, use the function power_att() to set the output power. The
         value inputed to this function will be used to set the internal
         attenuation. The output power may vary slightly, but there are less
         "moving parts" in the laser itself.
-        
+
         .. important::
            Shutter must be open to switch power modes.
         """
@@ -570,15 +588,24 @@ class TSL550(Laser):
         self.power_control = "manual"
         self.query("AO")
 
-    def sweep_wavelength(self, start: float, stop: float, duration: float, number: int=1,
-                         delay: float=0, continuous: bool=True, step_size: float=1,
-                         twoway: bool=False, trigger: bool=False) -> None:
+    def sweep_wavelength(
+        self,
+        start: float,
+        stop: float,
+        duration: float,
+        number: int = 1,
+        delay: float = 0,
+        continuous: bool = True,
+        step_size: float = 1,
+        twoway: bool = False,
+        trigger: bool = False,
+    ) -> None:
         """
-        Conduct a sweep between two wavelengths. 
+        Conduct a sweep between two wavelengths.
 
         A convenience function that combines :py:func:`sweep_start_wavelength`,
-        :py:func:`sweep_end_wavelength`, :py:func:`sweep_delay`, 
-        :py:func:`sweep_speed`, :py:func:`sweep_step_time`, 
+        :py:func:`sweep_end_wavelength`, :py:func:`sweep_delay`,
+        :py:func:`sweep_speed`, :py:func:`sweep_step_time`,
         :py:func:`sweep_set_mode`, and :py:func:`sweep_start`.
 
         Parameters
@@ -630,33 +657,43 @@ class TSL550(Laser):
 
         # Set timing
         self.sweep_delay(delay)
-        if continuous: # Calculate speed
+        if continuous:  # Calculate speed
             speed = abs(stop - start) / duration
 
-            if twoway: # Need to go twice as fast to go up then down in the same time
+            if twoway:  # Need to go twice as fast to go up then down in the same time
                 speed *= 2
 
             self.sweep_speed(speed)
-        else: # Interpret as time per step
+        else:  # Interpret as time per step
             self.sweep_step_time(duration)
 
-        self.sweep_set_mode(continuous=continuous, twoway=twoway,
-                            trigger=trigger, const_freq_step=False)
+        self.sweep_set_mode(
+            continuous=continuous, twoway=twoway, trigger=trigger, const_freq_step=False
+        )
 
-        if not self.is_on: # Make sure the laser is on
+        if not self.is_on:  # Make sure the laser is on
             self.on()
 
         self.sweep_start(number)
 
-    def sweep_frequency(self, start: float, stop: float, duration: float, number: int=1,
-                        delay: float=0, continuous: bool=True, step_size: float=1,
-                        twoway: bool=False, trigger: bool=False) -> None:
+    def sweep_frequency(
+        self,
+        start: float,
+        stop: float,
+        duration: float,
+        number: int = 1,
+        delay: float = 0,
+        continuous: bool = True,
+        step_size: float = 1,
+        twoway: bool = False,
+        trigger: bool = False,
+    ) -> None:
         """
-        Conduct a sweep between two wavelengths. 
+        Conduct a sweep between two wavelengths.
 
         A convenience function that combines :py:func:`sweep_start_frequency`,
-        :py:func:`sweep_end_frequency`, :py:func:`sweep_delay`, 
-        :py:func:`sweep_speed`, :py:func:`sweep_step_time`, 
+        :py:func:`sweep_end_frequency`, :py:func:`sweep_delay`,
+        :py:func:`sweep_speed`, :py:func:`sweep_step_time`,
         :py:func:`sweep_set_mode`, and :py:func:`sweep_start`.
 
         Parameters
@@ -708,27 +745,31 @@ class TSL550(Laser):
 
         # Set timing
         self.sweep_delay(delay)
-        if continuous: # Calculate speed
-            speed = abs(3e8/stop - 3e8/start) / duration # Convert to wavelength
+        if continuous:  # Calculate speed
+            speed = abs(3e8 / stop - 3e8 / start) / duration  # Convert to wavelength
 
-            if twoway: # Need to go twice as fast to go up then down in the same time
+            if twoway:  # Need to go twice as fast to go up then down in the same time
                 speed *= 2
 
             self.sweep_speed(speed)
-        else: # Interpret as time per step
+        else:  # Interpret as time per step
             self.sweep_step_time(duration)
 
-        self.sweep_set_mode(continuous=continuous, twoway=twoway,
-                            trigger=trigger, const_freq_step=not continuous)
+        self.sweep_set_mode(
+            continuous=continuous,
+            twoway=twoway,
+            trigger=trigger,
+            const_freq_step=not continuous,
+        )
 
-        if not self.is_on: # Make sure the laser is on
+        if not self.is_on:  # Make sure the laser is on
             self.on()
 
         self.sweep_start(number)
 
-    def sweep_start(self, num: float=1) -> None:
+    def sweep_start(self, num: float = 1) -> None:
         """
-        Sweep between two wavelengths one or more times. 
+        Sweep between two wavelengths one or more times.
 
         Parameters
         ----------
@@ -739,23 +780,23 @@ class TSL550(Laser):
         --------
         sweep_start_wavelength
         sweep_end_wavelength
-        sweep_wavelength : 
+        sweep_wavelength :
             Convenience function that wraps wavelength sweep setup and starts the sweep.
         sweep_start_frequency
         sweep_end_frequency
-        sweep_frequency : 
+        sweep_frequency :
             Convenience function that wraps frequency sweep setup and starts the sweep.
         sweep_set_mode
         """
         log.info(f"Starting a sweep with {num} repetitions")
-        self.query("SZ{:d}".format(num)) # Set number of sweeps
-        self.query("SG") # Start sweeping
+        self.query("SZ{:d}".format(num))  # Set number of sweeps
+        self.query("SG")  # Start sweeping
 
     def sweep_pause(self) -> None:
         """
-        Pause the sweep.  
-        
-        When a fast sweep speed is set, pause will not function. 
+        Pause the sweep.
+
+        When a fast sweep speed is set, pause will not function.
 
         See Also
         --------
@@ -775,9 +816,9 @@ class TSL550(Laser):
         log.info("Resuming the sweep")
         self.query("SR")
 
-    def sweep_stop(self, immediate: bool=True) -> None:
+    def sweep_stop(self, immediate: bool = True) -> None:
         """
-        Prematurely quit a sweep. 
+        Prematurely quit a sweep.
 
         Parameters
         ----------
@@ -794,21 +835,21 @@ class TSL550(Laser):
 
     def sweep_status(self) -> int:
         """
-        Gets the current condition of the sweeping function. 
+        Gets the current condition of the sweeping function.
 
         | The status code corresponds to the following:
         | 0: Stop (`TSL550.SWEEP_OFF`)
         | 1: Executing (`TSL550.SWEEP_RUNNING`)
         | 2: Pause (`TSL550.SWEEP_PAUSED`)
         | 3: Awaiting Trigger (`TSL550.SWEEP_TRIGGER_WAIT`)
-        |    This means that the sweep has been set to start on 
-        |    an external trigger and that trigger has not yet 
+        |    This means that the sweep has been set to start on
+        |    an external trigger and that trigger has not yet
         |    been received.
         | 4: Setting to sweep start wavelength (`TSL550.SWEEP_JUMP`)
-        |    This means that the laser is transitioning between 
-        |    the end of one sweep and the start of the next in 
+        |    This means that the laser is transitioning between
+        |    the end of one sweep and the start of the next in
         |    one-way sweep mode.
-        
+
         Returns
         -------
         status : int
@@ -824,7 +865,13 @@ class TSL550(Laser):
         log.debug("Entering sweep_status()")
         return int(self.query("SK"))
 
-    def sweep_set_mode(self, continuous: bool=True, twoway: bool=True, trigger: bool=False, const_freq_step: bool=False) -> None:
+    def sweep_set_mode(
+        self,
+        continuous: bool = True,
+        twoway: bool = True,
+        trigger: bool = False,
+        const_freq_step: bool = False,
+    ) -> None:
         """
         Set the mode of the sweep.
 
@@ -867,8 +914,8 @@ class TSL550(Laser):
 
     def sweep_get_mode(self) -> Dict[str, bool]:
         """
-        Return the current sweep configuration as a dictionary. 
-        
+        Return the current sweep configuration as a dictionary.
+
         See :py:func:`sweep_set_mode` for a description of what the parameters
         mean.
 
@@ -890,13 +937,13 @@ class TSL550(Laser):
             "continuous": mode_settings[0],
             "twoway": mode_settings[1],
             "trigger": mode_settings[2],
-            "const_freq_step": mode_settings[3]
+            "const_freq_step": mode_settings[3],
         }
 
-    def sweep_speed(self, val: float=None) -> float:
+    def sweep_speed(self, val: float = None) -> float:
         """
-        Set the speed of the continuous sweep, in nm/s. 
-        
+        Set the speed of the continuous sweep, in nm/s.
+
         If a new value is not provided, the current one will be returned.
         Valid range for sweep speed is 1.0 - 100 nm/s with a minimum step of 0.1 nm/s.
 
@@ -921,12 +968,12 @@ class TSL550(Laser):
             log.info(f"Setting sweep speed to {val} nm/s")
         return self._set_var("SN", 1, val)
 
-    def sweep_step_wavelength(self, val: float=None) -> float:
+    def sweep_step_wavelength(self, val: float = None) -> float:
         """
-        Set the size of each step in the stepwise sweep. 
-        
+        Set the size of each step in the stepwise sweep.
+
         If a new value is not provided, the current one will be returned.
-        
+
         The valid range is 0.0001 - 160 (nm) with a minimum step of 0.0001 nm.
 
         Parameters
@@ -950,14 +997,14 @@ class TSL550(Laser):
             log.info(f"Setting sweep step size to {val} nm")
         return self._set_var("WW", 4, val)
 
-    def sweep_step_frequency(self, val: float=None) -> float:
+    def sweep_step_frequency(self, val: float = None) -> float:
         """
         Set the size of each step in the stepwise sweep.
-        
+
         Sets the size of each step in the stepwise sweep when constant
         frequency intervals are enabled. If a new value is not
-        provided, the current one will be returned. 
-        
+        provided, the current one will be returned.
+
         The valid range is 0.00002 - 19.76219 (THz) with a minimum step of 0.00001 (THz).
 
         Parameters
@@ -981,10 +1028,10 @@ class TSL550(Laser):
             log.info(f"Setting sweep step size to {val} THz")
         return self._set_var("WF", 5, val)
 
-    def sweep_step_time(self, val: float=None) -> float:
+    def sweep_step_time(self, val: float = None) -> float:
         """
-        Set the duration of each step in the stepwise sweep. 
-        
+        Set the duration of each step in the stepwise sweep.
+
         If a new value is not provided, the current one will be returned.
 
         The valid range is 0 - 999.9 (s) with a minimum step of 0.1 s.
@@ -1010,10 +1057,10 @@ class TSL550(Laser):
             log.info(f"Setting sweep step time to {val} s")
         return self._set_var("SB", 1, val)
 
-    def sweep_delay(self, val: float=None) -> float:
+    def sweep_delay(self, val: float = None) -> float:
         """
-        Set the time between consecutive sweeps in continuous mode. 
-        
+        Set the time between consecutive sweeps in continuous mode.
+
         If a new value is not provided, the current one will be returned.
 
         The valid range is 0 - 999.9 (s) with a minimum step of 0.1 s.
@@ -1039,7 +1086,7 @@ class TSL550(Laser):
             log.info(f"Setting sweep delay to {val} s")
         return self._set_var("SA", 1, val)
 
-    def sweep_start_wavelength(self, val: float=None) -> float:
+    def sweep_start_wavelength(self, val: float = None) -> float:
         """
         Sets the start wavelength of a sweep.
 
@@ -1069,7 +1116,7 @@ class TSL550(Laser):
             log.info(f"Setting sweep start wavelength to {val} nm")
         return self._set_var("SS", 4, val)
 
-    def sweep_start_frequency(self, val: float=None) -> float:
+    def sweep_start_frequency(self, val: float = None) -> float:
         """
         Sets the start frequency of a sweep.
 
@@ -1099,7 +1146,7 @@ class TSL550(Laser):
             log.info(f"Setting sweep start frequency to {val} THz")
         return self._set_var("FS", 5, val)
 
-    def sweep_end_wavelength(self, val: float=None) -> float:
+    def sweep_end_wavelength(self, val: float = None) -> float:
         """
         Sets the end wavelength of a sweep.
 
@@ -1129,7 +1176,7 @@ class TSL550(Laser):
             log.info(f"Setting sweep end wavelength to {val} nm")
         return self._set_var("SE", 4, val)
 
-    def sweep_end_frequency(self, val: float=None) -> float:
+    def sweep_end_frequency(self, val: float = None) -> float:
         """
         Sets the end frequency of a sweep.
 
@@ -1206,7 +1253,7 @@ class TSL550(Laser):
         Returns
         -------
         mode : str
-            The mode for the trigger signal output timing; one of "None", 
+            The mode for the trigger signal output timing; one of "None",
             "Stop", "Start", or "Step".
         """
         log.debug("Entering trigger_get_mode()")
@@ -1220,7 +1267,7 @@ class TSL550(Laser):
         elif current_state == 3:
             return "Step"
 
-    def trigger_set_mode(self,val: str=None) -> str:
+    def trigger_set_mode(self, val: str = None) -> str:
         """
         Sets the trigger mode.
 
@@ -1231,7 +1278,7 @@ class TSL550(Laser):
         ----------
         val : str, opt
             One of: "None", "Stop", "Start", "Step".
-        
+
         Returns
         -------
         str
@@ -1256,7 +1303,9 @@ class TSL550(Laser):
         elif val == "Step":
             mode = 3
         else:
-            raise ValueError("Invalide output trigger mode supplied. Choose from None, Stop, Start, and Step.")
+            raise ValueError(
+                "Invalide output trigger mode supplied. Choose from None, Stop, Start, and Step."
+            )
         current_state = int(self.query("TM{}".format(mode)))
         if current_state == 1:
             return "Stop"
@@ -1265,7 +1314,7 @@ class TSL550(Laser):
         elif current_state == 3:
             return "Step"
 
-    def trigger_step(self, step: float=None) -> float:
+    def trigger_step(self, step: float = None) -> float:
         """
         Sets (or returns) the interval of the trigger signal output.
 
@@ -1292,7 +1341,6 @@ class TSL550(Laser):
         else:
             return float(self.query("TW"))
 
-
     def wavelength_logging_number(self) -> int:
         """
         Reads the number of data points recored by wavelength logging.
@@ -1312,8 +1360,8 @@ class TSL550(Laser):
 
     def wavelength_logging(self) -> List[float]:
         """
-        Read the list of all the wavelength points logged into the laser's buffer. 
-        
+        Read the list of all the wavelength points logged into the laser's buffer.
+
         Assumes that all the correct sweep and triggering protocol
         are met (see manual page 6-5). Generally, if the laser does a wavelength
         sweep, the trigger mode must be set to 'Step' for the wavelengths to be
@@ -1374,7 +1422,7 @@ class TSL550(Laser):
         self.query("SU")
         return wavelength_points
 
-    def status(self, verbose: bool=False) -> str:
+    def status(self, verbose: bool = False) -> str:
         """
         Query the status of the laser and print its results.
 
@@ -1386,13 +1434,13 @@ class TSL550(Laser):
         Returns
         -------
         code : str
-            A status code for the status of the laser. 
+            A status code for the status of the laser.
 
         The following example shows the laser as on and all operations as complete.
 
         Notes
         -----
-        The status code is a 7-character 
+        The status code is a 7-character
         string status comprising a code and 6 digits (with positions represented
         as '-654321'), interpreted as follows:
 
@@ -1409,7 +1457,7 @@ class TSL550(Laser):
         |     monitor range, according to the following table:
 
         .. table::
-   
+
            ===== ============= ================== ===========================
            Value Power control Attenuator control Power monitor range control
            ===== ============= ================== ===========================
@@ -1450,38 +1498,43 @@ class TSL550(Laser):
         if not verbose:
             return status
         else:
-            code = {    '-' : "'-': ON\n",
-                        ' ' : "none: OFF\n"
+            code = {"-": "'-': ON\n", " ": "none: OFF\n"}
+            digit_6 = {"0": "Coherence control: OFF\n", "1": "Coherence control: ON\n"}
+            digit_5 = {"0": "Fine-tuning: OFF\n", "1": "Fine-tuning: ON\n"}
+            digit_4 = {
+                "0": "Power Control: Auto\nAttenuator Control: Hold\nPower Monitor Range Control: Auto\n",
+                "1": "Power Control: Manual\nAttenuator Control: Hold (Manual)\nPower Monitor Range Control: Auto\n",
+                "2": "Power Control: Auto\nAttenuator Control: Auto\nPower Monitor Range Control: Auto\n",
+                "3": "4th digit is not specified for a value of 3\n",
+                "4": "Power Control: Auto\nAttenuator Control: Hold\nPower Monitor Range Control: Hold\n",
+                "5": "Power Control: Manual\nAttenuator Control: Hold (Manual)\nPower Monitor Range Control: Hold\n",
             }
-            digit_6 = { '0' : "Coherence control: OFF\n",
-                        '1' : "Coherence control: ON\n"
+            digit_3 = {
+                "0": "Laser diode temperature error: No error\n",
+                "1": "Laser diode temperature error: Error occurred\n",
             }
-            digit_5 = { '0' : "Fine-tuning: OFF\n",
-                        '1' : "Fine-tuning: ON\n"
+            digit_2 = {
+                "0": "Laser diode current limit error: No error\n",
+                "1": "Laser diode current limit error: Error occurred\n",
             }
-            digit_4 = { '0' : "Power Control: Auto\nAttenuator Control: Hold\nPower Monitor Range Control: Auto\n",
-                        '1' : "Power Control: Manual\nAttenuator Control: Hold (Manual)\nPower Monitor Range Control: Auto\n",
-                        '2' : "Power Control: Auto\nAttenuator Control: Auto\nPower Monitor Range Control: Auto\n",
-                        '3' : "4th digit is not specified for a value of 3\n",
-                        '4' : "Power Control: Auto\nAttenuator Control: Hold\nPower Monitor Range Control: Hold\n",
-                        '5' : "Power Control: Manual\nAttenuator Control: Hold (Manual)\nPower Monitor Range Control: Hold\n",
+            digit_1 = {
+                "0": "Operation status: Operation is completed\n",
+                "1": "Operation status: Wavelength is tuning\n",
+                "2": "Operation status: Laser diode current is setting (LD is on state and power control is Auto)\n",
+                "3": "Operation status: Wavelength is tuning and LD current is setting\n",
+                "4": "Operation status: Attenuator is setting\n",
+                "5": "Operation status: Wavelength is setting and attenuator is setting\n",
+                "6": "Operation status: LD current is setting and attenuator is setting\n",
+                "7": "Operation status: Wavelength is tuning, LD current is setting, and attenuator is setting\n",
             }
-            digit_3 = { '0' : "Laser diode temperature error: No error\n",
-                        '1' : "Laser diode temperature error: Error occurred\n",
-            }
-            digit_2 = { '0' : "Laser diode current limit error: No error\n",
-                        '1' : "Laser diode current limit error: Error occurred\n"
-            }
-            digit_1 = { '0' : "Operation status: Operation is completed\n",
-                        '1' : "Operation status: Wavelength is tuning\n",
-                        '2' : "Operation status: Laser diode current is setting (LD is on state and power control is Auto)\n",
-                        '3' : "Operation status: Wavelength is tuning and LD current is setting\n",
-                        '4' : "Operation status: Attenuator is setting\n",
-                        '5' : "Operation status: Wavelength is setting and attenuator is setting\n",
-                        '6' : "Operation status: LD current is setting and attenuator is setting\n",
-                        '7' : "Operation status: Wavelength is tuning, LD current is setting, and attenuator is setting\n"
-            }
-            output = status + code[status[0]] + digit_6[status[1]] \
-                + digit_5[status[2]] + digit_4[status[3]] + digit_3[status[4]] \
-                + digit_2[status[5]] + digit_1[status[6]]
+            output = (
+                status
+                + code[status[0]]
+                + digit_6[status[1]]
+                + digit_5[status[2]]
+                + digit_4[status[3]]
+                + digit_3[status[4]]
+                + digit_2[status[5]]
+                + digit_1[status[6]]
+            )
             return output

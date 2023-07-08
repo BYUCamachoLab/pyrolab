@@ -33,14 +33,12 @@ ERROR_CODES = {
     6: "FT_InvalidParameter",
     7: "FT_DeviceNotPresent",
     8: "FT_IncorrectDevice",
-
     16: "FT_NoDLLLoaded",
     17: "FT_NoFunctionsAvailable",
     18: "FT_FunctionNotAvailable",
     19: "FT_BadFunctionPointer",
     20: "FT_GenericFunctionFail",
     21: "FT_SpecificFunctionFail",
-
     32: "TL_ALREADY_OPEN",
     33: "TL_NO_RESPONSE",
     34: "TL_NOT_IMPLEMENTED",
@@ -50,12 +48,11 @@ ERROR_CODES = {
     41: "TL_FIRMWARE_BUG",
     42: "TL_INITIALIZATION_FAILURE",
     43: "TL_INVALID_CHANNEL",
-
     37: "TL_UNHOMED",
     38: "TL_INVALID_POSITION",
     39: "TL_INVALID_VELOCITY_PARAMETER",
     44: "TL_CANNOT_HOME_DEVICE",
     45: "TL_JOG_CONTINUOUS_MODE",
     46: "TL_NO_MOTOR_INFO",
-    47: "TL_CMD_TEMP_UNAVAILABLE"
+    47: "TL_CMD_TEMP_UNAVAILABLE",
 }

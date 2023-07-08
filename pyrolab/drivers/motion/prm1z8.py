@@ -38,7 +38,7 @@ from pyrolab.drivers.motion.kinesis.kdc101 import KDC101, HomingMixin
 @expose
 class PRM1Z8(KDC101, HomingMixin):
     """
-    A PRM1Z8 precision motorized rotation stage controlled by a KCube DC Servo 
+    A PRM1Z8 precision motorized rotation stage controlled by a KCube DC Servo
     motor.
 
     Parameters
@@ -50,4 +50,5 @@ class PRM1Z8(KDC101, HomingMixin):
     home : bool
         True tells the device to home when initializing
     """
+
     pass

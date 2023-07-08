@@ -26,7 +26,18 @@ Code also available in the PyroLab repository under ``/extras/arduino``.
 
 import logging
 
-from pyfirmata import ANALOG, INPUT, OUTPUT, PWM, SERVO, Arduino, ArduinoDue, ArduinoMega, ArduinoNano, util
+from pyfirmata import (
+    ANALOG,
+    INPUT,
+    OUTPUT,
+    PWM,
+    SERVO,
+    Arduino,
+    ArduinoDue,
+    ArduinoMega,
+    ArduinoNano,
+    util,
+)
 
 from pyrolab.drivers.arduino import Arduino as PyroArduino
 from pyrolab.api import expose
@@ -41,7 +52,7 @@ class BaseArduinoDriver(PyroArduino):
     A base class providing pin read/write access for common Arduino boards.
     """
 
-    def connect(self, port: str, board: str="uno") -> None:
+    def connect(self, port: str, board: str = "uno") -> None:
         """
         Initialize a connection with the arduino.
 
@@ -77,10 +88,9 @@ class BaseArduinoDriver(PyroArduino):
             self.board = ArduinoNano(self.port)
         else:
             raise ValueError(f"Unknown board '{board}'")
-        
+
         self.it = util.Iterator(self.board)
         self.it.start()
-
 
     def digital_write(self, pin: int, value: int) -> None:
         """
@@ -97,7 +107,7 @@ class BaseArduinoDriver(PyroArduino):
         """
         self.board.digital[pin].mode = OUTPUT
         pin = self.board.digital[pin].write(value)
-    
+
     def pwm_write(self, pin: int, value: float) -> None:
         """
         Tell the arduino to produce a pwm signal on a pin.
@@ -111,7 +121,7 @@ class BaseArduinoDriver(PyroArduino):
         """
         self.board.digital[pin].mode = PWM
         self.board.digital[pin].write(value)
-    
+
     def servo_write(self, pin: int, value: int) -> None:
         """
         Tell the arduino to configure a pin to drive a servo to
@@ -126,7 +136,7 @@ class BaseArduinoDriver(PyroArduino):
         """
         self.board.digital[pin].mode = SERVO
         self.board.digital[pin].write(value)
-    
+
     def digital_read(self, pin: int) -> int:
         """
         Tell the arduino to read a value from a digital pin.
@@ -135,7 +145,7 @@ class BaseArduinoDriver(PyroArduino):
         ----------
         pin : int
             Integer that represents the digital in pin number on an arduino
-        
+
         Returns
         -------
         int
@@ -143,7 +153,7 @@ class BaseArduinoDriver(PyroArduino):
         """
         self.board.digital[pin].mode = INPUT
         return self.board.digital[pin].read()
-    
+
     def analog_read(self, pin: int) -> float:
         """
         Tell the arduino to read a value from an analog pin.
@@ -152,7 +162,7 @@ class BaseArduinoDriver(PyroArduino):
         ----------
         pin : int
             Integer that represents the analog in pin number on an arduino
-        
+
         Returns
         -------
         float

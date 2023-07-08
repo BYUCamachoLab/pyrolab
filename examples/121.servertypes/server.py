@@ -22,6 +22,7 @@ import time
 
 from pyrolab.api import config, serve, locate_ns, expose, behavior, oneway
 from pyrolab.drivers.sample import SampleService
+
 config.reset()
 
 
@@ -68,9 +69,7 @@ else:
 if __name__ == "__main__":
     # please make sure a name server is running somewhere first.
     try:
-        serve({
-            Server: "example.servertypes"
-        })
+        serve({Server: "example.servertypes"})
     finally:
         ns = locate_ns(host="localhost")
         ns.remove("example.servertypes")

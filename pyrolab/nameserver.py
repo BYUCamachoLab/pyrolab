@@ -34,12 +34,14 @@ STORAGE_FILE = NAMESERVER_STORAGE / "storage"
 #     pass
 
 
-def start_ns_loop(cfg: NameServerConfiguration, loop_condition: Callable=lambda: True) -> None:
+def start_ns_loop(
+    cfg: NameServerConfiguration, loop_condition: Callable = lambda: True
+) -> None:
     """
     Utility function that starts a new NameServer and enters its requestloop.
 
     This function is a reimplemntation of the ``Pyro5.nameserver.start_ns_loop``
-    that allows for a loop condition to kill the loop. Alternatively, the loop 
+    that allows for a loop condition to kill the loop. Alternatively, the loop
     can be shut down using ``ctrl+c``.
 
     Parameters
@@ -63,7 +65,9 @@ def start_ns_loop(cfg: NameServerConfiguration, loop_condition: Callable=lambda:
     storage = cfg.get_storage_location()
     cfg.update_pyro_config()
 
-    daemon = NameServerDaemon(unixsocket, nathost=nathost, natport=natport, storage=storage)
+    daemon = NameServerDaemon(
+        unixsocket, nathost=nathost, natport=natport, storage=storage
+    )
     nsUri = daemon.uriFor(daemon.nameserver)
     internalUri = daemon.uriFor(daemon.nameserver, nat=False)
     bcserver = None
@@ -71,21 +75,27 @@ def start_ns_loop(cfg: NameServerConfiguration, loop_condition: Callable=lambda:
         hostip = "Unix domain socket"
     else:
         hostip = daemon.sock.getsockname()[0]
-        if daemon.sock.family == socket.AF_INET6:       # ipv6 doesn't have broadcast. We should probably use multicast instead...
+        if (
+            daemon.sock.family == socket.AF_INET6
+        ):  # ipv6 doesn't have broadcast. We should probably use multicast instead...
             log.info("Not starting NS broadcast server because NS is using IPv6")
             enableBroadcast = False
         elif hostip.startswith("127.") or hostip == "::1":
-            log.info("Not starting NS broadcast server because NS is bound to localhost")
+            log.info(
+                "Not starting NS broadcast server because NS is bound to localhost"
+            )
             enableBroadcast = False
         if enableBroadcast:
             # Make sure to pass the internal uri to the broadcast responder.
             # It is almost always useless to let it return the external uri,
             # because external systems won't be able to talk to this thing anyway.
-            bcserver = BroadcastServer(internalUri, bchost, bcport, ipv6=daemon.sock.family == socket.AF_INET6)
+            bcserver = BroadcastServer(
+                internalUri, bchost, bcport, ipv6=daemon.sock.family == socket.AF_INET6
+            )
             log.info("Broadcast server running on %s" % bcserver.locationStr)
             bcserver.runInThread()
     existing = daemon.nameserver.count()
-    if existing > 1:   # don't count our own nameserver registration
+    if existing > 1:  # don't count our own nameserver registration
         log.info("Persistent store contains %d existing registrations." % existing)
     log.info("NS running on %s (%s)" % (daemon.locationStr, hostip))
     if daemon.natLocationStr:
@@ -97,7 +107,9 @@ def start_ns_loop(cfg: NameServerConfiguration, loop_condition: Callable=lambda:
         # Placed in a try block because this fails with pythonw.exe
         sys.stdout.flush()
     except:
-        log.warning("Couldn't flush stdout! (Not a problem if running under pythonw.exe)")
+        log.warning(
+            "Couldn't flush stdout! (Not a problem if running under pythonw.exe)"
+        )
     try:
         daemon.requestLoop(loopCondition=loop_condition)
     finally:
@@ -107,21 +119,21 @@ def start_ns_loop(cfg: NameServerConfiguration, loop_condition: Callable=lambda:
     log.info("NS shut down.")
 
 
-def start_ns(cfg: NameServerConfiguration=None):
+def start_ns(cfg: NameServerConfiguration = None):
     """
-    Utility fuction to quickly get a Nameserver daemon to be used in your own 
+    Utility fuction to quickly get a Nameserver daemon to be used in your own
     event loops.
-    
+
     Returns
     -------
     nameserverUri, nameserverDaemon, broadcastServer
         A tuple containing three pieces of information.
     """
     return start_ns(
-        host=cfg.host, 
-        port=cfg.ns_port, 
-        enableBroadcast=cfg.broadcast, 
-        bchost=cfg.bc_host, 
+        host=cfg.host,
+        port=cfg.ns_port,
+        enableBroadcast=cfg.broadcast,
+        bchost=cfg.bc_host,
         bcport=cfg.bc_port,
-        storage=cfg.storage
+        storage=cfg.storage,
     )

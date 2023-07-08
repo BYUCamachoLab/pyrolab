@@ -16,7 +16,6 @@ from typing import Dict
 from pyrolab.api import Service, behavior, expose
 
 
-
 @behavior(instance_mode="single")
 @expose
 class LibraryCatalog(Service):
@@ -31,6 +30,7 @@ class LibraryCatalog(Service):
     catalog : Dict[str, int]
         A dictionary of book titles and their quantities.
     """
+
     def __init__(self, catalog: Dict[str, int] = {}) -> None:
         self.catalog = catalog
 
@@ -44,11 +44,11 @@ class LibraryCatalog(Service):
             A dictionary of book titles and their quantities.
         """
         return self.catalog
-    
+
     def checkout(self, title: str, quantity: int = 1) -> None:
         """
         Check out a book title.
-        
+
         Parameters
         ----------
         title : str
@@ -65,7 +65,7 @@ class LibraryCatalog(Service):
     def checkin(self, title: str, quantity: int = 1) -> None:
         """
         Check in a book title.
-        
+
         Parameters
         ----------
         title : str
@@ -116,7 +116,7 @@ if __name__ == "__main__":
 
     catalog = LibraryCatalog(books)
     print(catalog.get_catalog())
-    
+
     catalog.checkout("The Hobbit")
     print(catalog.get_catalog())
 
@@ -133,7 +133,7 @@ if __name__ == "__main__":
     except ValueError as e:
         print(e)
 
-    try: 
+    try:
         catalog.checkout("Coding for Dummies")
     except ValueError as e:
         print(e)

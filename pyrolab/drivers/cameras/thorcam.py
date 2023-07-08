@@ -8,20 +8,20 @@ ThorCam
 
 Module providing basic functionality for Thorlabs cameras.
 
-Provides a base class with common functionality for Thorlabs cameras. Not 
+Provides a base class with common functionality for Thorlabs cameras. Not
 intended to be instantiated directly, even if it works.
 
 Driver for ThorLabs cameras interfacing with the ThorCam software DLLs.
 
 .. attention::
 
-   Presently Windows only. 
-   
+   Presently Windows only.
+
    Requires ThorCam software. Download it at `thorlabs.com`_.
 
    .. _thorlabs.com: https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam
 
-   Potential future Linux support, since ThorLabs does provide a Windows and 
+   Potential future Linux support, since ThorLabs does provide a Windows and
    Linux SDK.
 
 .. admonition:: Dependencies
@@ -60,6 +60,7 @@ class ThorCamBase(Camera):
     roi_shape : (int, int)
     roi_pos : (int, int)
     """
+
     def __init__(self):
         self._HEADERSTRUCT = np.zeros(4, dtype=np.uintc)
         self.stop_video = threading.Event()
@@ -88,7 +89,7 @@ class ThorCamBase(Camera):
     @property
     @expose
     def color(self) -> bool:
-        """Sets whether to transmit color (``True``) or grayscale (``False``) 
+        """Sets whether to transmit color (``True``) or grayscale (``False``)
         images."""
         return self._color
 
@@ -134,17 +135,24 @@ class ThorCamBase(Camera):
         log.debug(f"shape: {self.roi_shape}")
         log.debug(f"positions: {self.roi_pos}")
         if self.color:
-            image = image[self.roi_pos[1]:self.roi_pos[1]+self.roi_shape[1],self.roi_pos[0]:self.roi_pos[0]+self.roi_shape[0],:]
+            image = image[
+                self.roi_pos[1] : self.roi_pos[1] + self.roi_shape[1],
+                self.roi_pos[0] : self.roi_pos[0] + self.roi_shape[0],
+                :,
+            ]
         else:
-            image = image[self.roi_pos[1]:self.roi_pos[1]+self.roi_shape[1],self.roi_pos[0]:self.roi_pos[0]+self.roi_shape[0]]
+            image = image[
+                self.roi_pos[1] : self.roi_pos[1] + self.roi_shape[1],
+                self.roi_pos[0] : self.roi_pos[0] + self.roi_shape[0],
+            ]
         log.debug(f"new shape of image: {image.shape}")
         return image
-    
+
     def _bayer_convert(self, raw: np.array) -> np.array:
         """
         Coverts the raw data to something that can be displayed on-screen.
 
-        Image data is retrieved as a single-dimensional array. This function 
+        Image data is retrieved as a single-dimensional array. This function
         converts it into either multidimensional BGR or grayscale image.
 
         Parameters
@@ -157,20 +165,20 @@ class ThorCamBase(Camera):
         np.array
             The converted data.
         """
-        ow = (raw.shape[0]//4) * 4
-        oh = (raw.shape[1]//4) * 4
+        ow = (raw.shape[0] // 4) * 4
+        oh = (raw.shape[1] // 4) * 4
 
-        R  = raw[0::2, 0::2]
-        B  = raw[1::2, 1::2]
+        R = raw[0::2, 0::2]
+        B = raw[1::2, 1::2]
         G0 = raw[0::2, 1::2]
         G1 = raw[1::2, 0::2]
 
         if self.color:
             log.debug("Bayer convert (color)")
-            frame_height = raw.shape[0]//2
-            frame_width = raw.shape[1]//2
+            frame_height = raw.shape[0] // 2
+            frame_width = raw.shape[1] // 2
 
-            G = G0[:oh,:ow]//2 + G1[:oh,:ow]//2
+            G = G0[:oh, :ow] // 2 + G1[:oh, :ow] // 2
 
             bayer_R = np.array(R, dtype=np.uint8).reshape(frame_height, frame_width)
             bayer_G = np.array(G, dtype=np.uint8).reshape(frame_height, frame_width)
@@ -178,27 +186,34 @@ class ThorCamBase(Camera):
 
             log.debug("Stacking color data")
             dStack = np.clip(
-            np.dstack(
-                    (bayer_B*(self.brightness/5), bayer_G*(self.brightness/5), bayer_R*(self.brightness/5))
+                np.dstack(
+                    (
+                        bayer_B * (self.brightness / 5),
+                        bayer_G * (self.brightness / 5),
+                        bayer_R * (self.brightness / 5),
+                    )
                 ),
                 0,
-                np.power(2, self.bit_depth) - 1
-            ).astype('uint8')
+                np.power(2, self.bit_depth) - 1,
+            ).astype("uint8")
         else:
             log.debug("Bayer convert (grayscale)")
-            bayer = R[:oh,:ow]//3 + B[:oh,:ow]//3 + (G0[:oh,:ow]//2 + G1[:oh,:ow]//2)//3
+            bayer = (
+                R[:oh, :ow] // 3
+                + B[:oh, :ow] // 3
+                + (G0[:oh, :ow] // 2 + G1[:oh, :ow] // 2) // 3
+            )
             frame_height = bayer.shape[0]
             frame_width = bayer.shape[1]
 
-            bayer_T = np.array(bayer, dtype=np.uint8).reshape(frame_height,
-                            frame_width)
+            bayer_T = np.array(bayer, dtype=np.uint8).reshape(frame_height, frame_width)
 
             log.debug("Stacking grayscale data")
             dStack = np.clip(
-                bayer_T*(self.brightness/5),
+                bayer_T * (self.brightness / 5),
                 0,
                 np.power(2, self.bit_depth) - 1,
-            ).astype('uint8')
+            ).astype("uint8")
         log.debug("Bayer data stacked")
         return dStack
 
@@ -206,10 +221,10 @@ class ThorCamBase(Camera):
         """
         Retrieves the last frame from the camera's memory buffer.
 
-        .. warning:: 
+        .. warning::
 
-           Not a Pyro exposed function, cannot be called from a Proxy. We 
-           recommend using the :py:class:`ThorCamClient` for streaming 
+           Not a Pyro exposed function, cannot be called from a Proxy. We
+           recommend using the :py:class:`ThorCamClient` for streaming
            video/getting remote images.
 
         Retrieves the last frame from the camera memory buffer and processes it
@@ -224,7 +239,9 @@ class ThorCamBase(Camera):
         """
         raise NotImplementedError
 
-    def _write_header(self, size: int, d1: int = 1, d2: int = 1, d3: int = 1) -> np.array:
+    def _write_header(
+        self, size: int, d1: int = 1, d2: int = 1, d3: int = 1
+    ) -> np.array:
         """
         Creates the message header for the image being transferred over socket.
 
@@ -260,11 +277,11 @@ class ThorCamBase(Camera):
         self.serversocket.listen(5)
         self.clientsocket, address = self.serversocket.accept()
         log.debug("Accepted client socket")
-        
+
         while not self.stop_video.is_set():
             log.debug("Getting frame")
             encode_param = [int(cv.IMWRITE_JPEG_QUALITY), 90]
-            success, msg = cv.imencode('.jpg', self.get_frame(), encode_param)
+            success, msg = cv.imencode(".jpg", self.get_frame(), encode_param)
 
             if not success:
                 log.debug("Compression failed")
@@ -283,7 +300,7 @@ class ThorCamBase(Camera):
 
     def _get_socket(self) -> Tuple[str, int]:
         """
-        Opens an socket on the local machine using an available port and binds to it. 
+        Opens an socket on the local machine using an available port and binds to it.
 
         Returns
         -------
@@ -306,7 +323,9 @@ class ThorCamBase(Camera):
         log.debug("Setting up socket for streaming")
         self.stop_video.clear()
         address, port = self._get_socket()
-        self.video_thread = threading.Thread(target=self._remote_streaming_loop, args=())
+        self.video_thread = threading.Thread(
+            target=self._remote_streaming_loop, args=()
+        )
         self.video_thread.start()
         return [address, port]
 
@@ -324,7 +343,7 @@ class ThorCamBase(Camera):
             Address and port of the opened socket, if used remotely.
         """
         raise NotImplementedError
-            
+
     def stop_streaming_thread(self):
         """
         Closes the socket connection and signals the streaming thread to shutdown.
@@ -368,13 +387,14 @@ class ThorCamClient:
     SUB_MESSAGE_LENGTH : int
         The size of the sub-message chunks used.
     """
+
     def __init__(self):
         self.remote_attributes = []
         self.SUB_MESSAGE_LENGTH = 4096
         self.stop_video = threading.Event()
         self.video_stopped = threading.Event()
         self.last_image = None
-    
+
     def __getattr__(self, attr):
         """
         Accesses remote camera attributes as if they were local.
@@ -384,13 +404,13 @@ class ThorCamClient:
         >>> print(ThorCamClient.color)
         False
         >>> print(ThorCamClient.brightness)
-        5        
+        5
         """
         if attr in self.remote_attributes:
-            return getattr(self.cam,attr)
+            return getattr(self.cam, attr)
         else:
             return super().__getattr__(attr)
-    
+
     def __setattr__(self, attr, value):
         """
         Sets remote camera attributes as if they were local.
@@ -401,18 +421,18 @@ class ThorCamClient:
         >>> ThorCamClient.brightness = 8
         >>> ThorCamClient.exposure = 100
         """
-        if attr == 'remote_attributes':
-            return super().__setattr__(attr,value)
+        if attr == "remote_attributes":
+            return super().__setattr__(attr, value)
         elif attr in self.remote_attributes:
             return setattr(self.cam, attr, value)
         else:
-            return super().__setattr__(attr,value)
+            return super().__setattr__(attr, value)
 
     def connect(self, name: str, ns_host: str = None, ns_port: float = None) -> None:
         """
         Connect to a remote PyroLab-hosted UC480 camera.
 
-        Assumes the nameserver where the camera is registered is already 
+        Assumes the nameserver where the camera is registered is already
         configured in the environment.
 
         Parameters
@@ -430,22 +450,22 @@ class ThorCamClient:
         >>> cam.connect("camera_name")
         """
         if ns_host or ns_port:
-            args = {'host': ns_host, 'port': ns_port}
+            args = {"host": ns_host, "port": ns_port}
         else:
             args = {}
-            
+
         with locate_ns(**args) as ns:
             self.cam = Proxy(ns.lookup(name))
         self.cam.autoconnect()
         self.remote_attributes = self.cam._pyroAttrs
         self._LOCAL_HEADERSIZE = self.HEADERSIZE
-    
+
     def start_stream(self) -> None:
         """
         Starts the video stream.
 
-        Sets up the remote camera to start streaming and opens a socket 
-        connection to receive the stream. Starts a new daemon thread to 
+        Sets up the remote camera to start streaming and opens a socket
+        connection to receive the stream. Starts a new daemon thread to
         constantly receive images.
         """
         address, port = self.cam.start_capture()
@@ -462,7 +482,7 @@ class ThorCamClient:
         """
         Decodes the header of the image.
 
-        Image header consists of four np.uintc values, ordered as [length of 
+        Image header consists of four np.uintc values, ordered as [length of
         message (in bytes), width, height, depth (usually 1, or 3 if color)].
 
         Parameters
@@ -477,11 +497,11 @@ class ThorCamClient:
         """
         length, *shape = np.frombuffer(header, dtype=np.uintc)
         return length, shape
-    
+
     def _receive_video_loop(self) -> None:
         while not self.stop_video.is_set():
-            message = b''
-            
+            message = b""
+
             # Read size of the incoming message
             header = self.clientsocket.recv(self._LOCAL_HEADERSIZE)
             length, shape = self._decode_header(header)
@@ -490,8 +510,10 @@ class ThorCamClient:
                 message += submessage
 
             # Deserialize the message and break
-            self.last_image = cv.imdecode(np.frombuffer(message, dtype=np.uint8).reshape(shape),1)
-            self.clientsocket.send(b'ACK')
+            self.last_image = cv.imdecode(
+                np.frombuffer(message, dtype=np.uint8).reshape(shape), 1
+            )
+            self.clientsocket.send(b"ACK")
 
         self.clientsocket.close()
         self.video_stopped.set()
@@ -499,7 +521,7 @@ class ThorCamClient:
     def end_stream(self) -> None:
         """
         Ends the video stream.
-        
+
         Ends the video stream by setting the stop_video flag and closing the
         socket connection. Because communication is via a flag, shutdown
         may not be instantaneous.
@@ -548,7 +570,7 @@ class ThorCamClient:
         >>> cam.connect("camera_name")
         >>> cam.start_stream()
         >>> cam.await_stream()
-        >>> frame = cam.get_frame()        
+        >>> frame = cam.get_frame()
         """
         return self.last_image
 

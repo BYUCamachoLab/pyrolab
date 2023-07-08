@@ -31,7 +31,7 @@ def get_ip() -> str:
     return ip
 
 
-def generate_random_name(count: int=3) -> str:
+def generate_random_name(count: int = 3) -> str:
     """
     Concatenates ``count`` random words as a hyphenated string.
 
@@ -49,8 +49,8 @@ def generate_random_name(count: int=3) -> str:
     """
     from pathlib import Path
 
-    path = Path(pkg_resources.resource_filename('pyrolab', "data/wordlist.txt"))
-    with open(path, 'r') as f:
+    path = Path(pkg_resources.resource_filename("pyrolab", "data/wordlist.txt"))
+    with open(path, "r") as f:
         wordlist = f.read().splitlines()
 
-    return '-'.join([secrets.choice(wordlist) for _ in range(count)])
+    return "-".join([secrets.choice(wordlist) for _ in range(count)])

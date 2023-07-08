@@ -10,8 +10,8 @@ Driver for Pure Photonic tunable lasers.
 
 .. note::
 
-   Pure Photonic offers GUI controllers, a command line interface, and 
-   DLL/driver downloads on their 
+   Pure Photonic offers GUI controllers, a command line interface, and
+   DLL/driver downloads on their
    `website <https://www.pure-photonics.com/downloads1>`_. These are not
    required by PyroLab, however.
 
@@ -113,19 +113,19 @@ class PPCL55xBase(Laser):
     @property
     def MINIMUM_FREQUENCY(self):
         return C_SPEED / self.MAXIMUM_WAVELENGTH
-    
+
     @property
     def MAXIMUM_FREQUENCY(self):
         return C_SPEED / self.MINIMUM_WAVELENGTH
-    
+
     @property
     def MINIMUM_POWER_MW(self):
         return 10 ** (self.MINIMUM_POWER_DBM / 10)
-    
+
     @property
     def MAXIMUM_POWER_MW(self):
         return 10 ** (self.MAXIMUM_POWER_DBM / 10)
-    
+
     def connect(self, port: str = "", baudrate: int = 9600) -> None:
         """
         Connects to and initializes the laser. All parameters are keyword arguments.

@@ -30,6 +30,7 @@ class SampleService(Service):
     """
     A sample service with a few stubbed functions.
     """
+
     def __init__(self) -> None:
         log.info("SampleService created")
         self._attribute = False
@@ -61,7 +62,7 @@ class SampleService(Service):
         ----------
         message : str
             The message to be echoed by the server.
-        
+
         Returns
         -------
         resp : str
@@ -73,7 +74,7 @@ class SampleService(Service):
         """
         Echoes back as the response the exact message as received with
         "SERVER RECEIVED: " prepended to the message after delaying by the
-        specified number of seconds. 
+        specified number of seconds.
 
         This function demonstrates that the connection does not die out even
         for long running requests.
@@ -84,7 +85,7 @@ class SampleService(Service):
             The message to be echoed by the server.
         seconds : int
             The number of seconds the server should wait before responding.
-        
+
         Returns
         -------
         resp : str
@@ -178,7 +179,7 @@ class SampleService(Service):
 
 class SelectiveSampleService(Service):
     """
-    Not all functions of this service are exposed over Pyro5. 
+    Not all functions of this service are exposed over Pyro5.
 
     Maintains a list of items. Can be accessed via indexing, etc.
 
@@ -187,6 +188,7 @@ class SelectiveSampleService(Service):
     items : List[Any]
         A catalog of items.
     """
+
     def __init__(self, items: List[Any] = []) -> None:
         self._items = items
         self.some_attribute = True
@@ -205,7 +207,7 @@ class SelectiveSampleService(Service):
     @expose
     def attribute(self) -> Any:
         return self.some_attribute
-        
+
     @attribute.setter
     @expose
     def attribute(self, value: Any) -> None:
@@ -236,6 +238,7 @@ class SampleAutoconnectInstrument(Instrument):
     This service will only be accessible if your configuration file lists the
     autoconnect parameters correctly.
     """
+
     def __init__(self) -> None:
         self.connected = False
 
@@ -252,7 +255,7 @@ class SampleAutoconnectInstrument(Instrument):
         Parameters
         ----------
         address : str
-            The address of the hardware instrument. Must be "0.0.0.0" for 
+            The address of the hardware instrument. Must be "0.0.0.0" for
             successful connection.
         port : int
             The port of the hardware instrument. Must be any integer besides
@@ -266,14 +269,16 @@ class SampleAutoconnectInstrument(Instrument):
         if address != "0.0.0.0":
             raise Exception("This test method requires address to be '0.0.0.0'.")
         if port == 9090:
-            raise Exception("This test method requires the port to not be the default of 9090.")
+            raise Exception(
+                "This test method requires the port to not be the default of 9090."
+            )
         self.connected = True
         return True
 
     def do_something(self):
         """
         A method that does nothing and passes silently.
-        
+
         Raises
         ------
         Exception

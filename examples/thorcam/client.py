@@ -37,12 +37,12 @@ uc480.start_stream()
 uc480.await_stream()
 time.sleep(3)
 
-while(True):
+while True:
     frame = uc480.get_frame()
-    cv2.imshow('UC480', frame)
+    cv2.imshow("UC480", frame)
     keyCode = cv2.waitKey(30)
 
-    if cv2.getWindowProperty('UC480',cv2.WND_PROP_VISIBLE) < 1:   
+    if cv2.getWindowProperty("UC480", cv2.WND_PROP_VISIBLE) < 1:
         break
 
 uc480.end_stream()

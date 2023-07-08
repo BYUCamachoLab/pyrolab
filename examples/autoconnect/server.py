@@ -26,8 +26,12 @@ cfg.update_pyro_config()
 
 daemon = Daemon()
 ns = locate_ns(host="localhost")
-uri = daemon.register(SampleAutoconnectInstrument, connect_params={"address": "0.0.0.0", "port": 8080})
-ns.register("test.autoconnectable", uri, metadata={"This instrument supports autoconnect()."})
+uri = daemon.register(
+    SampleAutoconnectInstrument, connect_params={"address": "0.0.0.0", "port": 8080}
+)
+ns.register(
+    "test.autoconnectable", uri, metadata={"This instrument supports autoconnect()."}
+)
 
 print("SERVER READY")
 try:

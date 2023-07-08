@@ -53,7 +53,7 @@ class MAX31X(BPC303):
     Assumes that the following physical mappings of the devices are true:
 
     .. table::
-   
+
         ==== =======
         Axis Channel
         ==== =======
@@ -62,9 +62,9 @@ class MAX31X(BPC303):
         z    3
         ==== =======
 
-    Sets a default home position at the halfway point of the full travel for 
+    Sets a default home position at the halfway point of the full travel for
     each channel.
-    
+
     Attributes
     ----------
     X_MAX : int
@@ -76,13 +76,19 @@ class MAX31X(BPC303):
 
     Notes
     -----
-    This class inherits from :py:class:`pyrolab.drivers.motion.kinesis.bpc303.BPC303`. 
+    This class inherits from :py:class:`pyrolab.drivers.motion.kinesis.bpc303.BPC303`.
     Therefore, all public methods available to that class are available
     here. Note that the functions `position` and `voltage` should not be used,
     but rather `move` from this class.
     """
 
-    def connect(self, serialno: str = "", poll_period: int=200, closed_loop: bool=True, smoothed: bool=False) -> None:
+    def connect(
+        self,
+        serialno: str = "",
+        poll_period: int = 200,
+        closed_loop: bool = True,
+        smoothed: bool = False,
+    ) -> None:
         """
         Connect to the device.
 
@@ -93,16 +99,18 @@ class MAX31X(BPC303):
         polling : int
             The polling rate in milliseconds.
         closed_loop : bool, optional
-            Puts controller in open or closed loop mode. Open loop if False 
-            (closed loop allows for positional commands instead of voltage 
+            Puts controller in open or closed loop mode. Open loop if False
+            (closed loop allows for positional commands instead of voltage
             commands), default True.
         smoothed : bool, optional
             Puts controller in smoothed start/stop mode, default False.
         """
-        super().connect(serialno=serialno,
-                         poll_period=poll_period,
-                         closed_loop=closed_loop,
-                         smoothed=smoothed)
+        super().connect(
+            serialno=serialno,
+            poll_period=poll_period,
+            closed_loop=closed_loop,
+            smoothed=smoothed,
+        )
         # Values for each axis maximum
         self.max_pos = [val / 10 for val in self.max_travel]
 
@@ -120,7 +128,7 @@ class MAX31X(BPC303):
 
     def _position_to_du(self, channel: int, pos: float) -> int:
         """
-        Map a position value to the range 0 to SHORT_MAX (which is the range of 
+        Map a position value to the range 0 to SHORT_MAX (which is the range of
         positions for serial communication).
 
         Parameters
@@ -136,13 +144,13 @@ class MAX31X(BPC303):
             The position as a percentage of max travel for the given channel
             (device units), range 0 to 32767, equivalent to 0 to 100%.
         """
-        POSITION_MAX = self.max_pos[channel-1]
+        POSITION_MAX = self.max_pos[channel - 1]
         pos_du = round(interp(pos, [0, POSITION_MAX], [0, SHORT_MAX]))
         return pos_du
 
     def _du_to_position(self, channel: int, pos: int) -> float:
         """
-        Map a position (device units in the range -SHORT_MAX to SHORT_MAX) to 
+        Map a position (device units in the range -SHORT_MAX to SHORT_MAX) to
         the real unit range -max_pos to max_pos for a given channel.
 
         Parameters
@@ -150,7 +158,7 @@ class MAX31X(BPC303):
         channel : int
             The channel to map (1-n).
         pos : int
-            The position as a percentage of max travel for the given channel, 
+            The position as a percentage of max travel for the given channel,
             range -32767 to 32767 equivalent to -100% to 100%.
 
         Returns
@@ -158,15 +166,15 @@ class MAX31X(BPC303):
         pos : int
             The absolute position in microns.
         """
-        POSITION_MAX = self.max_pos[channel-1]
+        POSITION_MAX = self.max_pos[channel - 1]
         pos = interp(int(pos), [-SHORT_MAX, SHORT_MAX], [-POSITION_MAX, POSITION_MAX])
         return pos
 
     def move(self, channel: int, position: float) -> None:
         """
-        Set the postion of a certain axis to the given position (nm). 
-        
-        If the requested position is not in the allowed range, it is set it to 
+        Set the postion of a certain axis to the given position (nm).
+
+        If the requested position is not in the allowed range, it is set it to
         minimum or maximum value accordingly.
 
         Parameters
@@ -182,7 +190,7 @@ class MAX31X(BPC303):
     def move_all(self, x: float, y: float, z: float) -> None:
         """
         Move all three channels simultaneously.
-        
+
         Parameters
         ----------
         x : float
@@ -210,15 +218,15 @@ class MAX31X(BPC303):
         pos = self.get_position(channel)
         self.move(channel, pos + step)
 
-    def get_position(self, channel: int=None) -> float:
+    def get_position(self, channel: int = None) -> float:
         """
-        Gets the current position of the requested channel, as measured by the 
+        Gets the current position of the requested channel, as measured by the
         device. Gets all three channels if no channel is specified.
 
         Parameters
         ----------
         channel : int, optional
-            The channel to get the position for. If not specified, gets 
+            The channel to get the position for. If not specified, gets
             position of all channels.
 
         Returns

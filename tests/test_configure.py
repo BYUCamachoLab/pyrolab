@@ -35,7 +35,7 @@
 #     },
 #     services={
 #         "asgard.wolverine": ServiceConfiguration(
-#             module="pyrolab.drivers.motion.z825b", 
+#             module="pyrolab.drivers.motion.z825b",
 #             classname="PRM1Z8",
 #             parameters={
 #                 "serialno": 27003366,
@@ -46,8 +46,8 @@
 #             nameservers=["production",],
 #         ),
 #         "asgard.hulk": ServiceConfiguration(
-#             module="pyrolab.drivers.motion.z825b", 
-#             classname="Z825B", 
+#             module="pyrolab.drivers.motion.z825b",
+#             classname="Z825B",
 #             parameters={
 #                 "serialno": 27003497,
 #             },
@@ -57,13 +57,13 @@
 #             nameservers=["production",],
 #         ),
 #         "asgard.captainamerica": ServiceConfiguration(
-#             module="pyrolab.drivers.motion.z825b", 
-#             classname="Z825B", 
+#             module="pyrolab.drivers.motion.z825b",
+#             classname="Z825B",
 #             parameters={
 #                 "serialno": 27504851,
 #             },
 #             description="Lateral motion",
-#             instancemode="single",  
+#             instancemode="single",
 #             daemon="lockable",
 #             nameservers=["production",],
 #         ),

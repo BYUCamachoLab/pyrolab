@@ -29,6 +29,7 @@ class InstanceInfo(BaseModel):
     """
     Model for storing information about a running instance.
     """
+
     pid: int
     uri: str
 
@@ -37,6 +38,7 @@ class NameServerInfo(NamedTuple):
     """
     Named tuple for storing information about a running nameserver.
     """
+
     name: str
     created: str
     status: str
@@ -47,6 +49,7 @@ class DaemonInfo(NamedTuple):
     """
     Named tuple for storing information about a running daemon.
     """
+
     name: str
     created: str
     status: str
@@ -58,14 +61,14 @@ class DaemonInfo(NamedTuple):
 class PyroLabDaemon:
     """
     The PyroLab daemon runs continuously in the background.
-    
+
     The daemon and controls all PyroLab entities through the PyroLabManager
     singleton. The main purpose of the daemon is to listen for requests and
     commands, usually sent through the command line interface (CLI).
 
     No script should ever need to import or instantiate the PyroLabDaemon.
     To preserve its "single instance" nature, the daemon should only be created
-    and run through the CLI (which in turn, runs this module as a script). 
+    and run through the CLI (which in turn, runs this module as a script).
     Limiting daemon manipulation to the CLI guarantees that only one daemon
     will be running at any given time (courtesy of the Lockfile this script
     creates and checks).
@@ -73,15 +76,16 @@ class PyroLabDaemon:
     By default, the daemon will load the user configuration file (manipulatable
     via the CLI) and write a runtime configuration file (not manipulatable via
     the CLI). The daemon will not change its configuration unless a call to the
-    :py:func:`reload` method is made, usually by the CLI. Even if the user 
-    configuration file is changed, the daemon will not reload unless explictly 
-    instructed to do so. It is therefore of the utmost importance that the 
+    :py:func:`reload` method is made, usually by the CLI. Even if the user
+    configuration file is changed, the daemon will not reload unless explictly
+    instructed to do so. It is therefore of the utmost importance that the
     runtime configuration file be managed solely by the daemon! No touchy!
 
     .. note::
        As a Pyro5 object, no method of the daemon should return any types other
        than Python builtins, due to serialization issues.
     """
+
     def __init__(self):
         log.info("Starting PyroLab daemon.")
         self.manager = ProcessManager.instance()
@@ -103,7 +107,7 @@ class PyroLabDaemon:
 
     def reload(self) -> bool:
         """
-        Reloads the latest configuration file and restarts services that were 
+        Reloads the latest configuration file and restarts services that were
         running.
 
         Returns
@@ -135,23 +139,23 @@ class PyroLabDaemon:
         for ns in self.gconfig.get_config().nameservers.keys():
             info = self.manager.get_nameserver_process_info(ns)
             listing.append(NameServerInfo(name=ns, **info))
-        nsstring = tabulate(listing, headers=['NAMESERVER', 'CREATED', 'STATUS', 'URI'])
+        nsstring = tabulate(listing, headers=["NAMESERVER", "CREATED", "STATUS", "URI"])
 
         listing = []
         for daemon in self.gconfig.get_config().daemons.keys():
             info = self.manager.get_daemon_process_info(daemon)
             listing.append(DaemonInfo(name=daemon, **info))
-        daemonstring = tabulate(listing, headers=['DAEMON', 'CREATED', 'STATUS', 'URI'])
-        
+        daemonstring = tabulate(listing, headers=["DAEMON", "CREATED", "STATUS", "URI"])
+
         # for service in self.gconfig.get_config().services.keys():
         #     listing.append(PSInfo(service, "service", "", "", ""))
-        
+
         return f"\n{nsstring}\n\n{daemonstring}\n"
 
     def start_nameserver(self, nameserver: str) -> None:
         """
         Starts a nameserver.
-        
+
         Parameters
         ----------
         nameserver : str
@@ -163,7 +167,7 @@ class PyroLabDaemon:
     def start_daemon(self, daemon: str) -> None:
         """
         Starts a daemon.
-        
+
         Parameters
         ----------
         daemon : str
@@ -225,9 +229,9 @@ class PyroLabDaemon:
     @api.oneway
     def shutdown(self) -> None:
         """
-        Shuts down the daemon. 
+        Shuts down the daemon.
 
-        This method does not return a confirmation since, by nature of the 
+        This method does not return a confirmation since, by nature of the
         shutdown request, the daemon will not be able to respond.
         """
         log.info("Daemon shutdown requested.")
@@ -244,6 +248,7 @@ if __name__ == "__main__":
             LOCKFILE.touch(exist_ok=False)
 
             import sys
+
             if len(sys.argv) > 1:
                 port = int(sys.argv[1])
             else:
