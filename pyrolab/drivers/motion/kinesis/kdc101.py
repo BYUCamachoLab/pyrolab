@@ -83,6 +83,7 @@ class HomingMixin:
 # message from previous non-blocking calls don't get consumed by new requestors.
 
 
+@expose
 class KDC101(KinesisInstrument):
     """
     A KCube DC Servo motor. 
