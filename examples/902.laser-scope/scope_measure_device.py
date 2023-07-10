@@ -3,47 +3,47 @@
 # ---------------------------------------------------------------------------- #
 add_trigger = True
 
-#Laser Sweep
-lambda_start    = 1500
-lambda_stop     = 1600
-duration        = 15
-trigger_step    = 0.01
-power_dBm       = 13.0
-#Data Collection
-sample_rate     = 10e09
-buffer          = 4 #Additional time around duration to prevent timeout.
+# Laser Sweep
+lambda_start = 1500
+lambda_stop = 1600
+duration = 15
+trigger_step = 0.01
+power_dBm = 13.0
+# Data Collection
+sample_rate = 10e09
+buffer = 4  # Additional time around duration to prevent timeout.
 
-#Save Data
-#The first argument passed will be used as the file name.
+# Save Data
+# The first argument passed will be used as the file name.
 filename_prefix = ""
 filename_suffix = "data_now"
-data_directory  = "measurements/"
-append_date     = True #Appends date to the beginning of the directory.
-save_raw_data   = True #Save raw data collected from devices.
+data_directory = "measurements/"
+append_date = True  # Appends date to the beginning of the directory.
+save_raw_data = True  # Save raw data collected from devices.
 
-#Oscilloscope
-scope_IP        = "10.32.112.162" #Oscilloscope IP Address
+# Oscilloscope
+scope_IP = "10.32.112.162"  # Oscilloscope IP Address
 take_screenshot = True
-active_channels = [1,2,3,4] #Channels to activate and use.
-trigger_channel = 1 if add_trigger else 0 #Channel for trigger signal.
-trigger_level   = 1 #Voltage threshold for postitive slope edge trigger.
+active_channels = [1, 2, 3, 4]  # Channels to activate and use.
+trigger_channel = 1 if add_trigger else 0  # Channel for trigger signal.
+trigger_level = 1  # Voltage threshold for postitive slope edge trigger.
 if add_trigger:
     channel_setting = {
-        #Additional settings to pass to each channel if used.
-        1: {"range": 10, "position": 2}, 
-        # 1: {"range": 1.000, "position": -4}, 
+        # Additional settings to pass to each channel if used.
+        1: {"range": 10, "position": 2},
+        # 1: {"range": 1.000, "position": -4},
         2: {"range": 1.300, "position": -4},
         3: {"range": 1.300, "position": -4},
-        4: {"range": 1.300, "position": -4}
-    } 
+        4: {"range": 1.300, "position": -4},
+    }
 else:
     channel_setting = {
-        #Additional settings to pass to each channel if used.
-        # 1: {"range": 10, "position": 2}, 
-        1: {"range": 1.000, "position": -4}, 
+        # Additional settings to pass to each channel if used.
+        # 1: {"range": 10, "position": 2},
+        1: {"range": 1.000, "position": -4},
         2: {"range": 1.000, "position": -4},
         3: {"range": 1.000, "position": -4},
-        4: {"range": 1.000, "position": -4}
+        4: {"range": 1.000, "position": -4},
     }
 
 # ---------------------------------------------------------------------------- #
@@ -51,7 +51,8 @@ else:
 # ---------------------------------------------------------------------------- #
 import os
 from pathlib import Path
-#import time
+
+# import time
 import sys
 from datetime import datetime
 
@@ -59,6 +60,7 @@ from pyrolab.drivers.lasers.tsl550 import TSL550
 from pyrolab.drivers.scopes.rohdeschwarz import RTO
 from pyrolab.analysis import WavelengthAnalyzer
 import numpy as np
+
 # VisualizeData
 
 # ---------------------------------------------------------------------------- #
@@ -72,13 +74,18 @@ filename = filename_prefix + sys.argv[0] + filename_suffix
 sweep_rate = (lambda_stop - lambda_start) / duration
 assert sweep_rate > 1.0 and sweep_rate < 100.0
 # Check laser wavelength range
-assert lambda_start >= TSL550.MINIMUM_WAVELENGTH and lambda_stop <= TSL550.MAXIMUM_WAVELENGTH
+assert (
+    lambda_start >= TSL550.MINIMUM_WAVELENGTH
+    and lambda_stop <= TSL550.MAXIMUM_WAVELENGTH
+)
 
 # ---------------------------------------------------------------------------- #
 # Initialize Save Directory
 # ---------------------------------------------------------------------------- #
 today = datetime.now()
-datePrefix = "{}_{}_{}_{}_{}_".format(today.year, today.month, today.day, today.hour, today.minute)
+datePrefix = "{}_{}_{}_{}_{}_".format(
+    today.year, today.month, today.day, today.hour, today.minute
+)
 prefix = datePrefix if append_date else ""
 folderName = prefix + data_directory
 folderPath = Path(Path.cwd(), folderName)
@@ -95,6 +102,7 @@ print("Initializing laser.")
 try:
     # Remote Computer via PyroLab
     from pyrolab.api import locate_ns, Proxy
+
     ns = locate_ns(host="camacholab.ee.byu.edu")
     laser = Proxy(ns.lookup("TSL550"))
     laser.start()
@@ -112,12 +120,12 @@ triggerMode = laser.trigger_set_mode("Step")
 triggerStep = laser.trigger_set_step(trigger_step)
 print("Setting trigger to: {} and step to {}".format(triggerMode, triggerStep))
 
-#Get number of samples to record. Add buffer just in case.
+# Get number of samples to record. Add buffer just in case.
 acquire_time = duration + buffer
 numSamples = int((acquire_time) * sample_rate)
 print("Set for {:.2E} Samples @ {:.2E} Sa/s.".format(numSamples, sample_rate))
 
-#Oscilloscope Settings
+# Oscilloscope Settings
 print("Initializing Oscilloscope")
 scope = RTO(scope_IP)
 print(f"Connected: {scope.query('*IDN?')}")
@@ -128,8 +136,8 @@ for channel in active_channels:
     try:
         scope.set_channel(channel, **channel_setting[channel])
     except:
-        pass # hotfix for weird timeout error
-#Add trigger.
+        pass  # hotfix for weird timeout error
+# Add trigger.
 print("Adding Edge Trigger @ {} Volt(s).".format(trigger_level))
 if add_trigger:
     scope.edge_trigger(trigger_channel, trigger_level)
@@ -145,25 +153,25 @@ scope.write("CHAN4:DIGF:CUT 100E+3")
 # ---------------------------------------------------------------------------- #
 # Collect Data
 # ---------------------------------------------------------------------------- #
-print('Starting Acquisition')
-scope.start_acquisition(timeout = duration*3)
+print("Starting Acquisition")
+scope.start_acquisition(timeout=duration * 3)
 
-print('Sweeping Laser')
+print("Sweeping Laser")
 laser.sweep_wavelength(lambda_start, lambda_stop, duration)
 
-print('Waiting for acquisition to complete.')
+print("Waiting for acquisition to complete.")
 scope.wait_for_device()
 
 if take_screenshot:
     scope.screenshot(folderName + "screenshot.png")
 
-#Acquire Data
-rawData = [None] #Ugly hack to make the numbers line up nicely.
+# Acquire Data
+rawData = [None]  # Ugly hack to make the numbers line up nicely.
 rawData[1:] = [scope.get_data_ascii(channel) for channel in active_channels]
 wavelengthLog = laser.wavelength_logging()
 wavelengthLogSize = laser.wavelength_logging_number()
 
-#Optional Save Raw Data
+# Optional Save Raw Data
 if save_raw_data:
     print("Saving raw data.")
     for channel in active_channels:
@@ -178,24 +186,29 @@ if save_raw_data:
 if add_trigger:
     print("Processing Data")
     analysis = WavelengthAnalyzer(
-        sample_rate = sample_rate,
-        wavelength_log = wavelengthLog,
-        trigger_data = rawData[trigger_channel]
+        sample_rate=sample_rate,
+        wavelength_log=wavelengthLog,
+        trigger_data=rawData[trigger_channel],
     )
 
-    print('=' * 30)
+    print("=" * 30)
     print("Expected number of wavelength points: " + str(int(wavelengthLogSize)))
     print("Measured number of wavelength points: " + str(analysis.num_peaks()))
-    print('=' * 30)
+    print("=" * 30)
 
-    data = [None] #Really ugly hack to make index numbers line up.
+    data = [None]  # Really ugly hack to make index numbers line up.
     data[1:] = [
-        #List comprehension to put all the datasets in this one array.
-        analysis.process_data(rawData[channel]) for channel in active_channels
+        # List comprehension to put all the datasets in this one array.
+        analysis.process_data(rawData[channel])
+        for channel in active_channels
     ]
 
     for i in range(3):
-        np.savez(Path(folderPath, f"Channel{i+2}.npz"), wavelength=np.array(data[i+2]["wavelengths"]), power=np.array(data[i+2]["data"]))
+        np.savez(
+            Path(folderPath, f"Channel{i+2}.npz"),
+            wavelength=np.array(data[i + 2]["wavelengths"]),
+            power=np.array(data[i + 2]["data"]),
+        )
 
     print("Raw Datasets: {}".format(len(rawData)))
     print("Datasets Returned: {}".format((len(data))))

@@ -27,12 +27,12 @@ class Instrument(Service):
     required to be overridden by derived classes.
 
     Note that, in order to support autoconnect within the PyroLab framework,
-    the ``__init__`` method is never used to set up or connect to the 
+    the ``__init__`` method is never used to set up or connect to the
     instrument. This is because when objects are hosted by a PyroLab server,
     they are instantiated and that object exists in perpetuity. Since we'd like
     to be able to connect and disconnect from devices while leaving the server
     running (an example use case would be to use the device locally, in a lab,
-    manipulating physical controls, without killing the server connection), 
+    manipulating physical controls, without killing the server connection),
     separate methods ``connect()`` and ``close()`` are required. In this way,
     instruments can be forcibly disconnected without leaving the hosting
     object in an unrecoverable state.
@@ -45,14 +45,15 @@ class Instrument(Service):
         manipulated by a user. It is listed here to prevent accidental
         overwriting by an unwitting user wanting to use the same name.
     """
+
     def __init__(self) -> None:
         if not hasattr(self, "_autoconnect_params"):
             self._autoconnect_params: Dict[str, Any] = {}
 
     def __del__(self) -> None:
         """
-        Destructor. Automatically calls ``close()``. 
-        
+        Destructor. Automatically calls ``close()``.
+
         Automatically releases any potentially claimed resources.
 
         # TODO: This function is unsafe! It is not guaranteed to be called!
@@ -65,11 +66,11 @@ class Instrument(Service):
     def detect_devices() -> List[Dict[str, Any]]:
         """
         Returns a list of connection parameters for available devices.
-        
+
         Static function that can be called without object instantiation.
         Returns all available devices that can be detected on the local
-        computer. Each available devices is represented by a dictionary that 
-        could be passed directly to :py:func:`connect` using dictionary 
+        computer. Each available devices is represented by a dictionary that
+        could be passed directly to :py:func:`connect` using dictionary
         unpacking.
 
         Returns
@@ -89,19 +90,19 @@ class Instrument(Service):
 
     def connect(self, **kwargs) -> bool:
         """
-        Connects to instruments or services that require initialization. 
-        
-        All parameters must be keyword arguments; the presence of any 
+        Connects to instruments or services that require initialization.
+
+        All parameters must be keyword arguments; the presence of any
         positional arguments will break the functionality of ``autoconnect()``.
 
         The base class implements parameters as a keyword argument dictionary.
-        Derived classes may declare explicit parameter lists, but all 
-        arguments are required to be keyword arguments, i.e. parameters 
+        Derived classes may declare explicit parameter lists, but all
+        arguments are required to be keyword arguments, i.e. parameters
         with default values. Default values do not necessarily need to be
         sensible; for example, a default value of None for some required
         parameter. The code should then raise a ValueError for missing
-        parameters. The dictionary construct must be used because the 
-        autoconnect functionality delivers values to this function as an 
+        parameters. The dictionary construct must be used because the
+        autoconnect functionality delivers values to this function as an
         unpacked dictionary.
 
         Parameters
@@ -127,8 +128,8 @@ class Instrument(Service):
         Autoconnect to an instrument using internally stored parameters.
 
         If the device is persisted in PyroLab's program data, the parameters
-        for connect should be saved and associated with the object (in the 
-        attribute :py:attr:`_autoconnect_params`). ``autoconnect()`` 
+        for connect should be saved and associated with the object (in the
+        attribute :py:attr:`_autoconnect_params`). ``autoconnect()``
         simply calls :py:func:`connect` with the saved parameters.
 
         Returns
@@ -148,9 +149,9 @@ class Instrument(Service):
 
     def close(self) -> None:
         """
-        Releases resources, hardware or otherwise. 
-        
-        Deletion of object should also automatically call ``close()``, which 
+        Releases resources, hardware or otherwise.
+
+        Deletion of object should also automatically call ``close()``, which
         should take no parameters.
 
         Raises

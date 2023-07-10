@@ -9,16 +9,16 @@ Server Resources
 The scripts used for putting up and taking down Daemons and Workers from the
 multiprocessing module. Since child processes need to be able to import the
 script containing the target function, the target functions are contained
-within this module where no new processes are ever spawned. The prevents 
+within this module where no new processes are ever spawned. The prevents
 the recursive creation of new processes as the module is imported.
 
 Server Resource Manager
 -----------------------
 
 The server resource manager handles the putting up and taking down of Daemons
-for various instruments. To increase computer speed and processing 
+for various instruments. To increase computer speed and processing
 capabilities in cases where multiple instruments are hosted from the same
-computer, each instrument is created in its own Daemon using the 
+computer, each instrument is created in its own Daemon using the
 Python ``multiprocessing`` module.
 """
 
@@ -59,7 +59,7 @@ class NameServerRunner(multiprocessing.Process):
 
     Advantages of using a child Process include the fact that if a server
     dies or hangs up, the entire program doesn't stall or need to be restarted,
-    just the process that contained the server. Thus errors can be handled 
+    just the process that contained the server. Thus errors can be handled
     and servers autonomously restarted and managed.
 
     Parameters
@@ -74,13 +74,16 @@ class NameServerRunner(multiprocessing.Process):
     msg_polling : float, optional
         The time in seconds between polling the message queue.
     """
-    def __init__(self, 
-                 *args, 
-                 name: str="",
-                 nsconfig: NameServerConfiguration=None,
-                 msg_queue: Queue=None, 
-                 msg_polling: float=1.0,
-                 **kwargs) -> None:
+
+    def __init__(
+        self,
+        *args,
+        name: str = "",
+        nsconfig: NameServerConfiguration = None,
+        msg_queue: Queue = None,
+        msg_polling: float = 1.0,
+        **kwargs,
+    ) -> None:
         super().__init__(*args, **kwargs)
         if not name:
             raise ValueError("NameServerRunner requires a name")
@@ -88,7 +91,7 @@ class NameServerRunner(multiprocessing.Process):
             raise ValueError("NameServerRunner requires a NameServerConfiguration")
         if not msg_queue:
             raise ValueError("NameServerRunner requires a message queue")
-        
+
         self.name = name
         self.msg_queue: Queue = msg_queue
         self.msg_polling = msg_polling
@@ -97,7 +100,7 @@ class NameServerRunner(multiprocessing.Process):
 
     def process_message_queue(self) -> None:
         """
-        A message handler. 
+        A message handler.
 
         if the sentinel value ``None`` is placed in the message queue, sets
         a flag signifying a shutdown signal has been received.
@@ -110,7 +113,7 @@ class NameServerRunner(multiprocessing.Process):
             msg = self.msg_queue.get()
             log.debug(f"Message received: '{msg}'")
             if msg is None:
-                log.info(f"KILL message received")
+                log.info("KILL message received for nameserver '%s'", self.name)
                 self.KILL_SIGNAL = True
 
     def stay_alive(self) -> bool:
@@ -136,8 +139,8 @@ class NameServerRunner(multiprocessing.Process):
         When the kill signal is received, gracefully shuts down and removes
         its registration from the nameserver.
         """
-        log.info(f"Starting")
-    
+        log.info("Starting nameserver '%s'", self.name)
+
         # Configure the Pyro5 environment
         self.nsconfig.update_pyro_config()
         # Start the thread that checks for messages
@@ -152,7 +155,7 @@ class DaemonRunner(multiprocessing.Process):
 
     Advantages of using a ResourceRunner include the fact that if a server
     dies or hangs up, the entire program doesn't stall or need to be restarted,
-    just the process that contained the server. Thus errors can be handled 
+    just the process that contained the server. Thus errors can be handled
     and servers autonomously restarted and managed.
 
     Other advantages should include speed; splitting servers across processors
@@ -172,15 +175,18 @@ class DaemonRunner(multiprocessing.Process):
     msg_polling : float, optional
         The time in seconds between polling the message queue.
     """
-    def __init__(self, 
-                 *args, 
-                 name: str="",
-                 daemonconfig: DaemonConfiguration=None, 
-                 serviceconfigs: Dict[str, ServiceConfiguration]=None,
-                 msg_queue: Queue=None, 
-                 msg_polling: float=1.0,
-                 **kwargs) -> None:
-        log.info("Building DaemonRunner")
+
+    def __init__(
+        self,
+        *args,
+        name: str = "",
+        daemonconfig: DaemonConfiguration = None,
+        serviceconfigs: Dict[str, ServiceConfiguration] = None,
+        msg_queue: Queue = None,
+        msg_polling: float = 1.0,
+        **kwargs,
+    ) -> None:
+        log.debug("Building DaemonRunner")
         # TODO: Add log statements before raising exceptions
         super().__init__(*args, **kwargs)
         if not name:
@@ -188,7 +194,9 @@ class DaemonRunner(multiprocessing.Process):
         if not daemonconfig:
             raise ValueError("DaemonRunner requires a DaemonConfiguration")
         if not serviceconfigs:
-            log.critical(f"No service configurations for daemon '{name}', did you intend to register services?")
+            log.critical(
+                f"No service configurations for daemon '{name}', did you intend to register services?"
+            )
             raise ValueError("DaemonRunner requires ServiceConfigurations")
         if not msg_queue:
             raise ValueError("DaemonRunner requires a message queue")
@@ -202,13 +210,13 @@ class DaemonRunner(multiprocessing.Process):
 
     def setup_daemon(self) -> Tuple[Daemon, Dict[str, URI]]:
         """
-        Locates and loads the Daemon class, adds Pyro's ``behavior``, and 
+        Locates and loads the Daemon class, adds Pyro's ``behavior``, and
         registers the hosted object with the Daemon.
 
         Returns
         -------
         daemon, uri
-            The instantiated Daemon object and the URI for the hosted object, 
+            The instantiated Daemon object and the URI for the hosted object,
             to be registered with the nameserver.
         """
         daemon = self.daemonconfig._get_daemon()
@@ -218,11 +226,12 @@ class DaemonRunner(multiprocessing.Process):
         for sname, sconfig in self.serviceconfigs.items():
             log.info(f"Registering service '{sname}'")
             service = sconfig._get_service()
-            
+
             log.debug("Getting service uri")
             uri = daemon.register(service)
             uris[sname] = uri
-        
+            log.info("URI for '%s' = %s", sname, uri)
+
         if self.daemonconfig.nameservers:
             log.debug("Self-registering daemon")
             uri = daemon.register(daemon)
@@ -232,7 +241,7 @@ class DaemonRunner(multiprocessing.Process):
 
     def process_message_queue(self) -> None:
         """
-        A message handler. 
+        A message handler.
 
         if the sentinel value ``None`` is placed in the message queue, sets
         a flag signifying a shutdown signal has been received.
@@ -244,7 +253,7 @@ class DaemonRunner(multiprocessing.Process):
         if not self.msg_queue.empty():
             msg = self.msg_queue.get()
             if msg is None:
-                log.info(f"KILL message received")
+                log.info("KILL message received for daemon '%s'", self.name)
                 self.KILL_SIGNAL = True
 
     def stay_alive(self) -> bool:
@@ -269,7 +278,7 @@ class DaemonRunner(multiprocessing.Process):
         When the kill signal is received, gracefully shuts down and removes
         its registration from the nameserver.
         """
-        log.info(f"Starting daemon {self.name}")
+        log.info("Starting daemon '%s'", self.name)
 
         # Set Pyro5 settings for daemon
         self.daemonconfig.update_pyro_config()
@@ -283,7 +292,9 @@ class DaemonRunner(multiprocessing.Process):
             for ns in sinfo.nameservers:
                 nscfg = GLOBAL_CONFIG.nameservers[ns]
                 try:
-                    log.debug(f"Attempting to register '{sname}' with nameserver '{ns}' at {nscfg.host}:{nscfg.ns_port}")
+                    log.debug(
+                        f"Attempting to register '{sname}' with nameserver '{ns}' at {nscfg.host}:{nscfg.ns_port}"
+                    )
                     ns = locate_ns(nscfg.host, nscfg.ns_port)
                     ns.register(sname, uris[sname], metadata={sinfo.description})
                 except Exception as e:
@@ -294,17 +305,19 @@ class DaemonRunner(multiprocessing.Process):
         for ns in self.daemonconfig.nameservers:
             nscfg = GLOBAL_CONFIG.nameservers[ns]
             ns = locate_ns(nscfg.host, nscfg.ns_port)
-            description = f"Daemon for {', '.join([str(sname) for sname in self.serviceconfigs])}"
+            description = (
+                f"Daemon for {', '.join([str(sname) for sname in self.serviceconfigs])}"
+            )
             ns.register(self.name, uris[self.name], metadata={description})
 
         # Start the request loop
         self.process_message_queue()
-        log.debug(f"entering requestloop")
+        log.debug("entering request loop for '%s'", self.name)
         daemon.requestLoop(loopCondition=self.stay_alive)
-        log.debug(f"requestloop exited")
+        log.debug("requestloop exited for '%s'", self.name)
 
         # Cleanup
-        log.info(f"Shutting down")
+        log.info("Daemon '%s' is shutting down.", self.name)
         self._timer.cancel()
         for sname, sinfo in self.serviceconfigs.items():
             for ns in sinfo.nameservers:
@@ -324,10 +337,9 @@ class DaemonRunner(multiprocessing.Process):
 
 
 class ProcessGroup:
-    def __init__(self, 
-                 process: multiprocessing.Process, 
-                 msg_queue: Queue, 
-                 created: datetime) -> None:
+    def __init__(
+        self, process: multiprocessing.Process, msg_queue: Queue, created: datetime
+    ) -> None:
         self.process = process
         self.msg_queue = msg_queue
         self.created = created
@@ -345,15 +357,18 @@ class ProcessManager:
     """
     A manager class for running a set of PyroLab processes.
 
-    ProcessManager is a singleton. Access the global object by calling 
+    ProcessManager is a singleton. Access the global object by calling
     :py:func:`instance`. Only the main process can access the ProcessManager.
     """
+
     _instance = None
     nameservers: Dict[str, NameServerProcessGroup] = {}
     daemons: Dict[str, DaemonProcessGroup] = {}
 
     def __init__(self) -> None:
-        raise RuntimeError("Cannot directly instantiate singleton, call ``instance()`` instead.")
+        raise RuntimeError(
+            "Cannot directly instantiate singleton, call ``instance()`` instead."
+        )
 
     @classmethod
     def instance(cls) -> "ProcessManager":
@@ -375,9 +390,11 @@ class ProcessManager:
         # TODO: Do we want to change it so the GlobalConfiguration object is
         # injected, instead of "gotten" by the ProcessManager itself?
         log.debug("ProcessManager instance requested")
-        if current_process().name != 'MainProcess':
+        if current_process().name != "MainProcess":
             log.critical("ProcessManager instance requested from non-main process")
-            raise Exception("ProcessManager should only be accessed by the main process.")
+            raise Exception(
+                "ProcessManager should only be accessed by the main process."
+            )
         if cls._instance is None:
             log.debug("ProcessManager instance did not exist, created")
             inst = cls.__new__(cls)
@@ -388,7 +405,7 @@ class ProcessManager:
             cls._instance = inst
         return cls._instance
 
-    def start_checkup_timer(self, duration: float=30.0) -> None:
+    def start_checkup_timer(self, duration: float = 30.0) -> None:
         """
         Starts a timer to check up on the processes every n seconds (default 30).
         """
@@ -409,16 +426,15 @@ class ProcessManager:
         """
         Launch a nameserver.
         """
-        log.info(f'Launching server {nameserver}')
+        log.info("Manager attempting to launch server '%s'", nameserver)
         nscfg = self.GLOBAL_CONFIG.get_nameserver_config(nameserver)
         messenger = multiprocessing.Queue()
         runner = NameServerRunner(
-            name=nameserver,
-            nsconfig=nscfg,
-            msg_queue=messenger, 
-            daemon=True
+            name=nameserver, nsconfig=nscfg, msg_queue=messenger, daemon=True
         )
-        self.nameservers[nameserver] = NameServerProcessGroup(runner, messenger, datetime.now())
+        self.nameservers[nameserver] = NameServerProcessGroup(
+            runner, messenger, datetime.now()
+        )
         runner.start()
         return True
 
@@ -460,7 +476,7 @@ class ProcessManager:
         """
         Launch a daemon and all its associated services.
         """
-        log.info(f'Launching daemon {daemon}')
+        log.info("Manager attempting to launch daemon '%s'", daemon)
         daemonconfig = self.GLOBAL_CONFIG.get_daemon_config(daemon)
         serviceconfigs = self.GLOBAL_CONFIG.get_service_configs_for_daemon(daemon)
         messenger = multiprocessing.Queue()
@@ -468,8 +484,8 @@ class ProcessManager:
             name=daemon,
             daemonconfig=daemonconfig,
             serviceconfigs=serviceconfigs,
-            msg_queue=messenger, 
-            daemon=True
+            msg_queue=messenger,
+            daemon=True,
         )
         self.daemons[daemon] = DaemonProcessGroup(runner, messenger, datetime.now())
         runner.start()
@@ -498,7 +514,7 @@ class ProcessManager:
                 "uri": "",
             }
 
-    def checkup(self, continuous: bool=True) -> None:
+    def checkup(self, continuous: bool = True) -> None:
         """
         Checkup the processes.
         """
@@ -529,19 +545,19 @@ class ProcessManager:
             self.start_checkup_timer()
 
     def shutdown_nameserver(self, nameserver: str) -> bool:
-        log.info(f"Shutting down nameserver '{nameserver}'")
+        log.info(f"Sending KILL message to nameserver '{nameserver}'")
         group = self.nameservers.pop(nameserver)
         polling = group.process.msg_polling
         group.msg_queue.put(None)
-        time.sleep(2*polling)
+        time.sleep(2 * polling)
         return True
 
     def shutdown_daemon(self, daemon: str) -> bool:
-        log.info(f"Shutting down daemon '{daemon}'")
+        log.info(f"Sending KILL message to daemon '{daemon}'")
         group = self.daemons.pop(daemon)
         polling = group.process.msg_polling
         group.msg_queue.put(None)
-        time.sleep(2*polling)
+        time.sleep(2 * polling)
         return True
 
     def reload(self) -> bool:
@@ -575,7 +591,7 @@ class ProcessManager:
         Shutdown all entities.
         """
         log.info("Shutting down all running entities.")
-        
+
         self.stop_checkup_timer()
 
         for daemon in list(self.daemons.keys()):
@@ -583,10 +599,10 @@ class ProcessManager:
         for nameserver in list(self.nameservers.keys()):
             self.shutdown_nameserver(nameserver)
 
-        log.info("Shutting down all running entities: Complete.")
+        log.info("All running entities successfully shut down.")
 
 
-def running_time_human_readable(start: datetime, end: datetime=None) -> str:
+def running_time_human_readable(start: datetime, end: datetime = None) -> str:
     """
     Return the time delta of two times (or one and now) in plain English.
 

@@ -29,16 +29,20 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
-def change_behavior(cls: Type[Instrument], instance_mode: str="session", instance_creator: Optional[Callable]=None):
+def change_behavior(
+    cls: Type[Instrument],
+    instance_mode: str = "session",
+    instance_creator: Optional[Callable] = None,
+):
     """
     Dynamically add a behavior to a class.
 
-    Equivalent to using the ``behavior`` decorator on the class, but can 
-    be used dynamically during runtime. Services that specify some default 
+    Equivalent to using the ``behavior`` decorator on the class, but can
+    be used dynamically during runtime. Services that specify some default
     behavior in the source code can be overridden using this function.
 
     .. warning::
-       This function modifies the behavior of the class in place! It does 
+       This function modifies the behavior of the class in place! It does
        not returning a new class object.
 
     Parameters
@@ -75,13 +79,13 @@ def change_behavior(cls: Type[Instrument], instance_mode: str="session", instanc
 class Lockable:
     """
     The Lockable instrument mixin. Only works with LockableDaemon.
-    
-    Rejects new connections at the Daemon level when locked. Daemon stores the 
+
+    Rejects new connections at the Daemon level when locked. Daemon stores the
     user who locked the device for reference.
 
     This mixin only makes sense in the context of a Daemon. It is not intended
     for use with local instruments. Additionally, any service registered with
-    a :py:class:`LockableDaemon` will automatically have this mixin added to 
+    a :py:class:`LockableDaemon` will automatically have this mixin added to
     it.
 
     Examples
@@ -92,7 +96,8 @@ class Lockable:
             def __init__(self, *args, **kwargs):
                 pass
     """
-    def lock(self, user: str="") -> bool:
+
+    def lock(self, user: str = "") -> bool:
         """
         Locks access to the object's attributes.
 
@@ -139,42 +144,43 @@ class Daemon(Pyro5.server.Daemon):
 
     Parameters
     ----------
-    host : str or None 
-        The hostname or IP address to bind the server on. Default is None which 
-        means it uses the configured default (which is localhost). It is 
-        necessary to set this argument to a visible hostname or ip address, if 
+    host : str or None
+        The hostname or IP address to bind the server on. Default is None which
+        means it uses the configured default (which is localhost). It is
+        necessary to set this argument to a visible hostname or ip address, if
         you want to access the daemon from other machines.
     port : int, optional
-        Port to bind the server on. Defaults to 0, which means to pick a random 
+        Port to bind the server on. Defaults to 0, which means to pick a random
         port.
     unixsocket : str, optional
-        The name of a Unix domain socket to use instead of a TCP/IP socket. 
+        The name of a Unix domain socket to use instead of a TCP/IP socket.
         Default is None (don't use).
     nathost : str, optional
-        hostname to use in published addresses (useful when running behind a 
-        NAT firewall/router). Default is None which means to just use the 
-        normal host. For more details about NAT, see Pyro behind a NAT 
+        hostname to use in published addresses (useful when running behind a
+        NAT firewall/router). Default is None which means to just use the
+        normal host. For more details about NAT, see Pyro behind a NAT
         router/firewall.
     natport : int, optional
-        Port to use in published addresses (useful when running behind a NAT 
-        firewall/router). If you use 0 here, Pyro will replace the NAT-port by 
+        Port to use in published addresses (useful when running behind a NAT
+        firewall/router). If you use 0 here, Pyro will replace the NAT-port by
         the internal port number to facilitate one-to-one NAT port mappings.
     interface : DaemonObject, optional
-        Optional alternative daemon object implementation (that provides the 
+        Optional alternative daemon object implementation (that provides the
         Pyro API of the daemon itself).
     connected_socket : SocketConnection, optional
-        Pptional existing socket connection to use instead of creating a new 
+        Pptional existing socket connection to use instead of creating a new
         server socket.
     """
-    # TODO: Implement methods that allow a client to view and forcibly close 
+
+    # TODO: Implement methods that allow a client to view and forcibly close
     # connections to this Daemon.
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
     def register(self, obj_or_class, objectId=None, force=False, weak=False):
         """
-        Register a Pyro object under the given id. 
-        
+        Register a Pyro object under the given id.
+
         Note that this object is now only known inside this daemon, it is not
         automatically available in a name server. This method returns a URI for
         the registered object. Pyro checks if an object is already registered,
@@ -195,23 +201,23 @@ class Daemon(Pyro5.server.Daemon):
         """
         Performs any actions on the class required for the given Daemon.
 
-        Some classes require mixins to be added in order for certain 
-        functionality to work. This method is called by 
-        :py:meth:`pyrolab.server.Daemon.register` before passing the 
+        Some classes require mixins to be added in order for certain
+        functionality to work. This method is called by
+        :py:meth:`pyrolab.server.Daemon.register` before passing the
         registration on to the Pyro5 daemon.
 
         Parameters
         ----------
         cls : class
             The class to prepare.
-        
+
         Returns
         -------
         class
             The prepared class.
         """
         return cls
-    
+
     @expose
     def ping(self) -> bool:
         """
@@ -224,13 +230,14 @@ class Daemon(Pyro5.server.Daemon):
             True, meaning communication was established.
         """
         return True
-    
+
     @expose
     def pyrolab_version(self) -> str:
         """
         Return the version of PyroLab running the device.
         """
         from pyrolab import __version__
+
         return __version__
 
 
@@ -247,33 +254,34 @@ class LockableDaemon(Daemon):
 
     Parameters
     ----------
-    host : str or None 
-        The hostname or IP address to bind the server on. Default is None which 
-        means it uses the configured default (which is localhost). It is 
-        necessary to set this argument to a visible hostname or ip address, if 
+    host : str or None
+        The hostname or IP address to bind the server on. Default is None which
+        means it uses the configured default (which is localhost). It is
+        necessary to set this argument to a visible hostname or ip address, if
         you want to access the daemon from other machines.
     port : int, optional
-        Port to bind the server on. Defaults to 0, which means to pick a random 
+        Port to bind the server on. Defaults to 0, which means to pick a random
         port.
     unixsocket : str, optional
-        The name of a Unix domain socket to use instead of a TCP/IP socket. 
+        The name of a Unix domain socket to use instead of a TCP/IP socket.
         Default is None (don’t use).
     nathost : str, optional
-        hostname to use in published addresses (useful when running behind a 
-        NAT firewall/router). Default is None which means to just use the 
-        normal host. For more details about NAT, see Pyro behind a NAT 
+        hostname to use in published addresses (useful when running behind a
+        NAT firewall/router). Default is None which means to just use the
+        normal host. For more details about NAT, see Pyro behind a NAT
         router/firewall.
     natport : int, optional
-        Port to use in published addresses (useful when running behind a NAT 
-        firewall/router). If you use 0 here, Pyro will replace the NAT-port by 
+        Port to use in published addresses (useful when running behind a NAT
+        firewall/router). If you use 0 here, Pyro will replace the NAT-port by
         the internal port number to facilitate one-to-one NAT port mappings.
     interface : DaemonObject, optional
-        Optional alternative daemon object implementation (that provides the 
+        Optional alternative daemon object implementation (that provides the
         Pyro API of the daemon itself).
     connected_socket : SocketConnection, optional
-        Pptional existing socket connection to use instead of creating a new 
+        Pptional existing socket connection to use instead of creating a new
         server socket.
     """
+
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.locked_instances = {}
@@ -288,7 +296,7 @@ class LockableDaemon(Daemon):
         cls : class
             The class to be used as a template while dynamically creating a new
             class.
-        
+
         Returns
         -------
         class
@@ -296,19 +304,21 @@ class LockableDaemon(Daemon):
         """
         if issubclass(type(cls), Daemon):
             return cls
-        
+
         DynamicLockable = type(
             cls.__name__ + "Lockable",
-            (cls, Lockable, ),
-            {}
+            (
+                cls,
+                Lockable,
+            ),
+            {},
         )
         return DynamicLockable
 
-
-    def _lock(self, pyroId: str, conn: SocketConnection, user: str="") -> bool:
+    def _lock(self, pyroId: str, conn: SocketConnection, user: str = "") -> bool:
         """
         Logs a "lock" action on a Pyro object.
-        
+
         LockableDaemon tracks which connection owns the lock over a given Pyro
         object.
 
@@ -337,7 +347,7 @@ class LockableDaemon(Daemon):
 
         LockableDaemon tracks which connection owns the lock over a given Pyro
         object. In the case of a release action, it does not matter which
-        connection makes the release; only lock owners can even access the 
+        connection makes the release; only lock owners can even access the
         release attribute.
 
         Parameters
@@ -406,21 +416,21 @@ class LockableDaemon(Daemon):
     def _getInstance(self, clazz, conn):
         """
         Find or create a new instance of the class.
-        
+
         If an instance already exists, but is locked, an exception is raised.
-        
+
         Parameters
         ----------
         clazz
             The Pyro object being accessed.
         conn
             The connection object the request is being made from.
-        
+
         Returns
         -------
         instance : clazz
             The instance of the Pyro object being accessed.
-        
+
         Raises
         ------
         ConnectionRefusedError
@@ -433,12 +443,14 @@ class LockableDaemon(Daemon):
             if lock_owner is None or lock_owner == conn:
                 return obj
             if lock_owner != conn:
-                raise ConnectionRefusedError(f"Pyro object is locked (by '{username or lock_owner}')")
+                raise ConnectionRefusedError(
+                    f"Pyro object is locked (by '{username or lock_owner}')"
+                )
         return obj
 
     def clientDisconnect(self, conn):
         """
-        Automatically releases any locked resources in the event of a client 
+        Automatically releases any locked resources in the event of a client
         disconnect.
 
         Parameters

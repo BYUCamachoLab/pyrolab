@@ -24,15 +24,18 @@ class Service:
     """
     Abstract base class provides a common interface for services and instruments.
 
-    Not a true abstract base class, but adds some necessary and convenient 
+    Not a true abstract base class, but adds some necessary and convenient
     functions inherited by any class that would like to be a PyroLab service.
     """
+
     @classmethod
-    def set_behavior(cls, instance_mode: str="session", instance_creator: Optional[Callable]=None) -> None:
+    def set_behavior(
+        cls, instance_mode: str = "session", instance_creator: Optional[Callable] = None
+    ) -> None:
         """
         Sets the Pyro5 behavior for the class (modified in place).
-        
-        Equivalent to using the ``behavior`` decorator on the class, but can 
+
+        Equivalent to using the ``behavior`` decorator on the class, but can
         be used dynamically during runtime. Services that specify some default
         behavior in the source code can be overridden using this function.
 
@@ -49,11 +52,13 @@ class Service:
         ValueError
             If ``instance_mode`` is not one of "session", "single", or "percall".
         TypeError
-            If ``instance_mode`` is not a string or ``instance_creator`` is 
+            If ``instance_mode`` is not a string or ``instance_creator`` is
             defined but is not callable.
         """
         if not isinstance(instance_mode, str):
-            raise TypeError(f"instance_mode must be a string, but is {type(instance_mode)}")
+            raise TypeError(
+                f"instance_mode must be a string, but is {type(instance_mode)}"
+            )
         if instance_mode not in ("single", "session", "percall"):
             raise ValueError(f"invalid instance mode: {instance_mode}")
         if instance_creator and not callable(instance_creator):
@@ -72,11 +77,12 @@ class Service:
             True, meaning communication was established.
         """
         return True
-    
+
     @expose
     def pyrolab_version(self) -> str:
         """
         Return the version of PyroLab running the device.
         """
         from pyrolab import __version__
+
         return __version__

@@ -96,7 +96,12 @@ class SMCV100B(FunctionGenerator):
         """
         return self.device.query(message, delay)
 
-    def write(self, message: str, termination: Optional[str] = None, encoding: Optional[str] = None):
+    def write(
+        self,
+        message: str,
+        termination: Optional[str] = None,
+        encoding: Optional[str] = None,
+    ):
         """
         Writes a message to the VSG.
 

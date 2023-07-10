@@ -30,7 +30,7 @@ with Proxy(uri) as catalog:
 
     print("Initial Catalog...")
     print(catalog.get_catalog(), "\n")
-    
+
     print("Checking out The Hobbit...")
     catalog.checkout("The Hobbit")
     print(catalog.get_catalog(), "\n")
@@ -54,7 +54,7 @@ with Proxy(uri) as catalog:
         print(e, "\n")
 
     # Check out a book not in the library's catalog
-    try: 
+    try:
         print("Checking out a book not in the catalog...")
         catalog.checkout("Coding for Dummies")
     except LookupError as e:

@@ -3,15 +3,12 @@ from tkinter.ttk import Frame, Button, Label, Style
 
 
 class Example(Frame):
-
     def __init__(self):
         super().__init__()
 
         self.initUI()
 
-
     def initUI(self):
-
         self.master.title("Windows")
         self.pack(fill=BOTH, expand=True)
 
@@ -24,8 +21,9 @@ class Example(Frame):
         lbl.grid(sticky=W, pady=4, padx=5)
 
         area = Text(self)
-        area.grid(row=1, column=0, columnspan=2, rowspan=4,
-            padx=5, sticky=E+W+S+N)
+        area.grid(
+            row=1, column=0, columnspan=2, rowspan=4, padx=5, sticky=E + W + S + N
+        )
 
         abtn = Button(self, text="Activate")
         abtn.grid(row=1, column=3)
@@ -41,12 +39,11 @@ class Example(Frame):
 
 
 def main():
-
     root = Tk()
     root.geometry("600x300")
     app = Example()
     root.mainloop()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

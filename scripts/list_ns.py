@@ -33,6 +33,6 @@ listing = []
 for k, v in services.items():
     name = k
     uri, description = v
-    listing.append([name, uri, ': '.join(description)])
+    listing.append([name, uri, ": ".join(description)])
 
-print(tabulate(listing, headers=['NAME', 'URI', 'DESCRIPTION']))
+print(tabulate(listing, headers=["NAME", "URI", "DESCRIPTION"]))

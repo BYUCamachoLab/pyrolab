@@ -33,11 +33,12 @@ by the KDC101 motor controller.
 from pyrolab.api import behavior, expose
 from pyrolab.drivers.motion.kinesis.kdc101 import KDC101, HomingMixin
 
+
 @behavior(instance_mode="single")
 @expose
 class KMTS25E(KDC101, HomingMixin):
     """
-    A Z825B motorized linear actuator controlled by a KCube DC Servo motor. 
+    A Z825B motorized linear actuator controlled by a KCube DC Servo motor.
 
     This stage has a travel range of 25 mm, submicron resolution, and a maximum
     velocity of 2.3 mm/s.
@@ -53,25 +54,25 @@ class KMTS25E(KDC101, HomingMixin):
     homing_velocity : float
         The homing velocity in mm/s. It is always a positive number.
     jog_mode : str
-        The jog mode can be either ``stepped`` (fixed distance, single step) or 
+        The jog mode can be either ``stepped`` (fixed distance, single step) or
         ``continuous`` (move continuously until stopped).
     jog_step_size : float
         The distance to move in millimeters when jogging.
     stop_mode : str
-        The stop mode, either ``immediate`` (stops immediately) or ``profiled`` 
+        The stop mode, either ``immediate`` (stops immediately) or ``profiled``
         (stops, using the current velocity profile).
     max_pos : float
         The stage axis maximum position limit in millimeters.
     min_pos : float
         The stage axis minimum position limit in millimeters.
     soft_limits_mode : str
-        The software limits mode 
-        ``disallow``: Disable any move outside of the current travel range of 
+        The software limits mode
+        ``disallow``: Disable any move outside of the current travel range of
         the stage.
-        ``partial``: Truncate moves to within the current travel range of the 
+        ``partial``: Truncate moves to within the current travel range of the
         stage.
-        ``all``: Allow all moves, regardless of whether they are within the 
-        current travel range of the stage. 
+        ``all``: Allow all moves, regardless of whether they are within the
+        current travel range of the stage.
     move_velocity : float
         The move velocity in mm/s. It is always a positive number.
     move_acceleration: float
@@ -87,4 +88,5 @@ class KMTS25E(KDC101, HomingMixin):
 
     .. _ThorLabs Z825B Product Page: https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=1883
     """
+
     pass

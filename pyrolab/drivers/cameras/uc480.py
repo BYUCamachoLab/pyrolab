@@ -10,13 +10,13 @@ Driver for a Thorlabs Microscope.
 
 .. attention::
 
-   Presently Windows only. 
-   
+   Presently Windows only.
+
    Requires ThorCam software. Download it at `thorlabs.com`_.
 
    .. _thorlabs.com: https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam
 
-   Potential future Linux support, since ThorLabs does provide a Windows and 
+   Potential future Linux support, since ThorLabs does provide a Windows and
    Linux SDK.
 
 .. admonition:: Dependencies
@@ -25,7 +25,7 @@ Driver for a Thorlabs Microscope.
    thorlabs_kinesis (:ref:`installation instructions <Thorlabs Kinesis Package>`)
 """
 
-# TODO: Investigate Linux support 
+# TODO: Investigate Linux support
 # (https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam)
 
 import logging
@@ -33,6 +33,7 @@ from ctypes import *
 from typing import Tuple
 
 import numpy as np
+
 try:
     from thorlabs_kinesis import thor_camera as tc
 except:
@@ -91,7 +92,7 @@ class UC480(ThorCamBase):
         self._exposure = exposure
         exposure_c = c_double(exposure)
         if hasattr(self, "handle"):
-            tc.SetExposure(self.handle, 12 , exposure_c, sizeof(exposure_c))
+            tc.SetExposure(self.handle, 12, exposure_c, sizeof(exposure_c))
         else:
             raise ConnectionError("Cannot set exposure before connecting to device.")
 
@@ -112,24 +113,25 @@ class UC480(ThorCamBase):
         else:
             raise ConnectionError("Cannot set framerate before connecting to device.")
 
-    def connect(self, 
-                serialno: str, 
-                local: bool = False, 
-                bit_depth: int = 8,
-                pixelclock: int = 24, 
-                color: bool = True, 
-                colormode: int = 11, 
-                roi_shape: Tuple[int, int] = (1024, 1280), 
-                roi_pos: Tuple[int, int] = (0,0), 
-                framerate: int = 15, 
-                exposure: int = 90, 
-                pixelbytes: int = 8, 
-                brightness: int = 5
+    def connect(
+        self,
+        serialno: str,
+        local: bool = False,
+        bit_depth: int = 8,
+        pixelclock: int = 24,
+        color: bool = True,
+        colormode: int = 11,
+        roi_shape: Tuple[int, int] = (1024, 1280),
+        roi_pos: Tuple[int, int] = (0, 0),
+        framerate: int = 15,
+        exposure: int = 90,
+        pixelbytes: int = 8,
+        brightness: int = 5,
     ):
         """
         Opens the serial communication with the Thorlabs camera and sets defaults.
-        
-        Default low-level values that are set include the bit depth and camera 
+
+        Default low-level values that are set include the bit depth and camera
         name.
 
         Parameters
@@ -137,8 +139,8 @@ class UC480(ThorCamBase):
         serialno : int
             The serial number of the camera that should be connected.
         local : bool, optional
-            Whether the camera is being used as a local device; if True, will 
-            not configure sockets for streaming when starting capature (default 
+            Whether the camera is being used as a local device; if True, will
+            not configure sockets for streaming when starting capature (default
             False).
         bit_depth : int, optional
             The number of bits used for each pixel (default 8).
@@ -147,11 +149,11 @@ class UC480(ThorCamBase):
         color : bool, optional
             Whether the camera is in color mode or not (default True).
         colormode: int, optional
-            Mode of color that the camera returns data in. ``11`` (default) 
-            returns raw format, see :py:func:`set_color_mode` for more 
+            Mode of color that the camera returns data in. ``11`` (default)
+            returns raw format, see :py:func:`set_color_mode` for more
             information.
         roi_shape : tuple(int, int), optional
-            Dimensions of the image that is taken by the camera (default 
+            Dimensions of the image that is taken by the camera (default
             ``(1024, 1280)``).
         roi_pos : tuple(int, int), optional
             Position of the top left corner of the roi (region of interest) in
@@ -159,12 +161,12 @@ class UC480(ThorCamBase):
         framerate : int, optional
             The framerate of the camera in frames per second (default 15).
         exposure: int, optional
-            In milliseconds, the time the shutter is open on the camera 
+            In milliseconds, the time the shutter is open on the camera
             (default 90).
         pixelbytes: int, optional
             The amount of memory space allocated per pixel in bytes (default 8).
         brightness : int
-            Integer (range 1-10) defining the brightness, where 5 leaves the 
+            Integer (range 1-10) defining the brightness, where 5 leaves the
             brightness unchanged.
         """
         self.local = local
@@ -187,18 +189,18 @@ class UC480(ThorCamBase):
         for i in range(num.value):
             handle = c_int(cam_list.uci[i].dwCameraID)
             error = tc.InitCamera(byref(handle))
-            
+
             # 0 means no error
-            if(error != 0):
+            if error != 0:
                 continue
 
             info = tc.CAMINFO()
             error = tc.GetCameraInfo(handle, byref(info))
 
-            if(int(info.SerNo) == serialno):
+            if int(info.SerNo) == serialno:
                 self.handle = handle
                 break
-            elif(i == num.value - 1):
+            elif i == num.value - 1:
                 raise ConnectionError("Camera not found")
             else:
                 error = tc.ExitCamera(handle)
@@ -206,7 +208,7 @@ class UC480(ThorCamBase):
                     log.error(f"Closing ThorCam failed with error code {error}")
 
         self.bit_depth = bit_depth
-   
+
         tc.SetDisplayMode(self.handle, c_int(32768))
 
         self.meminfo = None
@@ -217,11 +219,11 @@ class UC480(ThorCamBase):
         self.brightness = brightness
         self.set_color_mode(colormode)
         self._set_hardware_roi_shape(roi_shape)
-        self.roi_shape = [int(roi_shape[1]/2),int(roi_shape[0]/2)]
+        self.roi_shape = [int(roi_shape[1] / 2), int(roi_shape[0] / 2)]
         self._set_hardware_roi_pos(roi_pos)
-        self.roi_pos = [int(roi_pos[1]/2),int(roi_pos[0]/2)]
+        self.roi_pos = [int(roi_pos[1] / 2), int(roi_pos[0] / 2)]
         self._initialize_memory(pixelbytes)
-    
+
     @expose
     def set_color_mode(self, mode: int = 11) -> None:
         """
@@ -239,17 +241,17 @@ class UC480(ThorCamBase):
            +----+----+----+
            |... |... |    |
            +----+----+----+
-        
+
         This data is interpreted in the _get_image() function.
 
         Parameters
         ----------
         mode : int, optional
-            The color mode of the pixel data. ``11``, the default, means raw 
+            The color mode of the pixel data. ``11``, the default, means raw
             8-bit. ``6`` means gray 8-bit.
-        """        
+        """
         tc.SetColorMode(self.handle, mode)
-    
+
     def get_frame(self) -> np.array:
         """
         Retrieves the last frame from the camera's memory buffer.
@@ -257,10 +259,10 @@ class UC480(ThorCamBase):
         Retrieves the last frame from the camera memory buffer and processes it
         into a computer-readable image format.
 
-        .. warning:: 
+        .. warning::
 
-           Not a Pyro exposed function, cannot be called from a Proxy. We 
-           recommend using the :py:class:`ThorCamClient` for streaming 
+           Not a Pyro exposed function, cannot be called from a Proxy. We
+           recommend using the :py:class:`ThorCamClient` for streaming
            video/getting remote images.
 
         For remote connections, the image is serialized using the pickle module
@@ -277,12 +279,14 @@ class UC480(ThorCamBase):
             The last frame from the camera's memory buffer.
         """
         log.debug("Retreiving frame from memory")
-        raw = np.frombuffer(self.meminfo[0], c_ubyte).reshape(self.hardware_roi_shape[1], self.hardware_roi_shape[0])
+        raw = np.frombuffer(self.meminfo[0], c_ubyte).reshape(
+            self.hardware_roi_shape[1], self.hardware_roi_shape[0]
+        )
         log.debug(f"Retreived (size {raw.shape})")
 
-        bayer =  self._bayer_convert(raw)
+        bayer = self._bayer_convert(raw)
         return self._obtain_roi(bayer)
-    
+
     @expose
     def start_capture(self) -> Tuple[str, str]:
         """
@@ -294,7 +298,7 @@ class UC480(ThorCamBase):
 
         Returns
         -------
-        address, port : tuple(str, str) 
+        address, port : tuple(str, str)
             The IP address and port of the socket serving the video stream.
         """
         log.debug("Sending signal to camera to start capture")
@@ -303,7 +307,7 @@ class UC480(ThorCamBase):
 
         if not self.local:
             return self.start_streaming_thread()
-    
+
     @expose
     def stop_capture(self) -> None:
         """
@@ -317,7 +321,7 @@ class UC480(ThorCamBase):
         tc.StopCapture(self.handle, 1)
         if not self.local:
             self.stop_streaming_thread()
-    
+
     def _initialize_memory(self, pixelbytes: int = 8) -> None:
         """
         Initializes the memory for holding the most recent frame from the camera.
@@ -329,17 +333,19 @@ class UC480(ThorCamBase):
         """
         if self.meminfo is not None:
             tc.FreeMemory(self.handle, self.meminfo[0], self.meminfo[1])
-        
+
         xdim, ydim = self.hardware_roi_shape
         log.debug(f"got dimenstions: {self.hardware_roi_shape}")
         # ydim = self.roi_shape[1]
         imgsize = xdim * ydim
         log.debug(f"image size is {imgsize}")
-            
+
         memid = c_int(0)
         c_buf = (c_ubyte * imgsize)(0)
         log.debug("allocating memory...")
-        tc.AllocateMemory(self.handle, xdim, ydim, c_int(pixelbytes), c_buf, byref(memid))
+        tc.AllocateMemory(
+            self.handle, xdim, ydim, c_int(pixelbytes), c_buf, byref(memid)
+        )
         log.debug("setting image memory...")
         tc.SetImageMemory(self.handle, c_buf, memid)
         log.debug("setting infor...")
@@ -353,18 +359,18 @@ class UC480(ThorCamBase):
         Parameters
         ----------
         roi_shape : tuple(int, int)
-            Dimensions of the image that is taken by the camera 
+            Dimensions of the image that is taken by the camera
             (usually 1024 x 1280).
         """
         # Width and height
         AOI_size = tc.IS_2D(roi_shape[0], roi_shape[1])
-        
+
         # 5 for setting size, 3 for setting position
         tc.AOI(self.handle, 5, byref(AOI_size), 8)
-        
+
         # 6 for getting sizse, 4 for getting position
         tc.AOI(self.handle, 6, byref(AOI_size), 8)
-        
+
         self.hardware_roi_shape = [AOI_size.s32X, AOI_size.s32Y]
 
     def _set_hardware_roi_pos(self, roi_pos: Tuple[int, int]) -> None:
@@ -379,12 +385,12 @@ class UC480(ThorCamBase):
         """
         # Width and height
         AOI_pos = tc.IS_2D(roi_pos[0], roi_pos[1])
-        
+
         # 5 for setting size, 3 for setting position
-        tc.AOI(self.handle, 3, byref(AOI_pos), 8 )
+        tc.AOI(self.handle, 3, byref(AOI_pos), 8)
 
         # 6 for getting size, 4 for getting position
-        tc.AOI(self.handle, 4, byref(AOI_pos), 8 )
+        tc.AOI(self.handle, 4, byref(AOI_pos), 8)
 
         self.hardware_roi_pos = [AOI_pos.s32X, AOI_pos.s32Y]
 
@@ -400,10 +406,10 @@ class UC480(ThorCamBase):
             self.handle
         except AttributeError:
             return
-        
+
         self.stop_capture()
 
-        error = tc.ExitCamera(self.handle) 
+        error = tc.ExitCamera(self.handle)
         if error != 0:
             log.error(f"Closing ThorCam failed (code {error})")
         del self.handle

@@ -33,7 +33,7 @@ MAX_C_SHORT = 32767
 
 @expose
 class BPC303(KinesisInstrument):
-    """ 
+    """
     A Thorlabs BPC-303 Benchtop Piezo controller.
 
     Attributes
@@ -49,10 +49,16 @@ class BPC303(KinesisInstrument):
     max_travel : [int]
         Distance in steps of 100nm, range 0 to 65535 (10000 = 1mm) by channel.
     max_voltage : [int]
-        Maximum output voltage, 750, 1000 or 1500 (75.0, 100.0, 150.0). 
+        Maximum output voltage, 750, 1000 or 1500 (75.0, 100.0, 150.0).
     """
 
-    def connect(self, serialno: str = "", poll_period: int=200, closed_loop: bool=False, smoothed: bool=False) -> None:
+    def connect(
+        self,
+        serialno: str = "",
+        poll_period: int = 200,
+        closed_loop: bool = False,
+        smoothed: bool = False,
+    ) -> None:
         """
         Connects to the device.
 
@@ -61,11 +67,11 @@ class BPC303(KinesisInstrument):
         serialno : str
             The serial number of the device being connected to as a string.
         poll_period : int, optional
-            The polling period (time between data pulls from the device) in ms 
+            The polling period (time between data pulls from the device) in ms
             (default 200).
         closed_loop : bool, optional
-            Puts controller in open or closed loop mode. Closed loop if True 
-            (closed loop allows for positional commands instead of voltage 
+            Puts controller in open or closed loop mode. Closed loop if True
+            (closed loop allows for positional commands instead of voltage
             commands), default False.
         smoothed : bool, optional
             Puts controller in smoothed start/stop mode, default False.
@@ -80,7 +86,7 @@ class BPC303(KinesisInstrument):
         if not serialno:
             raise ValueError("No serial number provided.")
         self.serialno = serialno
-        self._serialno = c_char_p(bytes(serialno, "utf-8")) # Store as char array.
+        self._serialno = c_char_p(bytes(serialno, "utf-8"))  # Store as char array.
         self.poll_period = poll_period
 
         if bp.TLI_BuildDeviceList() != 0:
@@ -89,12 +95,12 @@ class BPC303(KinesisInstrument):
             raise RuntimeError("no connected devices found.")
 
         # Get list of serial numbers of benchtop-piezo devices connected
-        serial_list = c_char_p(bytes("","utf-8"))
+        serial_list = c_char_p(bytes("", "utf-8"))
         bp.TLI_GetDeviceListByTypeExt(serial_list, 250, 71)
-        serial_nos = serial_list.value.decode("utf-8").split(',')
+        serial_nos = serial_list.value.decode("utf-8").split(",")
         if self.serialno not in serial_nos:
             raise ValueError("serial number not found in connected devices.")
-        
+
         # Open the device for communication
         bp.PBC_Open(self._serialno)
 
@@ -108,21 +114,25 @@ class BPC303(KinesisInstrument):
                 self.channels.append(channel)
                 self._channels.append(c_short(channel))
 
-        # Ask for the max travel of each axis. If it returns zero, this 
+        # Ask for the max travel of each axis. If it returns zero, this
         # function is not supported by the module.
         self.max_travel = []
         for channel in self._channels:
             if bp.PBC_RequestMaximumTravel(self._serialno, channel):
-                time.sleep(1.2*self.poll_period / 1000)
-                self.max_travel.append(int(bp.PBC_GetMaximumTravel(self._serialno, channel)))
+                time.sleep(1.2 * self.poll_period / 1000)
+                self.max_travel.append(
+                    int(bp.PBC_GetMaximumTravel(self._serialno, channel))
+                )
             else:
                 raise RuntimeError("maximum travel request to device failed.")
 
         self.max_voltage = []
         for channel in self._channels:
             if bp.PBC_RequestMaxOutputVoltage(self._serialno, channel):
-                time.sleep(1.2*self.poll_period / 1000)
-                self.max_voltage.append(bp.PBC_GetMaxOutputVoltage(self._serialno, channel))
+                time.sleep(1.2 * self.poll_period / 1000)
+                self.max_voltage.append(
+                    bp.PBC_GetMaxOutputVoltage(self._serialno, channel)
+                )
             else:
                 raise RuntimeError("maximum voltage request to device failed.")
 
@@ -132,12 +142,12 @@ class BPC303(KinesisInstrument):
 
     def _start_polling(self) -> None:
         """
-        Starts polling data from device (device self updates position and 
+        Starts polling data from device (device self updates position and
         status).
         """
         for channel in self._channels:
             bp.PBC_StartPolling(self._serialno, channel, c_int(self.poll_period))
-        
+
         # Clear prior messages
         bp.PBC_ClearMessageQueue(self._serialno)
         time.sleep(1)
@@ -148,7 +158,7 @@ class BPC303(KinesisInstrument):
         Detect all KCube DC Servo devices connected to the computer.
 
         .. warning::
-            
+
             Not currently implemented.
         """
         log.debug("Entering `detect_devices()`")
@@ -183,7 +193,7 @@ class BPC303(KinesisInstrument):
 
     def check_connection(self) -> bool:
         """
-        Checks connection of the device. 
+        Checks connection of the device.
 
         Returns
         -------
@@ -192,7 +202,7 @@ class BPC303(KinesisInstrument):
         """
         return bp.PBC_CheckConnection(self._serialno)
 
-    def enable_channel(self, channel: int=None) -> None:
+    def enable_channel(self, channel: int = None) -> None:
         """
         Enables communication for a specific channel (or all).
 
@@ -209,7 +219,7 @@ class BPC303(KinesisInstrument):
             channel = self._verify_channel(channel)
             bp.PBC_EnableChannel(self._serialno, channel)
 
-    def disable_channel(self, channel: int=None) -> None:
+    def disable_channel(self, channel: int = None) -> None:
         """
         Disables communication for a specific channel (or all).
 
@@ -233,7 +243,7 @@ class BPC303(KinesisInstrument):
         Parameters
         ----------
         channel : bool, optional
-            The channel to to set the control mode for (1-n). Gets for all if 
+            The channel to to set the control mode for (1-n). Gets for all if
             ``None``.
 
         Returns
@@ -248,18 +258,20 @@ class BPC303(KinesisInstrument):
         channel = self._verify_channel(channel)
         return bp.PBC_GetPositionControlMode(self._serialno, channel)
 
-    def set_position_control_mode(self, channel: int=None, closed_loop: bool=False, smoothed: bool=False) -> None:
+    def set_position_control_mode(
+        self, channel: int = None, closed_loop: bool = False, smoothed: bool = False
+    ) -> None:
         """
         Sets position control mode of the device.
 
         Parameters
         ----------
         channel : bool, optional
-            The channel to to set the control mode for (1-n). Sets for all if 
+            The channel to to set the control mode for (1-n). Sets for all if
             ``None``.
         closed_loop : bool, optional
-            Sets the position control mode; closed loop if True (default False 
-            means open loop). 
+            Sets the position control mode; closed loop if True (default False
+            means open loop).
         smoothed : bool, optional
             Sets the control smoothing mode; smoothed if True (default False).
         """
@@ -268,7 +280,7 @@ class BPC303(KinesisInstrument):
             mode += 1
         if smoothed:
             mode += 2
-        
+
         if channel is None:
             for chan in self._channels:
                 bp.PBC_SetPositionControlMode(self._serialno, chan, c_short(mode))
@@ -276,9 +288,9 @@ class BPC303(KinesisInstrument):
             channel = self._verify_channel(channel)
             bp.PBC_SetPositionControlMode(self._serialno, channel, c_short(mode))
 
-    def position(self, channel: int, percent: int=None) -> int:
+    def position(self, channel: int, percent: int = None) -> int:
         """
-        Sets the position of the requested channel when in closed loop mode. 
+        Sets the position of the requested channel when in closed loop mode.
         If no position is specified, simply returns the current position.
 
         Parameters
@@ -286,15 +298,15 @@ class BPC303(KinesisInstrument):
         channel : int
             The channel to get or set the position for (1-n).
         percent : int, optional
-            The position as a percentage of maximum travel, range 0 to 32767, 
-            equivalent to 0 to 100%. If not specified (None), current position 
+            The position as a percentage of maximum travel, range 0 to 32767,
+            equivalent to 0 to 100%. If not specified (None), current position
             is returned.
 
         Returns
         -------
         pos : int
-            The position as a percentage of maximum travel, range -32767 to 
-            32767, equivalent to -100 to 100%. The result is undefined if not 
+            The position as a percentage of maximum travel, range -32767 to
+            32767, equivalent to -100 to 100%. The result is undefined if not
             in closed loop mode.
         """
         channel = self._verify_channel(channel)
@@ -305,7 +317,7 @@ class BPC303(KinesisInstrument):
         else:
             return bp.PBC_GetPosition(self._serialno, channel)
 
-    def voltage(self, channel: int, percent: int=None) -> int:
+    def voltage(self, channel: int, percent: int = None) -> int:
         """
         Sets the output voltage of the requested channel. If no voltage is
         specified, simply returns the current voltage.
@@ -315,15 +327,15 @@ class BPC303(KinesisInstrument):
         channel : int
             The channel to get or set the position for (1-n).
         percent : int, optional
-            The voltage as a percentage of max_voltage, range -32767 to 
-            32767 equivalent to -100% to 100%. If not specified, current 
+            The voltage as a percentage of max_voltage, range -32767 to
+            32767 equivalent to -100% to 100%. If not specified, current
             voltage is returned.
 
         Returns
         -------
         percent : int
             The current voltage of the selected channel as a percentage of
-            maximum output voltage, range -32767 to 32767 equivalent to 
+            maximum output voltage, range -32767 to 32767 equivalent to
             -100% to 100%.
 
         Raises
@@ -341,16 +353,16 @@ class BPC303(KinesisInstrument):
 
     # def wait_for_message(self):
     #     """
-    #     Gets the next item from the device's message queue. Can potentially be 
+    #     Gets the next item from the device's message queue. Can potentially be
     #     used as a blocking function.
     #     """
     #     pass
 
     @oneway
-    def zero(self, channel: int=None, block: bool=True) -> None:
+    def zero(self, channel: int = None, block: bool = True) -> None:
         """
         Zeroes a channel (or all). Automatically sets closed loop mode.
-        
+
         Parameters
         ----------
         channel : int, optional
@@ -364,7 +376,7 @@ class BPC303(KinesisInstrument):
         else:
             channel = self._verify_channel(channel)
             bp.PBC_SetZero(self._serialno, channel)
-        
+
         if block:
             time.sleep(25)
 

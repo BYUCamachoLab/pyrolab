@@ -37,4 +37,4 @@ print(type(resp), resp)
 service1.lock()
 # Since the next line is the first method call, the Proxy will try
 # to connect and fail.
-service2.add(2, 3) 
+service2.add(2, 3)

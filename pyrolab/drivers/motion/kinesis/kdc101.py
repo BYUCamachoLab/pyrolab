@@ -57,7 +57,7 @@ def check_error(status):
             raise ConnectionError(f"{ERROR_CODES[status]} ({status})")
         elif (status >= 32 and status <= 36) or (status >= 41 and status <= 43):
             raise OSError(f"{ERROR_CODES[status]} ({status})")
-        elif( status >= 37 and status <= 39) or (status >= 44 and status <= 47):
+        elif (status >= 37 and status <= 39) or (status >= 44 and status <= 47):
             raise RuntimeError(f"{ERROR_CODES[status]} ({status})")
         raise RuntimeError(ERROR_CODES[status])
 
@@ -66,7 +66,10 @@ log.info("Building ThorLabs device list (requires ThorLabs Kinesis DLL)")
 try:
     kcdc.TLI_BuildDeviceList()
 except:
-    log.warn("Building ThorLabs device list failed; unable to connect to any instruments")
+    log.warn(
+        "Building ThorLabs device list failed; unable to connect to any instruments"
+    )
+
 
 @expose
 class HomingMixin:
@@ -77,16 +80,17 @@ class HomingMixin:
         if block:
             self.wait_for_completion()
 
+
 # TODO: Are requests necessary when polling is active?
-# TODO: One potential way of implementing non-blocking functions is by always 
-# clearing all message queues before starting any of the requests. Then, 
+# TODO: One potential way of implementing non-blocking functions is by always
+# clearing all message queues before starting any of the requests. Then,
 # message from previous non-blocking calls don't get consumed by new requestors.
 
 
 @expose
 class KDC101(KinesisInstrument):
     """
-    A KCube DC Servo motor. 
+    A KCube DC Servo motor.
 
     Attributes
     ----------
@@ -99,25 +103,25 @@ class KDC101(KinesisInstrument):
     homing_velocity : float
         The homing velocity in real units. It is always a positive number.
     jog_mode : str
-        The jog mode can be either ``stepped`` (fixed distance, single step) or 
+        The jog mode can be either ``stepped`` (fixed distance, single step) or
         ``continuous`` (move continuously until stopped).
     jog_step_size : float
         The distance to move in real units when jogging.
     stop_mode : str
-        The stop mode, either ``immediate`` (stops immediately) or ``profiled`` 
+        The stop mode, either ``immediate`` (stops immediately) or ``profiled``
         (stops, using the current velocity profile).
     max_pos : float
         The stage axis maximum position limit in real units.
     min_pos : float
         The stage axis minimum position limit in real units.
     soft_limits_mode : str
-        The software limits mode 
-        ``disallow``: Disable any move outside of the current travel range of 
+        The software limits mode
+        ``disallow``: Disable any move outside of the current travel range of
         the stage.
-        ``partial``: Truncate moves to within the current travel range of the 
+        ``partial``: Truncate moves to within the current travel range of the
         stage.
-        ``all``: Allow all moves, regardless of whether they are within the 
-        current travel range of the stage. 
+        ``all``: Allow all moves, regardless of whether they are within the
+        current travel range of the stage.
     move_velocity : float
         The move velocity in real units. It is always a positive number.
     move_acceleration: float
@@ -127,6 +131,7 @@ class KDC101(KinesisInstrument):
     jog_acceleration : float
         The jog acceleration in real units. It is always a positive number.
     """
+
     CONDITIONS = ["homed", "moved", "stopped", "limit_updated"]
 
     def connect(self, serialno: str = "", polling: int = 200, home: bool = False):
@@ -188,7 +193,7 @@ class KDC101(KinesisInstrument):
         Detect all KCube DC Servo devices connected to the computer.
 
         .. warning::
-            
+
             Not currently implemented.
         """
         log.debug("Entering `detect_devices()`")
@@ -196,8 +201,8 @@ class KDC101(KinesisInstrument):
 
     def _du_to_real_value(self, du, unit_type):
         """
-        Converts a device unit to a real world unit. 
-        The motor stage parameters define the stage motion in terms of Real 
+        Converts a device unit to a real world unit.
+        The motor stage parameters define the stage motion in terms of Real
         World Units (mm or degrees). The real world unit is defined from:
 
             stepsPerRev * gearBoxRatio / pitch.
@@ -205,8 +210,8 @@ class KDC101(KinesisInstrument):
         Use CC_GetMotorParamsExt() if curious about the motor stage parameters.
 
         TLI_BuildDeviceList() and CC_loadSettings() must have be executed before
-        using the conversion functions. The correct setting must be persisted on 
-        the device in kinesis before using CC_loadSettings() to ensure the 
+        using the conversion functions. The correct setting must be persisted on
+        the device in kinesis before using CC_loadSettings() to ensure the
         device has the correct motor stage parameters.
 
         Parameters
@@ -214,45 +219,41 @@ class KDC101(KinesisInstrument):
         du : int
             The value in device units.
         unit_type : int
-            The type of unit being converted; ``0`` for distance, ``1`` for 
+            The type of unit being converted; ``0`` for distance, ``1`` for
             velocity, or ``2`` for acceleration.
         """
         log.debug("Entering `_du_to_real_value()`")
         real_unit = c_double()
         status = kcdc.CC_GetRealValueFromDeviceUnit(
-            self._serialno,
-            c_int(du),
-            byref(real_unit),
-            c_int(unit_type))
+            self._serialno, c_int(du), byref(real_unit), c_int(unit_type)
+        )
         check_error(status)
         return real_unit.value
 
     def _real_value_to_du(self, real, unit_type):
         """
-        Converts a device unit to a real world unit. 
+        Converts a device unit to a real world unit.
 
         Parameters
         ----------
         real : float
             The value to be converted to device units.
         unit_type : int
-            The type of unit being converted; ``0`` for distance, ``1`` for 
+            The type of unit being converted; ``0`` for distance, ``1`` for
             velocity, or ``2`` for acceleration.
         """
         log.debug("Entering `_real_value_to_du()`")
         device_unit = c_int()
         status = kcdc.CC_GetDeviceUnitFromRealValue(
-            self._serialno,
-            c_double(real),
-            byref(device_unit),
-            c_int(unit_type))
+            self._serialno, c_double(real), byref(device_unit), c_int(unit_type)
+        )
         check_error(status)
         return device_unit.value
 
     @property
     def backlash(self):
         """
-        Get the backlash distance setting (used to control hysteresis). 
+        Get the backlash distance setting (used to control hysteresis).
         """
         log.debug("Entering `backlash()`")
         backlash = kcdc.CC_GetBacklash(self._serialno)
@@ -288,10 +289,7 @@ class KDC101(KinesisInstrument):
         log.debug("Entering `jog_mode()`")
         jog_mode = kcdc.MOT_JogModes()
         stop_mode = kcdc.MOT_StopModes()
-        status = kcdc.CC_GetJogMode(
-            self._serialno,
-            byref(jog_mode),
-            byref(stop_mode))
+        status = kcdc.CC_GetJogMode(self._serialno, byref(jog_mode), byref(stop_mode))
         check_error(status)
         if jog_mode.value == kcdc.MOT_Continuous.value:
             return "continuous"
@@ -333,10 +331,7 @@ class KDC101(KinesisInstrument):
     def stop_mode(self):
         jog_mode = kcdc.MOT_JogModes()
         stop_mode = kcdc.MOT_StopModes()
-        status = kcdc.CC_GetJogMode(
-            self._serialno,
-            byref(jog_mode),
-            byref(stop_mode))
+        status = kcdc.CC_GetJogMode(self._serialno, byref(jog_mode), byref(stop_mode))
         check_error(status)
         if stop_mode.value == kcdc.MOT_Immediate:
             return "immediate"
@@ -374,7 +369,8 @@ class KDC101(KinesisInstrument):
         status = kcdc.CC_SetStageAxisLimits(
             self._serialno,
             c_int(self._real_value_to_du(min, 0)),
-            c_int(self._real_value_to_du(max, 0)))
+            c_int(self._real_value_to_du(max, 0)),
+        )
         check_error(status)
         self.wait_for_completion("limit_updated")
 
@@ -390,7 +386,8 @@ class KDC101(KinesisInstrument):
         status = kcdc.CC_SetStageAxisLimits(
             self._serialno,
             c_int(self._real_value_to_du(min, 0)),
-            c_int(self._real_value_to_du(max, 0)))
+            c_int(self._real_value_to_du(max, 0)),
+        )
         check_error(status)
         self.wait_for_completion("limit_updated")
 
@@ -432,7 +429,8 @@ class KDC101(KinesisInstrument):
         status = kcdc.CC_SetVelParams(
             self._serialno,
             c_int(self._real_value_to_du(self.move_acceleration, 2)),
-            c_int(self._real_value_to_du(velocity, 1)))
+            c_int(self._real_value_to_du(velocity, 1)),
+        )
         check_error(status)
 
     @property
@@ -448,17 +446,15 @@ class KDC101(KinesisInstrument):
         status = kcdc.CC_SetVelParams(
             self._serialno,
             c_int(self._real_value_to_du(acceleration, 2)),
-            c_int(self.move_velocity))
+            c_int(self.move_velocity),
+        )
         check_error(status)
 
     @property
     def jog_velocity(self):
         accel = c_int()
         vel = c_int()
-        status = kcdc.CC_GetJogVelParams(
-            self._serialno,
-            byref(accel),
-            byref(vel))
+        status = kcdc.CC_GetJogVelParams(self._serialno, byref(accel), byref(vel))
         check_error(status)
         return self._du_to_real_value(vel.value, 1)
 
@@ -467,17 +463,15 @@ class KDC101(KinesisInstrument):
         status = kcdc.CC_SetJogVelParams(
             self._serialno,
             c_int(self._real_value_to_du(self.move_acceleration, 2)),
-            c_int(self._real_value_to_du(velocity, 1)))
+            c_int(self._real_value_to_du(velocity, 1)),
+        )
         check_error(status)
 
     @property
     def jog_acceleration(self):
         accel = c_int()
         vel = c_int()
-        status = kcdc.CC_GetJogVelParams(
-            self._serialno,
-            byref(accel),
-            byref(vel))
+        status = kcdc.CC_GetJogVelParams(self._serialno, byref(accel), byref(vel))
         check_error(status)
         return self._du_to_real_value(accel.value, 2)
 
@@ -486,7 +480,8 @@ class KDC101(KinesisInstrument):
         status = kcdc.CC_SetJogVelParams(
             self._serialno,
             c_int(self._real_value_to_du(acceleration, 2)),
-            c_int(self.move_velocity))
+            c_int(self.move_velocity),
+        )
         check_error(status)
 
     def get_position(self):
@@ -504,7 +499,7 @@ class KDC101(KinesisInstrument):
 
     def get_status_bits(self) -> int:
         """
-        Returns the status bits of the motor. See the ThorLabs Kinesis 
+        Returns the status bits of the motor. See the ThorLabs Kinesis
         documentation for bitmasks to access various status values.
 
         Returns
@@ -535,8 +530,8 @@ class KDC101(KinesisInstrument):
         """
         A blocking function to ensure a task has been finished.
 
-        Used to for the following functions: homing, moving, stopping, or 
-        updating limits. The id parameter must be specificed for the correct 
+        Used to for the following functions: homing, moving, stopping, or
+        updating limits. The id parameter must be specificed for the correct
         operation ("homed", "moved", "stopped", or "limit_updated").
 
         If the task is not finished after MAX_WAIT_TIME, a RuntimeError is
@@ -548,7 +543,7 @@ class KDC101(KinesisInstrument):
             must be either "homed", "moved", "stopped", or "limit_updated"
             (default is "homed").
         MAX_WAIT_TIME : int, optional
-            The maximum time to wait for the task to complete. Defaults to 5 
+            The maximum time to wait for the task to complete. Defaults to 5
             seconds. Ignored if id is "homed" or if value is 0.
 
         Raises
@@ -579,10 +574,7 @@ class KDC101(KinesisInstrument):
             log.debug(f"Waiting for message (KDC101 '{self.serialno}')")
             time.sleep(0.2)
         kcdc.CC_WaitForMessage(
-            self._serialno,
-            byref(message_type),
-            byref(message_id),
-            byref(message_data)
+            self._serialno, byref(message_type), byref(message_id), byref(message_data)
         )
 
         log.debug("Entering wait loop")
@@ -590,10 +582,13 @@ class KDC101(KinesisInstrument):
         while int(message_type.value) != 2 or int(message_id.value) != cond:
             end = time.time()
             if (end - start > MAX_WAIT_TIME) and (MAX_WAIT_TIME != 0):
-                log.debug(f"Message queue size: {kcdc.CC_MessageQueueSize(self._serialno)}")
+                log.debug(
+                    f"Message queue size: {kcdc.CC_MessageQueueSize(self._serialno)}"
+                )
                 raise RuntimeError(
                     f"Waited for {MAX_WAIT_TIME} seconds for {id} to complete. "
-                    f"Message type: {message_type.value}, Message ID: {message_id.value}")
+                    f"Message type: {message_type.value}, Message ID: {message_id.value}"
+                )
 
             if kcdc.CC_MessageQueueSize(self._serialno) <= 0:
                 log.debug(f"Waiting for message (KDC101 '{self.serialno}')")
@@ -603,7 +598,8 @@ class KDC101(KinesisInstrument):
                 self._serialno,
                 byref(message_type),
                 byref(message_id),
-                byref(message_data))
+                byref(message_data),
+            )
         log.debug("Exiting `wait_for_completion()`")
 
     def identify(self):
@@ -614,11 +610,11 @@ class KDC101(KinesisInstrument):
         kcdc.CC_Identify(self._serialno)
 
     # @oneway
-    def go_home(self, block = True):
+    def go_home(self, block=True):
         """
         Takes the device home and sets self.homed to true
 
-        go_home() will always ignore the software limits from soft_limits_mode 
+        go_home() will always ignore the software limits from soft_limits_mode
         and min_pos and max_pos.
 
         FIXME: This function shouldn't exist; it's provided by HomingMixin
@@ -646,8 +642,8 @@ class KDC101(KinesisInstrument):
         """
         log.debug(f"Moving to position '{pos}' (KDC101 {self.serialno})")
         status = kcdc.CC_MoveToPosition(
-            self._serialno,
-            c_int(self._real_value_to_du(pos, 0)))
+            self._serialno, c_int(self._real_value_to_du(pos, 0))
+        )
         check_error(status)
         log.debug(f"Awaiting move completion (KDC101 {self.serialno})")
         # No move should ever take more than 15 seconds. At least we'll still
@@ -683,8 +679,8 @@ class KDC101(KinesisInstrument):
         """
         log.debug(f"Moving by {displacement} (KDC101 '{self.serialno}')")
         status = kcdc.CC_MoveRelative(
-            self._serialno,
-            c_int(self._real_value_to_du(displacement, 0)))
+            self._serialno, c_int(self._real_value_to_du(displacement, 0))
+        )
         check_error(status)
         self.wait_for_completion(id="moved")
 
@@ -693,10 +689,10 @@ class KDC101(KinesisInstrument):
         """
         Moves the motor at a constant velocity in the specified direction.
 
-        Move Continuous will attempt to obey the limits set on min_pos and 
-        max_pos, but as these moves rely on position information feedback from 
-        the device to detect if the travel is exceeding the limits, the device 
-        will stop, but it is likely to overshoot the limit, especially at 
+        Move Continuous will attempt to obey the limits set on min_pos and
+        max_pos, but as these moves rely on position information feedback from
+        the device to detect if the travel is exceeding the limits, the device
+        will stop, but it is likely to overshoot the limit, especially at
         high velocity.
 
 
@@ -704,10 +700,12 @@ class KDC101(KinesisInstrument):
         ----------
         direction : string
             The direction to move the motor. Acceptable values are ``forward``
-            (default) and ``backward``. Sense can be reversed by calling 
+            (default) and ``backward``. Sense can be reversed by calling
             :py:func:`reverse`.
         """
-        log.debug(f"Move continuous in direction '{direction}' (KDC101 '{self.serialno}')")
+        log.debug(
+            f"Move continuous in direction '{direction}' (KDC101 '{self.serialno}')"
+        )
         if direction == "forward":
             direction = kcdc.MOT_Forwards
         elif direction == "backward":
@@ -728,25 +726,27 @@ class KDC101(KinesisInstrument):
     # @oneway
     def jog(self, direction, block: bool = True):
         """
-        Jogs the motor using either stepped or continuous, 
+        Jogs the motor using either stepped or continuous,
         depending on what the jog mode is set to.
 
-        Jog (continuous) will attempt to obey the limits set on min_pos and 
-        max_pos, but as these moves rely on position information feedback from 
-        the device to detect if the travel is exceeding the limits, the device 
-        will stop, but it is likely to overshoot the limit, especially at 
+        Jog (continuous) will attempt to obey the limits set on min_pos and
+        max_pos, but as these moves rely on position information feedback from
+        the device to detect if the travel is exceeding the limits, the device
+        will stop, but it is likely to overshoot the limit, especially at
         high velocity.
 
         Parameters
         ----------
         direction : string
             The direction to move the motor. Acceptable values are ``forward``
-            and ``backward``. Sense can be reversed by calling 
+            and ``backward``. Sense can be reversed by calling
             :py:func:`reverse`.
         block : bool, optional
             Blocks code until move is completed (default True).
         """
-        log.debug(f"Jogging in direction '{direction}', blocking '{block}'(KDC101 '{self.serialno}')")
+        log.debug(
+            f"Jogging in direction '{direction}', blocking '{block}'(KDC101 '{self.serialno}')"
+        )
         c_dir = kcdc.MOT_TravelDirection
         if direction == "forward":
             c_dir = kcdc.MOT_Forwards
@@ -757,7 +757,7 @@ class KDC101(KinesisInstrument):
 
         status = kcdc.CC_MoveJog(self._serialno, c_dir)
         check_error(status)
-        if (self.jog_mode == "stepped"):
+        if self.jog_mode == "stepped":
             if block:
                 self.wait_for_completion("moved")
 
@@ -773,7 +773,7 @@ class KDC101(KinesisInstrument):
             When ``False`` (default) the motor uses a profiled stop.
             When ``True`` the motor uses an immediate stop.
         """
-        stop_type = 'immediate' if immediate else 'profiled'
+        stop_type = "immediate" if immediate else "profiled"
         log.debug(f"Stopping with stop type {stop_type} (KDC101 {self.serialno})")
         if immediate:
             status = kcdc.CC_StopImmediate(self._serialno)

@@ -27,6 +27,12 @@ import os
 import pathlib
 import platform
 import sys
+import atexit
+import fileinput
+import re
+from typing import Callable, Iterable
+from time import strptime
+from pathlib import Path
 
 # Check if Python version is supported
 pyversion = sys.version_info
@@ -46,7 +52,7 @@ __version__ = "0.3.2"
 __license__ = "GPLv3+"
 __maintainer__ = "Sequoia Ploeg"
 __maintainer_email__ = "sequoia.ploeg@byu.edu"
-__status__ = "Development" # "Production"
+__status__ = "Development"  # "Production"
 __project_url__ = "https://github.com/sequoiap/pyrolab"
 __forum_url__ = "https://github.com/sequoiap/pyrolab/issues"
 __website_url__ = "https://camacholab.byu.edu/"
@@ -66,6 +72,7 @@ if pyversion < (3, 9, 0):
     base_path = pathlib.Path(__file__).resolve().parent
 else:
     from importlib.resources import files
+
     base_path = files("pyrolab")
 base_path = base_path / "data" / "local"
 
@@ -78,6 +85,7 @@ NAMESERVER_STORAGE.mkdir(parents=True, exist_ok=True)
 
 PYROLAB_LOGDIR = PYROLAB_DATA_DIR / "logs"
 PYROLAB_LOGDIR.mkdir(parents=True, exist_ok=True)
+PYROLAB_MASTERLOG = PYROLAB_LOGDIR / "pyrolab.log"
 
 LOCKFILE = PYROLAB_DATA_DIR / "pyrolabd.lock"
 USER_CONFIG_FILE = PYROLAB_DATA_DIR / "user_configuration.yaml"
@@ -98,11 +106,14 @@ def get_loglevel() -> int:
     return loglevel
 
 
-if len(logging.root.handlers) == 0:    
+if len(logging.root.handlers) == 0:
     logfile = PYROLAB_LOGDIR / f"pyrolab_{os.getpid()}.log"
     root = logging.getLogger()
-    h = logging.handlers.RotatingFileHandler(logfile, 'a', 30000, 10)
-    f = logging.Formatter('[%(asctime)s.%(msecs)03d] %(process)-5s %(processName)-10s %(name)-12s %(levelname)-8s %(message)s', datefmt="%Y-%m-%d %H:%M:%S")
+    h = logging.handlers.RotatingFileHandler(logfile, "a", 30000, 10)
+    f = logging.Formatter(
+        "[%(asctime)s.%(msecs)03d] %(levelname)-8s %(process)-5s %(processName)-16s %(name)-20s %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
     h.setFormatter(f)
     root.addHandler(h)
     root.setLevel(get_loglevel())
@@ -124,10 +135,10 @@ try:
 
     url = "https://pypi.org/pypi/pyrolab/json"
     with requests.Session() as s:
-        s.mount('https://pypi.org', HTTPAdapter(max_retries=3))
+        s.mount("https://pypi.org", HTTPAdapter(max_retries=3))
         resp = s.get(url).text
 
-    v = json.loads(resp)['info']['version']
+    v = json.loads(resp)["info"]["version"]
     curver = parse(__version__)
     latest = parse(v)
 
@@ -139,3 +150,41 @@ try:
         log.info(message)
 except:
     pass
+
+
+def try_itr(func: Callable, itr: Iterable, *exceptions, **kwargs):
+    """
+    Tests a function on an iterable, yields iterable if no exception is raised.
+    """
+    for elem in itr:
+        try:
+            func(elem, **kwargs)
+            yield elem
+        except exceptions:
+            pass
+
+
+@atexit.register
+def condense_logs():
+    """
+    Cleans up the logfile directory every once in a while.
+
+    Runs at exit or when "pyrolab down" is called. Condenses all process log
+    files into a single logfile that is sorted by timestamp.
+    """
+    f_names = list(PYROLAB_LOGDIR.glob("*.*"))
+    lines = list(fileinput.input(f_names))
+    t_fmt = "%Y-%m-%d %H:%M:%S.%f"  # format of time stamps
+    t_pat = re.compile(r"\[(.+?)\]")  # pattern to extract timestamp
+    lines = list(
+        try_itr(
+            lambda l: strptime(t_pat.search(l).group(1), t_fmt), lines, AttributeError
+        )
+    )
+    with PYROLAB_MASTERLOG.open(mode="w") as f:
+        for l in sorted(lines, key=lambda l: strptime(t_pat.search(l).group(1), t_fmt)):
+            f.write(l)
+    if PYROLAB_MASTERLOG in f_names:
+        f_names.remove(PYROLAB_MASTERLOG)
+    for f in f_names:
+        f.unlink()

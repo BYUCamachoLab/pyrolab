@@ -12,7 +12,7 @@ venv:
 install:
 	pip install --upgrade pip setuptools wheel
 	pip install -r requirements.txt
-	pip install -e .
+	pip install -e .[dev]
 	pre-commit install
 
 precommit:

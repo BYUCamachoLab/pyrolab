@@ -22,6 +22,7 @@ different modes:
 
 from pyrolab.api import config, behavior, serve, locate_ns
 from pyrolab.drivers.sample import SampleService
+
 config.reset()
 
 
@@ -43,11 +44,14 @@ class PercallInstance(SampleService):
 if __name__ == "__main__":
     # please make sure a name server is running somewhere first.
     try:
-        serve({
-            SingleInstance: "instance.single",
-            SessionInstance: "instance.session",
-            PercallInstance: "instance.percall"
-        }, verbose=True)
+        serve(
+            {
+                SingleInstance: "instance.single",
+                SessionInstance: "instance.session",
+                PercallInstance: "instance.percall",
+            },
+            verbose=True,
+        )
     finally:
         ns = locate_ns(host="localhost")
         ns.remove("instance.single")
