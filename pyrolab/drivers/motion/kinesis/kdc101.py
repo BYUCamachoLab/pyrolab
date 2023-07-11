@@ -627,7 +627,7 @@ class KDC101(KinesisInstrument):
             self.wait_for_completion()
         log.debug(f"Homed: KDC101 device '{self.serialno}'")
 
-    def move_to(self, pos):
+    def move_to(self, pos, block = True):
         """
         Move the device to the specified position (index).
 
@@ -648,7 +648,9 @@ class KDC101(KinesisInstrument):
         log.debug(f"Awaiting move completion (KDC101 {self.serialno})")
         # No move should ever take more than 15 seconds. At least we'll still
         # get an error.
-        self.wait_for_completion(id="moved", MAX_WAIT_TIME=15)
+        if (block):
+            self.wait_for_completion(id="moved", MAX_WAIT_TIME=15)
+        
         log.debug(f"Move completed (KDC101 {self.serialno})")
 
     # def move_to_unblocked(self, pos):
