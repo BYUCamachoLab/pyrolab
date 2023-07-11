@@ -164,27 +164,27 @@ def try_itr(func: Callable, itr: Iterable, *exceptions, **kwargs):
             pass
 
 
-@atexit.register
-def condense_logs():
-    """
-    Cleans up the logfile directory every once in a while.
+# @atexit.register
+# def condense_logs():
+#     """
+#     Cleans up the logfile directory every once in a while.
 
-    Runs at exit or when "pyrolab down" is called. Condenses all process log
-    files into a single logfile that is sorted by timestamp.
-    """
-    f_names = list(PYROLAB_LOGDIR.glob("*.*"))
-    lines = list(fileinput.input(f_names))
-    t_fmt = "%Y-%m-%d %H:%M:%S.%f"  # format of time stamps
-    t_pat = re.compile(r"\[(.+?)\]")  # pattern to extract timestamp
-    lines = list(
-        try_itr(
-            lambda l: strptime(t_pat.search(l).group(1), t_fmt), lines, AttributeError
-        )
-    )
-    with PYROLAB_MASTERLOG.open(mode="w") as f:
-        for l in sorted(lines, key=lambda l: strptime(t_pat.search(l).group(1), t_fmt)):
-            f.write(l)
-    if PYROLAB_MASTERLOG in f_names:
-        f_names.remove(PYROLAB_MASTERLOG)
-    for f in f_names:
-        f.unlink()
+#     Runs at exit or when "pyrolab down" is called. Condenses all process log
+#     files into a single logfile that is sorted by timestamp.
+#     """
+#     f_names = list(PYROLAB_LOGDIR.glob("*.*"))
+#     lines = list(fileinput.input(f_names))
+#     t_fmt = "%Y-%m-%d %H:%M:%S.%f"  # format of time stamps
+#     t_pat = re.compile(r"\[(.+?)\]")  # pattern to extract timestamp
+#     lines = list(
+#         try_itr(
+#             lambda l: strptime(t_pat.search(l).group(1), t_fmt), lines, AttributeError
+#         )
+#     )
+#     with PYROLAB_MASTERLOG.open(mode="w") as f:
+#         for l in sorted(lines, key=lambda l: strptime(t_pat.search(l).group(1), t_fmt)):
+#             f.write(l)
+#     if PYROLAB_MASTERLOG in f_names:
+#         f_names.remove(PYROLAB_MASTERLOG)
+#     for f in f_names:
+#         f.unlink()
