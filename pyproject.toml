@@ -63,7 +63,7 @@ dependencies = [
   "numpy",
   "scipy",
   "Pyro5",
-  "pydantic",
+  "pydantic >= 1.9.1, < 2.0.0",
   "pyyaml",
   "deprecation",
   "typer",
