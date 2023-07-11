@@ -648,7 +648,7 @@ class KDC101(KinesisInstrument):
         log.debug(f"Awaiting move completion (KDC101 {self.serialno})")
         # No move should ever take more than 15 seconds. At least we'll still
         # get an error.
-        if (block):
+        if block:
             self.wait_for_completion(id="moved", MAX_WAIT_TIME=15)
         
         log.debug(f"Move completed (KDC101 {self.serialno})")
