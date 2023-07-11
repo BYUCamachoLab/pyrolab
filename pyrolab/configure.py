@@ -869,6 +869,7 @@ def update_config(filename: Union[str, Path]) -> None:
     ValidationError
         If the configuration file is invalid.
     """
+    print("2")
     filename = Path(filename)
     if not filename.exists():
         raise FileNotFoundError(f"File does not: '{filename}'")
