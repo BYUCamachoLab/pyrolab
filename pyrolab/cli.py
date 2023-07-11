@@ -375,7 +375,12 @@ def logs_clean():
     """
     Deletes all log files.
     """
-    [f.unlink() for f in PYROLAB_LOGDIR.glob("*.*")]
+    for f in PYROLAB_LOGDIR.glob("*.*"):
+        # Try to delete file if not in use
+        try:
+            f.unlink()
+        except PermissionError:
+            pass
 
 
 def try_itr(func: Callable, itr: Iterable, *exceptions, **kwargs):
