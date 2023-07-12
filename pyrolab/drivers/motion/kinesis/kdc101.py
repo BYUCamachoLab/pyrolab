@@ -446,7 +446,7 @@ class KDC101(KinesisInstrument):
         status = kcdc.CC_SetVelParams(
             self._serialno,
             c_int(self._real_value_to_du(acceleration, 2)),
-            c_int(self.move_velocity),
+            c_int(self._real_value_to_du(self.move_velocity, 1)),
         )
         check_error(status)
 
