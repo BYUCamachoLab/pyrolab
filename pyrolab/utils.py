@@ -12,7 +12,12 @@ Convenience functions for working with the pyrolab package.
 import secrets
 import socket
 
-import pkg_resources
+try:
+    import importlib.resources as pkg_resources
+except ImportError:
+    import pkg_resources
+
+import pyrolab
 
 
 def get_ip() -> str:
@@ -49,7 +54,10 @@ def generate_random_name(count: int = 3) -> str:
     """
     from pathlib import Path
 
-    path = Path(pkg_resources.resource_filename("pyrolab", "data/wordlist.txt"))
+    try:
+        path = pkg_resources.files(pyrolab) / "data/wordlist.txt"
+    except AttributeError:
+        path = Path(pkg_resources.resource_filename("pyrolab", "data/wordlist.txt"))
     with open(path, "r") as f:
         wordlist = f.read().splitlines()
 

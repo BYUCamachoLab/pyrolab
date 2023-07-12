@@ -22,10 +22,14 @@ from typing import Callable, Iterable, Optional
 from time import sleep, strptime
 from tabulate import tabulate
 
-import pkg_resources
+try:
+    import importlib.resources as pkg_resources
+except ImportError:
+    import pkg_resources
 import typer
 from Pyro5.errors import CommunicationError
 
+import pyrolab
 from pyrolab import LOCKFILE, PYROLAB_LOGDIR, RUNTIME_CONFIG, USER_CONFIG_FILE
 from pyrolab.api import Proxy
 from pyrolab.configure import (
@@ -137,7 +141,10 @@ def up(
         if force and LOCKFILE.exists():
             LOCKFILE.unlink()
 
-        rsrc = Path(pkg_resources.resource_filename("pyrolab", "pyrolabd.py"))
+        try:
+            rsrc = pkg_resources.files(pyrolab) / "pyrolabd.py"
+        except AttributeError:
+            rsrc = Path(pkg_resources.resource_filename("pyrolab", "pyrolabd.py"))
 
         if port:
             args = [sys.executable, str(rsrc), str(port)]
@@ -368,7 +375,12 @@ def logs_clean():
     """
     Deletes all log files.
     """
-    [f.unlink() for f in PYROLAB_LOGDIR.glob("*.*")]
+    for f in PYROLAB_LOGDIR.glob("*.*"):
+        # Try to delete file if not in use
+        try:
+            f.unlink()
+        except PermissionError:
+            pass
 
 
 def try_itr(func: Callable, itr: Iterable, *exceptions, **kwargs):
