@@ -274,14 +274,14 @@ class KDC101(KinesisInstrument):
         Gets the homing velocity.
         """
         velocity = kcdc.CC_GetHomingVelocity(self._serialno)
-        return velocity
+        return self._du_to_real_value(velocity, 1)
 
     @homing_velocity.setter
     def homing_velocity(self, velocity):
         """
         Sets the homing velocity.
         """
-        status = kcdc.CC_SetHomingVelocity(self._serialno, c_uint(velocity))
+        status = kcdc.CC_SetHomingVelocity(self._serialno, c_uint(self._real_value_to_du(velocity, 1)))
         check_error(status)
 
     @property
