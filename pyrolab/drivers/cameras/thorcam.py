@@ -459,7 +459,8 @@ class ThorCamClient:
         self.cam.autoconnect()
         self.remote_attributes = self.cam._pyroAttrs
         self._LOCAL_HEADERSIZE = self.HEADERSIZE
-
+    
+    @expose
     def start_stream(self) -> None:
         """
         Starts the video stream.
@@ -518,6 +519,7 @@ class ThorCamClient:
         self.clientsocket.close()
         self.video_stopped.set()
 
+    @expose
     def end_stream(self) -> None:
         """
         Ends the video stream.
@@ -531,6 +533,7 @@ class ThorCamClient:
             time.sleep(0.001)
         self.cam.stop_capture()
 
+    @expose
     def await_stream(self, timeout: float = 3.0) -> bool:
         """
         Blocks until the first image is available from the stream.
