@@ -25,6 +25,8 @@ Code also available in the PyroLab repository under ``/extras/arduino``.
 """
 
 import logging
+import subprocess
+import serial
 
 from pyfirmata import (
     ANALOG,
@@ -54,7 +56,8 @@ class BaseArduinoDriver(PyroArduino):
 
     def connect(self, port: str, board: str = "uno") -> None:
         """
-        Initialize a connection with the arduino.
+        Initialize a connection with the arduino. If the arduino is already connected to another process
+        this will also kill that program.
 
         Parameters
         ----------
@@ -78,6 +81,9 @@ class BaseArduinoDriver(PyroArduino):
 
         self.port = port
 
+        if self._port_in_use(self.port):
+            self._kill_and_open_port(self.port)
+
         if board == "uno":
             self.board = Arduino(self.port)
         elif board == "mega":
@@ -89,12 +95,33 @@ class BaseArduinoDriver(PyroArduino):
         else:
             raise ValueError(f"Unknown board '{board}'")
 
-        self.it = util.Iterator(self.board)
-        self.it.start()
+        try:
+            self.it = util.Iterator(self.board)
+            self.it.start()
+        except Exception as e:
+            raise e
+        finally:
+            self.close()
+
+    def _port_in_use(port):
+        try:
+            ser = serial.Serial(port)
+            ser.close()
+            return False
+        except serial.SerialException:
+            return True
+    
+    def _kill_and_open_port(port):
+        # Find the process ID using the port
+        result = subprocess.check_output(f"netstat -ano | findstr :{port}", shell=True).decode()
+        pid = result.strip().split()[-1]
+
+        # Kill the process
+        subprocess.call(f"taskkill /F /PID {pid}", shell=True)
 
     def digital_write(self, pin: int, value: int) -> None:
         """
-        Tell the arduino to turn a pin digitally to the inputed value.
+        Tell the arduino to turn a pin digitally to the inputted value.
 
         Parameters
         ----------
