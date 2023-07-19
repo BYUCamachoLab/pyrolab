@@ -267,8 +267,8 @@ class ThorCamBase(Camera):
         """
         Starts a separate thread to stream frames.
 
-        This function is called as a seperate thread when streaming is initiated.
-        It will loop, sending frame by frame accross the socket connection,
+        This function is called as a separate thread when streaming is initiated.
+        It will loop, sending frame by frame across the socket connection,
         until the ``stop_video`` is set (by :py:func:`stop_capture`).
 
         Sends a single image and waits for ACK before sending the next image.
@@ -371,6 +371,24 @@ class ThorCamBase(Camera):
         and then closes serial communication with the camera.
         """
         raise NotImplementedError
+    
+    @expose
+    def start_stream(self) -> None:
+        '''
+        Starts a camera stream.
+        '''
+        raise NotImplementedError
+    
+    @expose
+    def end_stream(self) -> None:
+        '''
+        Ends a camera stream.
+        '''
+        raise NotImplementedError
+
+    @expose
+    def await_stream(self, timeout: float = 3.0) -> bool:
+        raise NotImplementedError
 
 
 class ThorCamClient:
@@ -460,7 +478,6 @@ class ThorCamClient:
         self.remote_attributes = self.cam._pyroAttrs
         self._LOCAL_HEADERSIZE = self.HEADERSIZE
     
-    @expose
     def start_stream(self) -> None:
         """
         Starts the video stream.
@@ -519,7 +536,6 @@ class ThorCamClient:
         self.clientsocket.close()
         self.video_stopped.set()
 
-    @expose
     def end_stream(self) -> None:
         """
         Ends the video stream.
@@ -533,7 +549,6 @@ class ThorCamClient:
             time.sleep(0.001)
         self.cam.stop_capture()
 
-    @expose
     def await_stream(self, timeout: float = 3.0) -> bool:
         """
         Blocks until the first image is available from the stream.
