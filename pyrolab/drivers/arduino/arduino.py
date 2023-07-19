@@ -25,10 +25,6 @@ Code also available in the PyroLab repository under ``/extras/arduino``.
 """
 
 import logging
-import subprocess
-import serial
-from psutil import process_iter
-from signal import SIGTERM
 
 from pyfirmata import (
     ANALOG,
