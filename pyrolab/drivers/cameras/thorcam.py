@@ -308,6 +308,7 @@ class ThorCamBase(Camera):
             The address and port of the new socket.
         """
         self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.serversocket.settimeout(5.0)
         self.serversocket.bind((socket.gethostname(), 0))
         return self.serversocket.getsockname()
 
@@ -357,7 +358,7 @@ class ThorCamBase(Camera):
         Stops the capture from the camera.
 
         This frees the memory used for storing the frames then triggers
-        the stop_video event which will end the parrallel socket thread.
+        the stop_video event which will end the parallel socket thread.
         """
         raise NotImplementedError
 
@@ -488,6 +489,7 @@ class ThorCamClient:
         """
         address, port = self.cam.start_capture()
         self.clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.clientsocket.settimeout(5.0)
         self.clientsocket.connect((address, port))
 
         self.stop_video.clear()
