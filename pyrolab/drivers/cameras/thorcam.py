@@ -301,7 +301,7 @@ class ThorCamBase(Camera):
                 log.debug(f"ACK: {check_msg}")
             except TimeoutError:
                 print('Connection timed out!')
-                self.stop_video.set()
+                self.end_stream()
 
     def _get_socket(self) -> Tuple[str, int]:
         """
@@ -535,7 +535,7 @@ class ThorCamClient:
                     message += submessage
             except TimeoutError:
                 print('Connection timed out!')
-                self.stop_video.set()
+                self.end_stream()
 
             # Deserialize the message and break
             self.last_image = cv.imdecode(
