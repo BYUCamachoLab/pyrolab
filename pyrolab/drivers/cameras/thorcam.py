@@ -313,6 +313,7 @@ class ThorCamBase(Camera):
             The address and port of the new socket.
         """
         self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.serversocket.settimeout(5.0)
         self.serversocket.bind((socket.gethostname(), 0))
         return self.serversocket.getsockname()
 
