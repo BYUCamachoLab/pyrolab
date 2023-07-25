@@ -276,6 +276,7 @@ class ThorCamBase(Camera):
         log.debug("Waiting for client to connect...")
         self.serversocket.listen(5)
         self.clientsocket, address = self.serversocket.accept()
+        self.clientsocket.settimeout(5.0)
         log.debug("Accepted client socket")
 
         while not self.stop_video.is_set():
@@ -291,12 +292,16 @@ class ThorCamBase(Camera):
             header = self._write_header(len(ser_msg), *msg.shape)
             ser_msg = header.tobytes() + ser_msg
 
-            log.debug(f"Sending message ({len(ser_msg)} bytes)")
-            self.clientsocket.send(ser_msg)
-            log.debug("Message sent")
+            try:
+                log.debug(f"Sending message ({len(ser_msg)} bytes)")
+                self.clientsocket.send(ser_msg)
+                log.debug("Message sent")
 
-            check_msg = self.clientsocket.recv(4096)
-            log.debug(f"ACK: {check_msg}")
+                check_msg = self.clientsocket.recv(4096)
+                log.debug(f"ACK: {check_msg}")
+            except TimeoutError:
+                print('Connection timed out!')
+                self.stop_video.set()
 
     def _get_socket(self) -> Tuple[str, int]:
         """
@@ -308,7 +313,6 @@ class ThorCamBase(Camera):
             The address and port of the new socket.
         """
         self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.serversocket.settimeout(5.0)
         self.serversocket.bind((socket.gethostname(), 0))
         return self.serversocket.getsockname()
 
@@ -523,11 +527,15 @@ class ThorCamClient:
             message = b""
 
             # Read size of the incoming message
-            header = self.clientsocket.recv(self._LOCAL_HEADERSIZE)
-            length, shape = self._decode_header(header)
-            while len(message) < length:
-                submessage = self.clientsocket.recv(self.SUB_MESSAGE_LENGTH)
-                message += submessage
+            try:
+                header = self.clientsocket.recv(self._LOCAL_HEADERSIZE)
+                length, shape = self._decode_header(header)
+                while len(message) < length:
+                    submessage = self.clientsocket.recv(self.SUB_MESSAGE_LENGTH)
+                    message += submessage
+            except TimeoutError:
+                print('Connection timed out!')
+                self.stop_video.set()
 
             # Deserialize the message and break
             self.last_image = cv.imdecode(
