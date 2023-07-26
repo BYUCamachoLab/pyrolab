@@ -230,9 +230,7 @@ class RTO(Scope):
         force_realtime : bool, optional
             Defaults to False.
         """
-        short_command = "ACQ:POIN:AUTO RES;:TIM:RANG {};:ACQ:SRAT {}".format(
-            duration, sample_rate
-        )
+        short_command = f"ACQ:POIN:AUTO RES;:TIM:RANG {duration};:ACQ:SRAT {sample_rate}"
         if force_realtime:
             self.write_block("ACQ:MODE RTIM")
         self.write_block(short_command)
@@ -323,8 +321,8 @@ class RTO(Scope):
         source,
         source_num,
         level,
+        mode,
         trigger_num=1,
-        mode="NORM",
         settings: str = "",
     ):
         short_command = "TRIG{}:MODE {};SOUR {};TYPE {};LEV{} {};".format(
@@ -333,7 +331,7 @@ class RTO(Scope):
         # Add a trigger.
         self.write_block(short_command + settings)
 
-    def edge_trigger(self, channel: int, voltage: float) -> None:
+    def edge_trigger(self, channel: int, voltage: float, mode: str = 'NORM') -> None:
         """
         Add an edge trigger to the specified channel.
 
@@ -350,6 +348,7 @@ class RTO(Scope):
             source="CHAN{}".format(channel),
             source_num=channel,
             level=voltage,
+            mode=mode,
             settings="EDGE:SLOP POS",
         )
 
