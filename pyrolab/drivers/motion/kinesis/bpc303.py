@@ -86,7 +86,7 @@ class BPC303(KinesisInstrument):
         if not serialno:
             raise ValueError("No serial number provided.")
         self.serialno = serialno
-        self._serialno = c_char_p(bytes(serialno, "utf-8"))  # Store as char array.
+        self._serialno = c_char_p(bytes(str(serialno), "utf-8"))  # Store as char array.
         self.poll_period = poll_period
 
         if bp.TLI_BuildDeviceList() != 0:
@@ -98,7 +98,7 @@ class BPC303(KinesisInstrument):
         serial_list = c_char_p(bytes("", "utf-8"))
         bp.TLI_GetDeviceListByTypeExt(serial_list, 250, 71)
         serial_nos = serial_list.value.decode("utf-8").split(",")
-        if self.serialno not in serial_nos:
+        if str(self.serialno) not in serial_nos:
             raise ValueError("serial number not found in connected devices.")
 
         # Open the device for communication
