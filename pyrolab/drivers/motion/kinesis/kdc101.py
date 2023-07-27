@@ -670,7 +670,7 @@ class KDC101(KinesisInstrument):
     #     check_error(status)
 
     # @oneway
-    def move_by(self, displacement):
+    def move_by(self, displacement, block: bool = True):
         """
         Move the motor by a relative amount.
 
@@ -684,7 +684,8 @@ class KDC101(KinesisInstrument):
             self._serialno, c_int(self._real_value_to_du(displacement, 0))
         )
         check_error(status)
-        self.wait_for_completion(id="moved")
+        if block:
+            self.wait_for_completion(id="moved")
 
     # @oneway
     def move_continuous(self, direction="forward"):
