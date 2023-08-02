@@ -327,6 +327,17 @@ class KDC101(KinesisInstrument):
         status = kcdc.CC_SetJogStepSize(self._serialno, c_uint(c_step_size))
         check_error(status)
 
+    def check_connection(self) -> bool:
+        """
+        Checks connection of the device.
+
+        Returns
+        -------
+        connected : bool
+            True if the USB is listed by the ftdi controller.
+        """
+        return kcdc.CC_CheckConnection(self._serialno)
+
     @property
     def stop_mode(self):
         jog_mode = kcdc.MOT_JogModes()
