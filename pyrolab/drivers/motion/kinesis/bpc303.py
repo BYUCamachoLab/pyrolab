@@ -317,6 +317,38 @@ class BPC303(KinesisInstrument):
         else:
             return bp.PBC_GetPosition(self._serialno, channel)
 
+    def get_position_microns(self, channel: int) -> float:
+        """
+        Returns the position of the requested channel in microns. The result is undefined if not in closed loop mode
+
+        Parameters:
+        -----------
+        channel : int
+            The channel to get the position of (1-n)
+        
+        Returns
+        -------
+        position : float
+            The position of the channel in microns
+        """
+        return 20 * float(bp.PBC_GetPosition(self._serialno, channel)) / 32767
+
+    def set_position_microns(self, channel: int, position_microns: float):
+        """
+        Sets the position of the requested channel in microns. The command is ignored if not in closed loop mode
+
+        Parameters:
+        -----------
+        channel : int
+            The channel to set the position of (1-n)
+        distance_microns : float
+            The position to be moved to, specified in microns 
+        """
+        position_device_units = int(position_microns / 20 * 32767)
+        position_control_mode = bp.PBC_GetPositionControlMode(self._serialno, channel)
+        if position_control_mode == 2 or position_control_mode == 4:
+            bp.PBC_SetPosition(self._serialno, channel, c_short(position_device_units))
+
     def voltage(self, channel: int, percent: int = None) -> int:
         """
         Sets the output voltage of the requested channel. If no voltage is
