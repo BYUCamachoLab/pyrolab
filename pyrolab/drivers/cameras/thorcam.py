@@ -494,7 +494,7 @@ class ThorCamClient:
         """
         address, port = self.cam.start_capture()
         self.clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.clientsocket.settimeout(5.0)
+        self.clientsocket.settimeout(15.0)
         self.clientsocket.connect((address, port))
 
         self.stop_video.clear()
