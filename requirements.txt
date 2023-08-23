@@ -7,7 +7,7 @@ numpy>=1.19.1
 scipy>=1.5.2
 pytest>=6.0.1
 bump2version>=1.0.0 
-pyfirmata
+-e git+https://github.com/tino/pyFirmata@8de0d3257cd41d7cb363e104b840f8a9bc89bcdb#egg=pyFirmata
 pyyaml
 pydantic
 typer
