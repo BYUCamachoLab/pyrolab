@@ -327,6 +327,17 @@ class KDC101(KinesisInstrument):
         status = kcdc.CC_SetJogStepSize(self._serialno, c_uint(c_step_size))
         check_error(status)
 
+    def check_connection(self) -> bool:
+        """
+        Checks connection of the device.
+
+        Returns
+        -------
+        connected : bool
+            True if the USB is listed by the ftdi controller.
+        """
+        return kcdc.CC_CheckConnection(self._serialno)
+
     @property
     def stop_mode(self):
         jog_mode = kcdc.MOT_JogModes()
@@ -670,7 +681,7 @@ class KDC101(KinesisInstrument):
     #     check_error(status)
 
     # @oneway
-    def move_by(self, displacement):
+    def move_by(self, displacement, block: bool = True):
         """
         Move the motor by a relative amount.
 
@@ -684,7 +695,8 @@ class KDC101(KinesisInstrument):
             self._serialno, c_int(self._real_value_to_du(displacement, 0))
         )
         check_error(status)
-        self.wait_for_completion(id="moved")
+        if block:
+            self.wait_for_completion(id="moved")
 
     # @oneway
     def move_continuous(self, direction="forward"):

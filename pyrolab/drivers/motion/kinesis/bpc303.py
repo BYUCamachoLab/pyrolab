@@ -86,7 +86,7 @@ class BPC303(KinesisInstrument):
         if not serialno:
             raise ValueError("No serial number provided.")
         self.serialno = serialno
-        self._serialno = c_char_p(bytes(serialno, "utf-8"))  # Store as char array.
+        self._serialno = c_char_p(bytes(str(serialno), "utf-8"))  # Store as char array.
         self.poll_period = poll_period
 
         if bp.TLI_BuildDeviceList() != 0:
@@ -98,7 +98,7 @@ class BPC303(KinesisInstrument):
         serial_list = c_char_p(bytes("", "utf-8"))
         bp.TLI_GetDeviceListByTypeExt(serial_list, 250, 71)
         serial_nos = serial_list.value.decode("utf-8").split(",")
-        if self.serialno not in serial_nos:
+        if str(self.serialno) not in serial_nos:
             raise ValueError("serial number not found in connected devices.")
 
         # Open the device for communication
@@ -316,6 +316,38 @@ class BPC303(KinesisInstrument):
             bp.PBC_SetPosition(self._serialno, channel, c_short(percent))
         else:
             return bp.PBC_GetPosition(self._serialno, channel)
+
+    def get_position_microns(self, channel: int) -> float:
+        """
+        Returns the position of the requested channel in microns. The result is undefined if not in closed loop mode
+
+        Parameters:
+        -----------
+        channel : int
+            The channel to get the position of (1-n)
+        
+        Returns
+        -------
+        position : float
+            The position of the channel in microns
+        """
+        return 20 * float(bp.PBC_GetPosition(self._serialno, channel)) / 32767
+
+    def set_position_microns(self, channel: int, position_microns: float):
+        """
+        Sets the position of the requested channel in microns. The command is ignored if not in closed loop mode
+
+        Parameters:
+        -----------
+        channel : int
+            The channel to set the position of (1-n)
+        distance_microns : float
+            The position to be moved to, specified in microns 
+        """
+        position_device_units = int(position_microns / 20 * 32767)
+        position_control_mode = bp.PBC_GetPositionControlMode(self._serialno, channel)
+        if position_control_mode == 2 or position_control_mode == 4:
+            bp.PBC_SetPosition(self._serialno, channel, c_short(position_device_units))
 
     def voltage(self, channel: int, percent: int = None) -> int:
         """
