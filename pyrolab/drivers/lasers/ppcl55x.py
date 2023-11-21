@@ -11,9 +11,10 @@ Driver for Pure Photonic tunable lasers.
 .. note::
 
    Pure Photonic offers GUI controllers, a command line interface, and
-   DLL/driver downloads on their
-   `website <https://www.pure-photonics.com/downloads1>`_. These are not
-   required by PyroLab, however.
+   DLL/driver downloads on their `website
+   <https://www.pure-photonics.com/downloads1>`_. These are not required by
+   PyroLab, however I've found that installing the VCP drivers from
+   https://ftdichip.com/drivers/vcp-drivers/ make the driver more consistent.
 
 .. admonition:: Dependencies
    :class: note
