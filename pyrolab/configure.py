@@ -41,8 +41,7 @@ from typing import IO, Any, Dict, List, Optional, Type, Union
 
 
 import Pyro5
-from pydantic import BaseModel, validator
-from pydantic_settings import BaseSettings
+from pydantic import BaseModel, BaseSettings, validator
 from pydantic.fields import PrivateAttr
 from yaml import dump, load
 from yaml.constructor import ConstructorError
