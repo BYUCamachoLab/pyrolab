@@ -195,7 +195,7 @@ class DaemonRunner(multiprocessing.Process):
             raise ValueError("DaemonRunner requires a DaemonConfiguration")
         if not serviceconfigs:
             log.critical(
-                f"No service configurations for daemon '{name}', did you intend to register services?"
+                f"No services assigned to daemon '{name}', did you intend to register services?"
             )
             raise ValueError("DaemonRunner requires ServiceConfigurations")
         if not msg_queue:
