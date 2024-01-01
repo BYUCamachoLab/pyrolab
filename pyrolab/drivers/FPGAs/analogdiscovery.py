@@ -91,18 +91,29 @@ class AnalogDiscovery(FPGA):
         """
         return scope.measure(self._device_data, channel)
     
-    def scope_trigger(self, enable, source=scope.trigger_source.none, channel=1, timeout=0, edge_rising=True, level=0):
+    def scope_trigger(self, enable, source="none", channel=1, timeout=0, edge_rising=True, level=0):
         """
             set up triggering
 
             parameters: - device data
                         - enable / disable triggering with True/False
-                        - trigger source - possible: none, analog, digital, external[1-4]
+                        - trigger source - possible: "none", "analog", "digital", "external_[1-4]" (ie: "external_1")
                         - trigger channel - possible options: 1-4 for analog, or 0-15 for digital
                         - auto trigger timeout in seconds, default is 0
                         - trigger edge rising - True means rising, False means falling, default is rising
                         - trigger level in Volts, default is 0V
         """
+        
+        if source == "none":
+            source = scope.trigger_source.none
+        elif source == "analog":
+            source = scope.trigger_source.analog
+        elif source == "digital":
+            source = scope.trigger_source.digital
+        elif source.startswith("external_"):
+            channel = int(source.split("_")[1])
+            source = scope.trigger_source.external[channel]
+            
         scope.trigger(self._device_data, enable, source, channel, timeout, edge_rising, level)
         
     def scope_record(self, channel=1):
@@ -135,13 +146,13 @@ class AnalogDiscovery(FPGA):
         """
         return scope.data.sampling_frequency
     
-    def wavegen_generate(self, channel=1, function=wavegen.function.sine, offset=0, frequency=1e03, amplitude=1, symmetry=50, wait=0, run_time=0, repeat=0, data=[]):
+    def wavegen_generate(self, channel=1, function="sine", offset=0, frequency=1e03, amplitude=1, symmetry=50, wait=0, run_time=0, repeat=0, data=[]):
         """
             generate an analog signal
 
             parameters: - device data
                         - the selected wavegen channel (1-2)
-                        - function - possible: custom, sine, square, triangle, noise, ds, pulse, trapezium, sine_power, ramp_up, ramp_down (from wavegen.function)
+                        - function - possible: "custom", "sine", "square", "triangle", "noise", "ds", "pulse", "trapezium", "sine_power", "ramp_up", "ramp_down" (from wavegen.function)
                         - offset voltage in Volts
                         - frequency in Hz, default is 1KHz
                         - amplitude in Volts, default is 1V
@@ -151,6 +162,29 @@ class AnalogDiscovery(FPGA):
                         - repeat count, default is infinite (0)
                         - data - list of voltages, used only if function=custom, default is empty
         """
+        if function == "custom":
+            function = wavegen.function.custom
+        elif function == "sine":
+            function = wavegen.function.sine
+        elif function == "square":
+            function = wavegen.function.square
+        elif function == "triangle":
+            function = wavegen.function.triangle
+        elif function == "noise":
+            function = wavegen.function.noise
+        elif function == "ds":
+            function = wavegen.function.ds
+        elif function == "pulse":
+            function = wavegen.function.pulse
+        elif function == "trapezium":
+            function = wavegen.function.trapezium
+        elif function == "sine_power":
+            function = wavegen.function.sine_power
+        elif function == "ramp_up":
+            function = wavegen.function.ramp_up
+        elif function == "ramp_down":
+            function = wavegen.function.ramp_down
+            
         wavegen.generate(self._device_data, channel, function, offset, frequency, amplitude, symmetry, wait, run_time, repeat, data)
         
     def wavegen_close(self, channel=0):
