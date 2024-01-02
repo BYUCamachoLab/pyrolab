@@ -56,7 +56,7 @@ class AnalogDiscovery(FPGA):
             device.close(self._device_data)
             raise Exception("This is a Digital Discovery, not an Analog Discovery.")
     
-    def disconnect(self):
+    def close(self):
         """
         Disconnect from the board.
         
