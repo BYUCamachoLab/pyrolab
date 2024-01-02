@@ -45,9 +45,8 @@ class AnalogDiscovery(FPGA):
     _device_data : device
         The device data object from the WaveForms SDK. Stores information about the device.
     
-    """
-    
-    def connect(self):
+    """    
+    def autoconnect(self):
         """
         Connect to the board.
         
