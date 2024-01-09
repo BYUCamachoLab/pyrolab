@@ -367,7 +367,7 @@ def info():
 ###############################################################################
 
 logs_app = typer.Typer()
-app.add_typer(logs_app, name="logs")
+app.add_typer(logs_app, name="logs", help="Compile and export log files.")
 
 
 @logs_app.command("clean")
