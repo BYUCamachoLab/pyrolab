@@ -152,15 +152,15 @@ PyroLab therefore only allows one instance to be started.
 There may be, however, rare instances where an error occurs, so egregious that
 Python terminates immediately, without getting a chance to run the "cleanup"
 code. In such cases, PyroLab may think that an instance is running when it 
-really isn't. The CLI does have an option to force start a new daemon, which 
-will overwrite the lockfile and "forget" about any previous running instances.
-You should double check that the daemon actually died before force starting
-a new one (either in Windows' Task Manager, Mac OS's Activity Monitor, or 
-perhaps in the terminal). To force start a new daemon, simply run:
-
-.. code-block:: python
-
-   pyrolab up --force
+really isn't. Formerly, you had to coerce the CLI to restart with a "force" 
+option; however, in the spirit of, "if it's not responding, launch a new one,"
+that option is now the default behavior. By default, an existing lockfile is
+simply overwritten, causing the daemon to "forget" about any previously running
+instances. If you're suspicious that there are
+extra Python processes running in the background, you should check your OS's
+process manager (Task Manager on Windows, Activity Monitor on Mac OS, etc.) to
+determine whether there are any orphaned processes that you need to kill 
+manually.
 
 You might consider making sure that your process has actually died before 
 forcing a new one to launch. On Windows, you can simply reference the Task
