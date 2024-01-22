@@ -63,46 +63,68 @@ class AnalogDiscovery(FPGA):
         """
         device.close(self._device_data)
         
-    def scope_open(self, sampling_frequency=20e06, buffer_size=0, offset=0, amplitude_range=5):
+    def scope_open(self, sampling_frequency:float=20e6, buffer_size:int=0, 
+                   offset:float=0, amplitude_range:float=5):
         """
-        initialize the oscilloscope
+        Initialize the oscilloscope.
 
-        parameters:- sampling frequency in Hz, default is 20MHz
-                    - buffer size, default is 0 (maximum)
-                    - offset voltage in Volts, default is 0V
-                    - amplitude range in Volts, default is ±5V
+        parameters
+        ----------
+        sampling_frequency : float, default: 20e6 
+            Sampling frequency of the oscilloscope in Hz.
+        buffer_size : int, default: 0
+            Buffer size of the oscilloscope in data points, a value of 0 means maximum buffer size.
+        offset : int, default: 0
+            Offset voltage of the oscilloscope in Volts.
+        amplitude_range : int, default: 5
+            Amplitude range of the oscilloscope in Volts.
         """
         scope.open(self._device_data, sampling_frequency, buffer_size, offset, amplitude_range)
     
     def scope_close(self):
         """
-        close (reset) the oscilloscope
+        close (reset) the oscilloscope.
         """
         scope.close(self._device_data)
 
-    def scope_measure(self, channel):
+    def scope_measure(self, channel:int=1):
         """
-        measure the voltage on a channel
+        Measure the voltage on a channel.
 
-        parameters:- channel, 1 or 2
+        Parameters
+        ----------
+        channel : int {1, 2}
+            The selected oscilloscope channel
         
-        returns:    - the measured voltage in Volts
+        Returns
+        -------
+        data : float
+            The measured voltage in Volts
         """
-        return scope.measure(self._device_data, channel)
+        data = scope.measure(self._device_data, channel)
+        return data
     
-    def scope_trigger(self, enable, source="none", channel=1, timeout=0, edge_rising=True, level=0):
+    def scope_trigger(self, enable:bool, source:str="none", channel:int=1, 
+                      timeout:float=0, edge_rising:bool=True, level:float=0):
         """
-            set up triggering
+        Set up the triggering for the scope.
 
-            parameters: - device data
-                        - enable / disable triggering with True/False
-                        - trigger source - possible: "none", "analog", "digital", "external_[1-4]" (ie: "external_1")
-                        - trigger channel - possible options: 1-4 for analog, or 0-15 for digital
-                        - auto trigger timeout in seconds, default is 0
-                        - trigger edge rising - True means rising, False means falling, default is rising
-                        - trigger level in Volts, default is 0V
+        Parameters
+        ----------
+        enable : bool
+            Enable or disable triggering.
+        source : str, default: "none"
+            Trigger source, possible: "none", "analog", "digital", "external_[1-4]" (ie: "external_1")
+        channel : int, default: 1
+            Trigger channel, possible options: 1-4 for analog, or 0-15 for digital
+        timeout : int, default: 0
+            Auto trigger timeout in seconds, default is 0
+        edge_rising : bool, default: True
+            Trigger edge rising - True means rising, False means falling, default is rising
+        level : int, default: 0
+            Trigger level in Volts, default is 0V
         """
-        
+                                                        
         if source == "none":
             source = scope.trigger_source.none
         elif source == "analog":
@@ -115,22 +137,32 @@ class AnalogDiscovery(FPGA):
             
         scope.trigger(self._device_data, enable, source, channel, timeout, edge_rising, level)
         
-    def scope_record(self, channel=1):
+    def scope_record(self, channel:int=1):
         """
-        record an analog signal
+        Record an analog signal over a period of time determined by the scope buffer and sample rate.
 
-        parameters: - device data
-                    - the selected oscilloscope channel (1-2, or 1-4)
-
-        returns:    - a list with the recorded voltages
+        Parameters
+        ----------
+        channel : int, default: 1
+            The selected oscilloscope channel
+        
+        Returns
+        -------
+        data : list[float]
+            A list with the recorded voltages
         """
-        return scope.record(self._device_data, channel)
+
+        data = scope.record(self._device_data, channel)
+        return data
     
-    def get_scope_info(self):
+    def get_scope_settings(self):
         """
-        get the scope info
+        Get the scope's sample rate, buffer size, and max buffer size.
 
-        returns:    - a dictionary with the scope info
+        Returns
+        -------
+        info : dict
+            A dictionary with the scope info: sample_rate, buffer_size, max_buffer_size
         """
         info = {"sample_rate" : scope.data.sampling_frequency,
                 "buffer_size" : scope.data.buffer_size,
@@ -139,28 +171,49 @@ class AnalogDiscovery(FPGA):
     
     def get_scope_sample_rate(self):
         """
-        get the scope sample rate
+        Get the scope sample rate.
 
-        returns:    - the scope sample rate in Hz
+        Returns
+        -------
+        sample_rate : float
+            The scope sample rate in Hz
         """
-        return scope.data.sampling_frequency
+        sample_rate = scope.data.sampling_frequency
+        return sample_rate
     
-    def wavegen_generate(self, channel=1, function="sine", offset=0, frequency=1e03, amplitude=1, symmetry=50, wait=0, run_time=0, repeat=0, data=[]):
+    def wavegen_generate(self, channel:int=1, function:str="sine", 
+                         offset:float=0, frequency:float=1e03, amplitude:float=1, 
+                         symmetry:float=50, wait:float=0, run_time:float=0, 
+                         repeat:int=0, data:list[float]=[]):
         """
-            generate an analog signal
+            Generate a waveform on a wavegen channel.
 
-            parameters: - device data
-                        - the selected wavegen channel (1-2)
-                        - function - possible: "custom", "sine", "square", "triangle", "noise", "ds", "pulse", "trapezium", "sine_power", "ramp_up", "ramp_down" (from wavegen.function)
-                        - offset voltage in Volts
-                        - frequency in Hz, default is 1KHz
-                        - amplitude in Volts, default is 1V
-                        - signal symmetry in percentage, default is 50%
-                        - wait time in seconds, default is 0s
-                        - run time in seconds, default is infinite (0)
-                        - repeat count, default is infinite (0)
-                        - data - list of voltages, used only if function=custom, default is empty
+            Parameters
+            ----------
+            channel : int, default: 1
+                The selected wavegen channel
+            function : str, default: "sine"
+                The function (shape) of the generated waveform, possible: 
+                "custom", "sine", "square", "triangle", "noise", "ds", "pulse", 
+                "trapezium", "sine_power", "ramp_up", "ramp_down"
+            offset : float, default: 0
+                Offset voltage in Volts
+            frequency : float, default: 1e03
+                Frequency in Hz
+            amplitude : float, default: 1
+                Amplitude in Volts
+            symmetry : float, default: 50
+                Signal symmetry in percentage
+            wait : float, default: 0
+                Wait time in seconds
+            run_time : float, default: 0
+                Run time in seconds, default is infinite (0)
+            repeat : int, default: 0
+                Repeat count, default is infinite (0)
+            data : list[float], default: []
+                List of voltages, used only if function=custom
         """
+
         if function == "custom":
             function = wavegen.function.custom
         elif function == "sine":
@@ -186,24 +239,36 @@ class AnalogDiscovery(FPGA):
             
         wavegen.generate(self._device_data, channel, function, offset, frequency, amplitude, symmetry, wait, run_time, repeat, data)
         
-    def wavegen_close(self, channel=0):
+    def wavegen_close(self, channel:int=0):
         """
-        reset a wavegen channel, or all channels (channel=0)
+        Reset a wavegen channel, or all channels (channel=0).
+        
+        Parameters
+        ----------
+        channel : int, default: 0
+            The selected wavegen channel
         """
         wavegen.close(self._device_data, channel)
 
-    def wavegen_enable(self, channel=1):
+    def wavegen_enable(self, channel:int=1):
         """
-        enable a wavegen channel
+        Enable a wavegen channel, starting the waveform generation.
+        
+        Parameters
+        ----------
+        channel : int, default: 1
+            The selected wavegen channel
+        """
 
-        parameters: - the selected wavegen channel (1-2)
-        """
         wavegen.enable(self._device_data, channel)
         
-    def wavegen_disable(self, channel=1):
+    def wavegen_disable(self, channel:int=1):
         """
-        disable a wavegen channel
+        Disable a wavegen channel, stopping the waveform generation.
         
-        parameters: - the selected wavegen channel (1-2)
+        Parameters
+        ----------
+        channel : int, default: 1
+            The selected wavegen channel
         """
         wavegen.disable(self._device_data, channel)
