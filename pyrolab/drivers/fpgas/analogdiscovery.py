@@ -25,46 +25,53 @@ Driver for the Digilent Analog Discovery 3.
 """
 
 
-from WF_SDK import device, scope, wavegen, tools, error 
+from WF_SDK import device, scope, wavegen, tools, error
 
 from pyrolab.drivers.FPGAs import FPGA
 from pyrolab.api import expose, behavior
+
 
 @behavior(instance_mode="single")
 @expose
 class AnalogDiscovery(FPGA):
     """
     A Digilent Analog Discovery 3.
-    
+
     The board has 2 analog inputs, 2 analog outputs, 16 digital inputs, and 16 digital outputs.
     At the moment, only the analog inputs and outputs are implemented, and only the scope and wavegen
     functionalities are implemented.
-    """    
+    """
+
     def autoconnect(self):
         """
         Connect to the board.
-        
+
         """
         self._device_data = device.open()
         if self._device_data.name == "Digital Discovery":
             device.close(self._device_data)
             raise Exception("This is a Digital Discovery, not an Analog Discovery.")
-    
+
     def close(self):
         """
         Disconnect from the board.
-        
+
         """
         device.close(self._device_data)
-        
-    def scope_open(self, sampling_frequency: float = 20e6, buffer_size: int = 0, 
-                   offset: float = 0, amplitude_range: float = 5):
+
+    def scope_open(
+        self,
+        sampling_frequency: float = 20e6,
+        buffer_size: int = 0,
+        offset: float = 0,
+        amplitude_range: float = 5,
+    ):
         """
         Initialize the oscilloscope.
 
         Parameters
         ----------
-        sampling_frequency : float, default: 20e6 
+        sampling_frequency : float, default: 20e6
             Sampling frequency of the oscilloscope in Hz.
         buffer_size : int, default: 0
             Buffer size of the oscilloscope in data points, a value of 0 means maximum buffer size.
@@ -73,8 +80,10 @@ class AnalogDiscovery(FPGA):
         amplitude_range : int, default: 5
             Amplitude range of the oscilloscope in Volts.
         """
-        scope.open(self._device_data, sampling_frequency, buffer_size, offset, amplitude_range)
-    
+        scope.open(
+            self._device_data, sampling_frequency, buffer_size, offset, amplitude_range
+        )
+
     def scope_close(self):
         """
         Close (reset) the oscilloscope.
@@ -89,7 +98,7 @@ class AnalogDiscovery(FPGA):
         ----------
         channel : int {1, 2}
             The selected oscilloscope channel
-        
+
         Returns
         -------
         data : float
@@ -97,9 +106,16 @@ class AnalogDiscovery(FPGA):
         """
         data = scope.measure(self._device_data, channel)
         return data
-    
-    def scope_trigger(self, enable: bool, source: str = "none", channel: int = 1, 
-                      timeout: float = 0, edge_rising: bool = True, level: float = 0):
+
+    def scope_trigger(
+        self,
+        enable: bool,
+        source: str = "none",
+        channel: int = 1,
+        timeout: float = 0,
+        edge_rising: bool = True,
+        level: float = 0,
+    ):
         """
         Set up the triggering for the scope.
 
@@ -118,7 +134,7 @@ class AnalogDiscovery(FPGA):
         level : int, default: 0
             Trigger level in Volts, default is 0V
         """
-                                                        
+
         if source == "none":
             source = scope.trigger_source.none
         elif source == "analog":
@@ -128,9 +144,11 @@ class AnalogDiscovery(FPGA):
         elif source.startswith("external_"):
             channel = int(source.split("_")[1])
             source = scope.trigger_source.external[channel]
-            
-        scope.trigger(self._device_data, enable, source, channel, timeout, edge_rising, level)
-        
+
+        scope.trigger(
+            self._device_data, enable, source, channel, timeout, edge_rising, level
+        )
+
     def scope_record(self, channel: int = 1):
         """
         Record an analog signal over a period of time determined by the scope buffer and sample rate.
@@ -139,7 +157,7 @@ class AnalogDiscovery(FPGA):
         ----------
         channel : int, default: 1
             The selected oscilloscope channel
-        
+
         Returns
         -------
         data : list[float]
@@ -148,7 +166,7 @@ class AnalogDiscovery(FPGA):
 
         data = scope.record(self._device_data, channel)
         return data
-    
+
     def get_scope_settings(self):
         """
         Get the scope's sample rate, buffer size, and max buffer size.
@@ -158,11 +176,13 @@ class AnalogDiscovery(FPGA):
         info : dict
             A dictionary with the scope info: sample_rate, buffer_size, max_buffer_size
         """
-        info = {"sample_rate" : scope.data.sampling_frequency,
-                "buffer_size" : scope.data.buffer_size,
-                "max_buffer_size" : scope.data.max_buffer_size}
+        info = {
+            "sample_rate": scope.data.sampling_frequency,
+            "buffer_size": scope.data.buffer_size,
+            "max_buffer_size": scope.data.max_buffer_size,
+        }
         return info
-    
+
     def get_scope_sample_rate(self):
         """
         Get the scope sample rate.
@@ -174,11 +194,20 @@ class AnalogDiscovery(FPGA):
         """
         sample_rate = scope.data.sampling_frequency
         return sample_rate
-    
-    def wavegen_generate(self, channel: int = 1, function: str = "sine", 
-                         offset: float = 0, frequency: float = 1e03, amplitude: float = 1, 
-                         symmetry: float = 50, wait: float = 0, run_time: float = 0, 
-                         repeat: int = 0, data: list[float] = []):
+
+    def wavegen_generate(
+        self,
+        channel: int = 1,
+        function: str = "sine",
+        offset: float = 0,
+        frequency: float = 1e03,
+        amplitude: float = 1,
+        symmetry: float = 50,
+        wait: float = 0,
+        run_time: float = 0,
+        repeat: int = 0,
+        data: list[float] = [],
+    ):
         """
         Generate a waveform on a wavegen channel.
 
@@ -187,8 +216,8 @@ class AnalogDiscovery(FPGA):
         channel : int, default: 1
             The selected wavegen channel
         function : str, default: "sine"
-            The function (shape) of the generated waveform, possible: 
-            "custom", "sine", "square", "triangle", "noise", "ds", "pulse", 
+            The function (shape) of the generated waveform, possible:
+            "custom", "sine", "square", "triangle", "noise", "ds", "pulse",
             "trapezium", "sine_power", "ramp_up", "ramp_down"
         offset : float, default: 0
             Offset voltage in Volts
@@ -230,13 +259,25 @@ class AnalogDiscovery(FPGA):
             function = wavegen.function.ramp_up
         elif function == "ramp_down":
             function = wavegen.function.ramp_down
-            
-        wavegen.generate(self._device_data, channel, function, offset, frequency, amplitude, symmetry, wait, run_time, repeat, data)
-        
+
+        wavegen.generate(
+            self._device_data,
+            channel,
+            function,
+            offset,
+            frequency,
+            amplitude,
+            symmetry,
+            wait,
+            run_time,
+            repeat,
+            data,
+        )
+
     def wavegen_close(self, channel: int = 0):
         """
         Reset a wavegen channel, or all channels (channel=0).
-        
+
         Parameters
         ----------
         channel : int, default: 0
@@ -247,7 +288,7 @@ class AnalogDiscovery(FPGA):
     def wavegen_enable(self, channel: int = 1):
         """
         Enable a wavegen channel, starting the waveform generation.
-        
+
         Parameters
         ----------
         channel : int, default: 1
@@ -255,11 +296,11 @@ class AnalogDiscovery(FPGA):
         """
 
         wavegen.enable(self._device_data, channel)
-        
+
     def wavegen_disable(self, channel: int = 1):
         """
         Disable a wavegen channel, stopping the waveform generation.
-        
+
         Parameters
         ----------
         channel : int, default: 1
