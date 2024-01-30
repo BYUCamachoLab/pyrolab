@@ -63,8 +63,8 @@ class AnalogDiscovery(FPGA):
         """
         device.close(self._device_data)
         
-    def scope_open(self, sampling_frequency:float=20e6, buffer_size:int=0, 
-                   offset:float=0, amplitude_range:float=5):
+    def scope_open(self, sampling_frequency: float = 20e6, buffer_size: int = 0, 
+                   offset: float = 0, amplitude_range: float = 5):
         """
         Initialize the oscilloscope.
 
@@ -87,7 +87,7 @@ class AnalogDiscovery(FPGA):
         """
         scope.close(self._device_data)
 
-    def scope_measure(self, channel:int=1):
+    def scope_measure(self, channel: int = 1):
         """
         Measure the voltage on a channel.
 
@@ -104,8 +104,8 @@ class AnalogDiscovery(FPGA):
         data = scope.measure(self._device_data, channel)
         return data
     
-    def scope_trigger(self, enable:bool, source:str="none", channel:int=1, 
-                      timeout:float=0, edge_rising:bool=True, level:float=0):
+    def scope_trigger(self, enable: bool, source: str = "none", channel: int = 1, 
+                      timeout: float = 0, edge_rising: bool = True, level: float = 0):
         """
         Set up the triggering for the scope.
 
@@ -137,7 +137,7 @@ class AnalogDiscovery(FPGA):
             
         scope.trigger(self._device_data, enable, source, channel, timeout, edge_rising, level)
         
-    def scope_record(self, channel:int=1):
+    def scope_record(self, channel: int = 1):
         """
         Record an analog signal over a period of time determined by the scope buffer and sample rate.
 
@@ -181,10 +181,10 @@ class AnalogDiscovery(FPGA):
         sample_rate = scope.data.sampling_frequency
         return sample_rate
     
-    def wavegen_generate(self, channel:int=1, function:str="sine", 
-                         offset:float=0, frequency:float=1e03, amplitude:float=1, 
-                         symmetry:float=50, wait:float=0, run_time:float=0, 
-                         repeat:int=0, data:list[float]=[]):
+    def wavegen_generate(self, channel: int = 1, function: str = "sine", 
+                         offset: float = 0, frequency: float = 1e03, amplitude: float = 1, 
+                         symmetry: float = 50, wait: float = 0, run_time: float = 0, 
+                         repeat: int = 0, data: list[float] = []):
         """
             Generate a waveform on a wavegen channel.
 
@@ -239,7 +239,7 @@ class AnalogDiscovery(FPGA):
             
         wavegen.generate(self._device_data, channel, function, offset, frequency, amplitude, symmetry, wait, run_time, repeat, data)
         
-    def wavegen_close(self, channel:int=0):
+    def wavegen_close(self, channel: int = 0):
         """
         Reset a wavegen channel, or all channels (channel=0).
         
@@ -250,7 +250,7 @@ class AnalogDiscovery(FPGA):
         """
         wavegen.close(self._device_data, channel)
 
-    def wavegen_enable(self, channel:int=1):
+    def wavegen_enable(self, channel: int = 1):
         """
         Enable a wavegen channel, starting the waveform generation.
         
@@ -262,7 +262,7 @@ class AnalogDiscovery(FPGA):
 
         wavegen.enable(self._device_data, channel)
         
-    def wavegen_disable(self, channel:int=1):
+    def wavegen_disable(self, channel: int = 1):
         """
         Disable a wavegen channel, stopping the waveform generation.
         
