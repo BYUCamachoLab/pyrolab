@@ -70,7 +70,7 @@ Scopes
 
    rohdeschwarz
 
-Source-measure units
+Source-Measure Units
 --------------------
 .. currentmodule:: pyrolab.drivers.smu
 .. autosummary::
@@ -98,6 +98,15 @@ Microcontrollers/Processors
    :recursive:
 
    arduino
+
+FPGA's
+------
+.. currentmodule:: pyrolab.drivers.fpgas
+.. autosummary::
+   :toctree: api/
+   :recursive:
+
+   analogdiscovery
 
 Mixins
 ------
