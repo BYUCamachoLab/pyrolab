@@ -3,8 +3,8 @@
 # (see pyrolab/__init__.py for details)
 
 """
-AnalogDiscovery
-=======
+Analog Discovery
+================
 
 
 
@@ -39,12 +39,6 @@ class AnalogDiscovery(FPGA):
     The board has 2 analog inputs, 2 analog outputs, 16 digital inputs, and 16 digital outputs.
     At the moment, only the analog inputs and outputs are implemented, and only the scope and wavegen
     functionalities are implemented.
-    
-    Attributes
-    ----------
-    _device_data : device
-        The device data object from the WaveForms SDK. Stores information about the device.
-    
     """    
     def autoconnect(self):
         """
@@ -68,7 +62,7 @@ class AnalogDiscovery(FPGA):
         """
         Initialize the oscilloscope.
 
-        parameters
+        Parameters
         ----------
         sampling_frequency : float, default: 20e6 
             Sampling frequency of the oscilloscope in Hz.
@@ -83,7 +77,7 @@ class AnalogDiscovery(FPGA):
     
     def scope_close(self):
         """
-        close (reset) the oscilloscope.
+        Close (reset) the oscilloscope.
         """
         scope.close(self._device_data)
 
@@ -186,32 +180,32 @@ class AnalogDiscovery(FPGA):
                          symmetry: float = 50, wait: float = 0, run_time: float = 0, 
                          repeat: int = 0, data: list[float] = []):
         """
-            Generate a waveform on a wavegen channel.
+        Generate a waveform on a wavegen channel.
 
-            Parameters
-            ----------
-            channel : int, default: 1
-                The selected wavegen channel
-            function : str, default: "sine"
-                The function (shape) of the generated waveform, possible: 
-                "custom", "sine", "square", "triangle", "noise", "ds", "pulse", 
-                "trapezium", "sine_power", "ramp_up", "ramp_down"
-            offset : float, default: 0
-                Offset voltage in Volts
-            frequency : float, default: 1e03
-                Frequency in Hz
-            amplitude : float, default: 1
-                Amplitude in Volts
-            symmetry : float, default: 50
-                Signal symmetry in percentage
-            wait : float, default: 0
-                Wait time in seconds
-            run_time : float, default: 0
-                Run time in seconds, default is infinite (0)
-            repeat : int, default: 0
-                Repeat count, default is infinite (0)
-            data : list[float], default: []
-                List of voltages, used only if function=custom
+        Parameters
+        ----------
+        channel : int, default: 1
+            The selected wavegen channel
+        function : str, default: "sine"
+            The function (shape) of the generated waveform, possible: 
+            "custom", "sine", "square", "triangle", "noise", "ds", "pulse", 
+            "trapezium", "sine_power", "ramp_up", "ramp_down"
+        offset : float, default: 0
+            Offset voltage in Volts
+        frequency : float, default: 1e03
+            Frequency in Hz
+        amplitude : float, default: 1
+            Amplitude in Volts
+        symmetry : float, default: 50
+            Signal symmetry in percentage
+        wait : float, default: 0
+            Wait time in seconds
+        run_time : float, default: 0
+            Run time in seconds, default is infinite (0)
+        repeat : int, default: 0
+            Repeat count, default is infinite (0)
+        data : list[float], default: []
+            List of voltages, used only if function=custom
         """
 
         if function == "custom":
