@@ -14,7 +14,14 @@ Hidden submodule that ensures ThorLabs Kinesis software is available.
 # If found, save their location to the configuration settings.
 # Otherwise, ask the user to do something to locate them, perhaps some command line dealio.
 
-import thorlabs_kinesis as tlk
+import warnings
+
+try:
+    import thorlabs_kinesis as tlk
+except ImportError as exc:
+    raise ImportError(
+        "ThorLabs Kinesis software not found, cannot use kinesis devices with PyroLab. (Kinesis can be installed from ThorLabs' website, see: https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=10285)"
+    ) from exc
 
 from pyrolab.drivers.motion import Motion
 
