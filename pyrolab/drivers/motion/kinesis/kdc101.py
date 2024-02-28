@@ -178,12 +178,10 @@ class KDC101(KinesisInstrument):
 
         if home:
             if not kcdc.CC_CanHome(self._serialno):
-                self.homed = False
                 raise RuntimeError("Device '{}' is not homeable.")
             else:
                 self.go_home()
-        else:
-            self.homed = False
+
 
         log.debug("Exiting `connect()`")
 
@@ -537,6 +535,22 @@ class KDC101(KinesisInstrument):
         else:
             return False
 
+    @property
+    def homed(self) -> bool:
+        """
+        Returns whether the motor is homed.
+        
+        Returns
+        -------
+        is_homed : bool
+            Whether the motor is homed.
+        """
+        bits = self.get_status_bits()
+        if bits & 0x400:
+            return True
+        return False
+        
+
     def wait_for_completion(self, id="homed", MAX_WAIT_TIME=5):
         """
         A blocking function to ensure a task has been finished.
@@ -633,7 +647,6 @@ class KDC101(KinesisInstrument):
         log.debug(f"Homing KDC101 device '{self.serialno}'")
         status = kcdc.CC_Home(self._serialno)
         check_error(status)
-        self.homed = True
         if block:
             self.wait_for_completion()
         log.debug(f"Homed: KDC101 device '{self.serialno}'")
