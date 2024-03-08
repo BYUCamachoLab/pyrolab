@@ -98,9 +98,9 @@ class DMSomething():
     def set_auto_expo(self, auto_expo):
         self.hcam.put(uvcsam.UVCSAM_AE_ONOFF, auto_expo)
     
-    def get_frame(self):
+    def pop_data(self):
         if len(self.data_buffer) > 0:
-            return self.data_buffer[0]
+            return self.data_buffer.pop(0)
         else:
             return None
     
