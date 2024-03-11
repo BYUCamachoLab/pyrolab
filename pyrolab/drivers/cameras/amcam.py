@@ -1,5 +1,5 @@
 import pythoncom
-from pyrolab.drivers.cameras import uvcsam
+from pyrolab.drivers.cameras import uvcsam, Camera
 
 import numpy as np
 
@@ -14,7 +14,7 @@ from ctypes import *
 from typing import Tuple, Optional
 
 
-class DM756_U830():
+class DM756_U830(Camera):
     
     def __init__(self):
         pythoncom.CoInitialize()
