@@ -1,6 +1,20 @@
 import pythoncom
-import uvcsam
-class DMSomething():
+from pyrolab.drivers.cameras import uvcsam
+
+import numpy as np
+
+from pyrolab.api import locate_ns, Proxy
+import cv2 as cv
+
+
+import socket
+import threading
+import time
+from ctypes import *
+from typing import Tuple, Optional
+
+
+class DM756_U830():
     
     def __init__(self):
         pythoncom.CoInitialize()
@@ -85,6 +99,78 @@ class DMSomething():
         else:
             self.data_buffer.pop(0)
             self.data_buffer.append(data)
+            
+    def _remote_streaming_loop(self):
+        """
+        Starts a separate thread to stream frames.
+
+        This function is called as a separate thread when streaming is initiated.
+        It will loop, sending frame by frame across the socket connection,
+        until the ``stop_video`` is set (by :py:func:`stop_capture`).
+
+        Sends a single image and waits for ACK before sending the next image.
+        """
+        # log.debug("Waiting for client to connect...")
+        self.serversocket.listen(5)
+        self.clientsocket, address = self.serversocket.accept()
+        self.clientsocket.settimeout(5.0)
+        # log.debug("Accepted client socket")
+
+        while not self.stop_video.is_set():
+            # log.debug("Getting frame")
+            # encode_param = [int(cv.IMWRITE_JPEG_QUALITY), 90]
+            # success, msg = cv.imencode(".jpg", self.get_frame(), encode_param)
+
+            # if not success:
+            #     log.debug("Compression failed")
+
+            # log.debug("Serializing")
+            # ser_msg = msg.tobytes()
+            # header = self._write_header(len(ser_msg), *msg.shape)
+            # ser_msg = header.tobytes() + ser_msg
+
+            try:
+                # log.debug(f"Sending message ({len(ser_msg)} bytes)")
+                self.clientsocket.send(self.pop_data())
+                # log.debug("Message sent")
+
+                check_msg = self.clientsocket.recv(4096)
+                # log.debug(f"ACK: {check_msg}")
+            except TimeoutError:
+                print('Connection timed out!')
+                self.end_stream()
+
+    def _get_socket(self) -> Tuple[str, int]:
+        """
+        Opens an socket on the local machine using an available port and binds to it.
+
+        Returns
+        -------
+        address, port : Tuple[str, int]
+            The address and port of the new socket.
+        """
+        self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.serversocket.settimeout(5.0)
+        self.serversocket.bind((socket.gethostname(), 0))
+        return self.serversocket.getsockname()
+
+    def start_streaming_thread(self) -> Tuple[str, int]:
+        """
+        Starts the streaming thread for nonlocal connections.
+
+        Returns
+        -------
+        address, port : str, int
+            The address and port of the socket providing the stream.
+        """
+        # log.debug("Setting up socket for streaming")
+        self.stop_video.clear()
+        address, port = self._get_socket()
+        self.video_thread = threading.Thread(
+            target=self._remote_streaming_loop, args=()
+        )
+        self.video_thread.start()
+        return [address, port]
         
     def set_gain(self, gain):
         self.hcam.put(uvcsam.UVCSAM_GAIN, gain)
@@ -110,16 +196,239 @@ class DMSomething():
         self.closeCamera()
     
     
-class DMSomethingClient:
-    def __init__(self, url):
-        self.url = url
-        # self.conn = xmlrpclib.ServerProxy(url)
-        
-    def connect(self):
-        return self.conn.connect()
+class DM756_U830Client:
+    """
+    The Thorlabs camera client. Not a PyroLab :py:class:`Service` object.
+
+    Used for receiving video streamed over a socket connection from a
+    :py:class:`ThorCamBase`-derived service.
+
+    Any :py:class:`ThorCamBase` attribute is a valid ThorCamClient attribute.
+
+    Attributes
+    ----------
+    SUB_MESSAGE_LENGTH : int
+        The size of the sub-message chunks used.
+    """
+
+    def __init__(self):
+        self.remote_attributes = []
+        self.SUB_MESSAGE_LENGTH = 4096
+        self.IMAGE_STRUCT = np.zeros([3840, 2160, 3], dtype=np.uint8)
+        self.IMAGE_MESSAGE_SIZE = self.IMAGE_STRUCT.itemsize * self.IMAGE_STRUCT.size
+        self.stop_video = threading.Event()
+        self.video_stopped = threading.Event()
+        self.last_image = None
+
+    def __getattr__(self, attr):
+        """
+        Accesses remote camera attributes as if they were local.
+
+        Examples
+        --------
+        >>> print(ThorCamClient.color)
+        False
+        >>> print(ThorCamClient.brightness)
+        5
+        """
+        if attr in self.remote_attributes:
+            return getattr(self.cam, attr)
+        else:
+            return super().__getattr__(attr)
+
+    def __setattr__(self, attr, value):
+        """
+        Sets remote camera attributes as if they were local.
+
+        Examples
+        --------
+        >>> ThorCamClient.color = True
+        >>> ThorCamClient.brightness = 8
+        >>> ThorCamClient.exposure = 100
+        """
+        if attr == "remote_attributes":
+            return super().__setattr__(attr, value)
+        elif attr in self.remote_attributes:
+            return setattr(self.cam, attr, value)
+        else:
+            return super().__setattr__(attr, value)
+
+    def connect(self, name: str, ns_host: str = None, ns_port: float = None) -> None:
+        """
+        Connect to a remote PyroLab-hosted UC480 camera.
+
+        Assumes the nameserver where the camera is registered is already
+        configured in the environment.
+
+        Parameters
+        ----------
+        name : str
+            The name used to register the camera on the nameserver.
+
+        Examples
+        --------
+        >>> from pyrolab.api import NameServerConfiguration
+        >>> from pyrolab.drivers.cameras.thorcam import ThorCamClient
+        >>> nscfg = NameServerConfiguration(host="my.nameserver.com")
+        >>> nscfg.update_pyro_config()
+        >>> cam = ThorCamClient()
+        >>> cam.connect("camera_name")
+        """
+        if ns_host or ns_port:
+            args = {"host": ns_host, "port": ns_port}
+        else:
+            args = {}
+
+        with locate_ns(**args) as ns:
+            self.cam = Proxy(ns.lookup(name))
+        self.cam.autoconnect()
     
-    def get_frame(self):
-        return self.conn.get_frame()
+    def start_stream(self) -> None:
+        """
+        Starts the video stream.
+
+        Sets up the remote camera to start streaming and opens a socket
+        connection to receive the stream. Starts a new daemon thread to
+        constantly receive images.
+        """
+        address, port = self.cam.start_capture()
+        self.clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.clientsocket.settimeout(15.0)
+        self.clientsocket.connect((address, port))
+
+        self.stop_video.clear()
+        self.video_stopped.clear()
+        self.video_thread = threading.Thread(target=self._receive_video_loop, args=())
+        self.video_thread.daemon = True
+        self.video_thread.start()
+
+    def _decode_header(self, header):
+        """
+        Decodes the header of the image.
+
+        Image header consists of four np.uintc values, ordered as [length of
+        message (in bytes), width, height, depth (usually 1, or 3 if color)].
+
+        Parameters
+        ----------
+        header : bytes
+            The header of the image.
+
+        Returns
+        -------
+        length, shape : int, tuple(int, int, int)
+            The length in bytes of the image, and its shape (for np.reshape).
+        """
+        length, *shape = np.frombuffer(header, dtype=np.uintc)
+        return length, shape
     
-    def disconnect(self):
-        return self.conn.disconnect
+    def _serial_to_image(self, serial: bytes) -> np.ndarray:
+        """
+        Converts a serialized image to a numpy array.
+
+        Parameters
+        ----------
+        serial : bytes
+            The serialized image.
+
+        Returns
+        -------
+        np.ndarray
+            The deserialized image.
+        """
+        img = np.frombuffer(serial, np.uint8)
+        # print(img.shape)
+        img = img.reshape(3, 3840, 2160, order='C')
+        img.shape = (2160, 3840, 3)
+        img = np.flip(img, [0,2])
+        return 
+
+    def _receive_video_loop(self) -> None:
+        while not self.stop_video.is_set():
+            message = b""
+
+            # Read size of the incoming message
+            try:
+                # header = self.clientsocket.recv(self._LOCAL_HEADERSIZE)
+                # length, shape = self._decode_header(header)
+                # while len(message) < length:
+                #     submessage = self.clientsocket.recv(self.SUB_MESSAGE_LENGTH)
+                #     message += submessage
+                message = self.clientsocket.recv(self.IMAGE_MESSAGE_SIZE)
+                
+            except TimeoutError:
+                print('Connection timed out!')
+                self.end_stream()
+
+            # Deserialize the message and break
+            # self.last_image = cv.imdecode(
+            #     np.frombuffer(message, dtype=np.uint8).reshape(shape), 1
+            # )
+            self.last_image = self._serial_to_image(message)
+            self.clientsocket.send(b"ACK")
+
+        self.clientsocket.close()
+        self.video_stopped.set()
+
+    def end_stream(self) -> None:
+        """
+        Ends the video stream.
+
+        Ends the video stream by setting the stop_video flag and closing the
+        socket connection. Because communication is via a flag, shutdown
+        may not be instantaneous.
+        """
+        self.stop_video.set()
+        while not self.video_stopped.is_set():
+            time.sleep(0.001)
+        self.cam.stop_capture()
+
+    def await_stream(self, timeout: float = 3.0) -> bool:
+        """
+        Blocks until the first image is available from the stream.
+
+        Parameters
+        ----------
+        timeout : float
+            The number of seconds to wait for the first image (default 3).
+
+        Returns
+        -------
+        bool
+            ``True`` if an image is available, ``False`` otherwise.
+        """
+        start = time.time()
+        while self.last_image is None:
+            if time.time() - start > timeout:
+                return False
+            time.sleep(0.001)
+        return True
+
+    def get_frame(self) -> np.ndarray:
+        """
+        Returns the last image received from the stream.
+
+        You should make sure to call :py:meth:`await_stream` before calling
+        this method.
+
+        Returns
+        -------
+        np.ndarray
+            The last image received from the stream.
+
+        Examples
+        --------
+        >>> cam = ThorCamClient()
+        >>> cam.connect("camera_name")
+        >>> cam.start_stream()
+        >>> cam.await_stream()
+        >>> frame = cam.get_frame()
+        """
+        return self.last_image
+
+    def close(self) -> None:
+        """
+        Closes the Proxy connection to the remote camera.
+        """
+        self.cam.close()
+        self.remote_attributes = []
