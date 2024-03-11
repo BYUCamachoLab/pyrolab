@@ -1,8 +1,9 @@
-import sys
+import pythoncom
 import uvcsam
 class DMSomething():
     
     def __init__(self):
+        pythoncom.CoInitialize()
         self.hcam = None
         self.frame = 0
         self.imgWidth = 0
@@ -40,6 +41,7 @@ class DMSomething():
                 self.closeCamera()
                 print('failed to start camera, hr=0x{:x}'.format(ex.hr))
 
+    @staticmethod
     def eventCallBack(nEvent, self):
         self.event_handler(nEvent)
 
