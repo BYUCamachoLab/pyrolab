@@ -27,19 +27,26 @@ class DM756_U830(Camera):
         self.pData = None
         self.data_buffer = []
         self.data_buffer_size = 10
+        self.cam_id = None
+        self.stop_video = threading.Event()
     
-    @expose
+    
     def connect(self, cam_idx=0):
         arr = uvcsam.Uvcsam.enum()
         if len(arr) == 0:
             print("Warning", "No camera found.")
         elif 1 == len(arr):
-            self.openCamera(arr[0].id)
+            self.cam_id = arr[0].id
         else:
             if cam_idx >= len(arr):
                 print("Warning", "Camera index out of range.")
             else:
-                self.openCamera(arr[cam_idx].id)
+                self.cam_id = arr[cam_idx].id
+    
+    def start_capture(self):
+        self.openCamera(self.cam_id)
+        if not self.local:
+            return self.start_streaming_thread()
                 
     @property
     def cam_connected(self):
