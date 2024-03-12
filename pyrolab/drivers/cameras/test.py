@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 
 cam = DM756_U830()
-cam.connect()
+cam.connect(local=True)
 
 while cam.cam_connected:
     data = cam.pop_data()

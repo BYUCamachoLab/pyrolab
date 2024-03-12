@@ -29,21 +29,26 @@ class DM756_U830(Camera):
         self.data_buffer_size = 10
         self.cam_id = None
         self.stop_video = threading.Event()
+        self.local = False
+        self._logs = ""
     
     
-    def connect(self, cam_idx=0):
+    def connect(self, cam_idx=0, local=False):
+        self.local = local
         arr = uvcsam.Uvcsam.enum()
+        self.log('connecting to camera')
         if len(arr) == 0:
-            print("Warning", "No camera found.")
+            self.log("Warning", "No camera found.")
         elif 1 == len(arr):
             self.cam_id = arr[0].id
         else:
             if cam_idx >= len(arr):
-                print("Warning", "Camera index out of range.")
+                self.log("Warning", "Camera index out of range.")
             else:
                 self.cam_id = arr[cam_idx].id
     
     def start_capture(self):
+        self.log('starting capture')
         self.openCamera(self.cam_id)
         if not self.local:
             return self.start_streaming_thread()
@@ -52,7 +57,15 @@ class DM756_U830(Camera):
     def cam_connected(self):
         return self._hcam is not None
     
+    @property
+    def logs(self):
+        return self._logs
+    
+    def log(self, msg):
+        self._logs += msg + '\n'
+    
     def openCamera(self, id):
+        self.log('opening camera')
         self._hcam = uvcsam.Uvcsam.open(id)
         if self._hcam:
             self.frame = 0
@@ -67,7 +80,7 @@ class DM756_U830(Camera):
                 self._hcam.start(None, self.eventCallBack, self) # Pull Mode
             except uvcsam.HRESULTException as ex:
                 self.closeCamera()
-                print('failed to start camera, hr=0x{:x}'.format(ex.hr))
+                self.log('failed to start camera, hr=0x{:x}'.format(ex.hr))
 
     @staticmethod
     def eventCallBack(nEvent, self):
@@ -124,11 +137,11 @@ class DM756_U830(Camera):
 
         Sends a single image and waits for ACK before sending the next image.
         """
-        # log.debug("Waiting for client to connect...")
+        self.log("Waiting for client to connect...")
         self.serversocket.listen(5)
         self.clientsocket, address = self.serversocket.accept()
         self.clientsocket.settimeout(5.0)
-        # log.debug("Accepted client socket")
+        self.log("Accepted client socket")
 
         while not self.stop_video.is_set():
             # log.debug("Getting frame")
@@ -144,14 +157,15 @@ class DM756_U830(Camera):
             # ser_msg = header.tobytes() + ser_msg
 
             try:
-                # log.debug(f"Sending message ({len(ser_msg)} bytes)")
-                self.clientsocket.send(self.pop_data())
-                # log.debug("Message sent")
+                ser_msg = self.pop_data()
+                self.log(f"Sending message ({len(ser_msg)} bytes)")
+                self.clientsocket.send(ser_msg)
+                self.log("Message sent")
 
                 check_msg = self.clientsocket.recv(4096)
-                # log.debug(f"ACK: {check_msg}")
+                self.log(f"ACK: {check_msg}")
             except TimeoutError:
-                print('Connection timed out!')
+                self.log('Connection timed out!')
                 self.end_stream()
 
     def _get_socket(self) -> Tuple[str, int]:
@@ -177,7 +191,7 @@ class DM756_U830(Camera):
         address, port : str, int
             The address and port of the socket providing the stream.
         """
-        # log.debug("Setting up socket for streaming")
+        self.log("Setting up socket for streaming")
         self.stop_video.clear()
         address, port = self._get_socket()
         self.video_thread = threading.Thread(
@@ -213,6 +227,7 @@ class DM756_U830(Camera):
             return None
         
     def get_frame(self):
+        print('Getting frame')
         if len(self.data_buffer) > 0:
             data = self.data_buffer.pop(0)
             if data is not None:
@@ -222,9 +237,17 @@ class DM756_U830(Camera):
                 img = np.flip(img, [0,2])
             else:
                 img = None
+                print('No data in buffer')
             return img
         else:
             return None
+        
+    def stop_capture(self):
+        if not self.local:
+            self.clientsocket.close()
+            self.stop_video.set()
+        
+        
     
     def close(self):
         self.closeCamera()
@@ -248,11 +271,15 @@ class DM756_U830Client:
     def __init__(self):
         self.remote_attributes = []
         self.SUB_MESSAGE_LENGTH = 4096
-        self.IMAGE_STRUCT = np.zeros([3840, 2160, 3], dtype=np.uint8)
+        self.IMAGE_WIDTH = 3840
+        self.IMAGE_HEIGHT = 2160
+        self.IMAGE_CHANNELS = 3
+        self.IMAGE_STRUCT = np.zeros([self.IMAGE_WIDTH, self.IMAGE_HEIGHT, self.IMAGE_CHANNELS], dtype=np.uint8)
         self.IMAGE_MESSAGE_SIZE = self.IMAGE_STRUCT.itemsize * self.IMAGE_STRUCT.size
         self.stop_video = threading.Event()
         self.video_stopped = threading.Event()
         self.last_image = None
+        self._logs = ""
 
     def __getattr__(self, attr):
         """
@@ -308,6 +335,7 @@ class DM756_U830Client:
         >>> cam = ThorCamClient()
         >>> cam.connect("camera_name")
         """
+        self.log('connecting to camera')
         if ns_host or ns_port:
             args = {"host": ns_host, "port": ns_port}
         else:
@@ -325,16 +353,19 @@ class DM756_U830Client:
         connection to receive the stream. Starts a new daemon thread to
         constantly receive images.
         """
+        self.log("Starting video stream")
         address, port = self.cam.start_capture()
         self.clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.clientsocket.settimeout(15.0)
         self.clientsocket.connect((address, port))
+        self.log("Connected to socket")
 
         self.stop_video.clear()
         self.video_stopped.clear()
         self.video_thread = threading.Thread(target=self._receive_video_loop, args=())
         self.video_thread.daemon = True
         self.video_thread.start()
+        self.log("Started video thread")
 
     def _decode_header(self, header):
         """
@@ -370,10 +401,13 @@ class DM756_U830Client:
         np.ndarray
             The deserialized image.
         """
+        if len(serial) != self.IMAGE_MESSAGE_SIZE:
+            self.log(f"Received message of size {len(serial)}, expected {self.IMAGE_MESSAGE_SIZE} bytes.")
+            return
         img = np.frombuffer(serial, np.uint8)
         # print(img.shape)
-        img = img.reshape(3, 3840, 2160, order='C')
-        img.shape = (2160, 3840, 3)
+        img = img.reshape(self.IMAGE_CHANNELS, self.IMAGE_WIDTH, self.IMAGE_HEIGHT, order='C')
+        img.shape = (self.IMAGE_HEIGHT, self.IMAGE_WIDTH, self.IMAGE_CHANNELS)
         img = np.flip(img, [0,2])
         return 
 
@@ -388,10 +422,11 @@ class DM756_U830Client:
                 # while len(message) < length:
                 #     submessage = self.clientsocket.recv(self.SUB_MESSAGE_LENGTH)
                 #     message += submessage
+                self.log("Receiving message of size", self.IMAGE_MESSAGE_SIZE)
                 message = self.clientsocket.recv(self.IMAGE_MESSAGE_SIZE)
                 
             except TimeoutError:
-                print('Connection timed out!')
+                self.log('Connection timed out!')
                 self.end_stream()
 
             # Deserialize the message and break
@@ -431,6 +466,7 @@ class DM756_U830Client:
         bool
             ``True`` if an image is available, ``False`` otherwise.
         """
+        self.log("Waiting for stream")
         start = time.time()
         while self.last_image is None:
             if time.time() - start > timeout:
@@ -466,3 +502,14 @@ class DM756_U830Client:
         """
         self.cam.close()
         self.remote_attributes = []
+    
+    @property
+    def logs(self):
+        return self._logs
+    
+    def log(self, msg):
+        self._logs += msg + '\n'
+    
+    @property
+    def cam_logs(self):
+        return self.cam.logs
