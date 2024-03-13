@@ -158,8 +158,13 @@ class DM756_U830(Camera):
 
             try:
                 ser_msg = self.pop_data()
+                total_sent = 0
                 self.log(f"Sending message ({len(ser_msg)} bytes)")
-                self.clientsocket.send(ser_msg)
+                while total_sent < len(self.ser_msg):
+                    sent = self.clientsocket.send(ser_msg[total_sent:])
+                    if sent == 0:
+                        raise RuntimeError("Socket connection broken")
+                    total_sent += sent
                 self.log("Message sent")
 
                 check_msg = self.clientsocket.recv(4096)
@@ -419,11 +424,12 @@ class DM756_U830Client:
             try:
                 # header = self.clientsocket.recv(self._LOCAL_HEADERSIZE)
                 # length, shape = self._decode_header(header)
-                # while len(message) < length:
-                #     submessage = self.clientsocket.recv(self.SUB_MESSAGE_LENGTH)
-                #     message += submessage
-                self.log("Receiving message of size", self.IMAGE_MESSAGE_SIZE)
-                message = self.clientsocket.recv(self.IMAGE_MESSAGE_SIZE)
+                while len(message) < self.IMAGE_MESSAGE_SIZE:
+                    submessage = self.clientsocket.recv(min(self.SUB_MESSAGE_LENGTH, self.IMAGE_MESSAGE_SIZE - len(message)))
+                    if submessage == b"":
+                        raise RuntimeError("Socket connection broken")
+                    message += submessage
+                self.log(f"Reced message of size {len(message)} bytes")
                 
             except TimeoutError:
                 self.log('Connection timed out!')
