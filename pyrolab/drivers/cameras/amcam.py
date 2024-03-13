@@ -140,7 +140,7 @@ class DM756_U830(Camera):
         self.log("Waiting for client to connect...")
         self.serversocket.listen(5)
         self.clientsocket, address = self.serversocket.accept()
-        self.clientsocket.settimeout(5.0)
+        self.clientsocket.settimeout(25.0)
         self.log("Accepted client socket")
 
         while not self.stop_video.is_set():
@@ -374,7 +374,7 @@ class DM756_U830Client:
         self.log("Starting video stream")
         address, port = self.cam.start_capture()
         self.clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.clientsocket.settimeout(15.0)
+        self.clientsocket.settimeout(25.0)
         self.clientsocket.connect((address, port))
         self.log("Connected to socket")
 
@@ -447,6 +447,7 @@ class DM756_U830Client:
                 
             except TimeoutError:
                 self.log('Connection timed out!')
+                self.print('Connection timed out!')
                 self.end_stream()
 
             # Deserialize the message and break
@@ -455,6 +456,7 @@ class DM756_U830Client:
             # )
             self.last_image = self._serial_to_image(message)
             self.clientsocket.send(b"ACK")
+            print('Image received')
 
         self.clientsocket.close()
         self.video_stopped.set()
@@ -514,7 +516,9 @@ class DM756_U830Client:
         >>> cam.await_stream()
         >>> frame = cam.get_frame()
         """
-        return self.last_image
+        frame = self.last_image
+        self.last_image = None
+        return frame
 
     def close(self) -> None:
         """
