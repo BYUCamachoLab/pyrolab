@@ -334,7 +334,7 @@ class DM756_U830Client:
         else:
             return super().__setattr__(attr, value)
 
-    def connect(self, name: str, ns_host: str = None, ns_port: float = None) -> None:
+    def cam_connect(self, name: str, ns_host: str = None, ns_port: float = None) -> None:
         """
         Connect to a remote PyroLab-hosted UC480 camera.
 
