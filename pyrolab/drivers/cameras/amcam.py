@@ -183,6 +183,8 @@ class DM756_U830(Camera):
         may not be instantaneous.
         """
         self.stop_video.set()
+        while self.video_thread.is_alive():
+            time.sleep(0.001)
         self.clientsocket.close()
         self.log("Video stream ended")
     
@@ -262,11 +264,9 @@ class DM756_U830(Camera):
         
     def stop_capture(self):
         if not self.local:
-            self.clientsocket.close()
-            self.stop_video.set()
-        
-        
-    
+            self.end_stream()
+            self.closeCamera()
+            
     def close(self):
         self.closeCamera()
     
@@ -472,7 +472,7 @@ class DM756_U830Client:
             time.sleep(0.001)
         self.cam.stop_capture()
 
-    def await_stream(self, timeout: float = 10.0) -> bool:
+    def await_stream(self, timeout: float = 20.0) -> bool:
         """
         Blocks until the first image is available from the stream.
 
