@@ -440,6 +440,7 @@ class DM756_U830Client:
                 while len(message) < self.IMAGE_MESSAGE_SIZE:
                     submessage = self.clientsocket.recv(min(self.SUB_MESSAGE_LENGTH, self.IMAGE_MESSAGE_SIZE - len(message)))
                     if submessage == b"":
+                        self.log("Socket connection broken")
                         raise RuntimeError("Socket connection broken")
                     message += submessage
                 self.log(f"Reced message of size {len(message)} bytes")
