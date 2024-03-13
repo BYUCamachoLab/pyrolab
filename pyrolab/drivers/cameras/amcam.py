@@ -31,12 +31,14 @@ class DM756_U830(Camera):
         self.stop_video = threading.Event()
         self.local = False
         self._logs = ""
+        self._conn_count = 0
     
     
     def connect(self, cam_idx=0, local=False):
         self.local = local
         arr = uvcsam.Uvcsam.enum()
-        self.log('connecting to camera')
+        self.log(f'connecting to camera {self._conn_count}')
+        self._conn_count += 1
         if len(arr) == 0:
             self.log("Warning, No camera found.")
         elif 1 == len(arr):
@@ -374,7 +376,7 @@ class DM756_U830Client:
         self.log("Starting video stream")
         address, port = self.cam.start_capture()
         self.clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.clientsocket.settimeout(25.0)
+        self.clientsocket.settimeout(35.0)
         self.clientsocket.connect((address, port))
         self.log("Connected to socket")
 
@@ -447,7 +449,9 @@ class DM756_U830Client:
                 
             except TimeoutError:
                 self.log('Connection timed out!')
-                self.print('Connection timed out!')
+                self.end_stream()
+            except Exception as e:
+                self.log(f"Error: {e}")
                 self.end_stream()
 
             # Deserialize the message and break
@@ -457,8 +461,9 @@ class DM756_U830Client:
             self.last_image = self._serial_to_image(message)
             self.clientsocket.send(b"ACK")
             print('Image received')
-
+        self.log("Video loop ended")
         self.clientsocket.close()
+        self.log("Client socket closed")
         self.video_stopped.set()
 
     def end_stream(self) -> None:
