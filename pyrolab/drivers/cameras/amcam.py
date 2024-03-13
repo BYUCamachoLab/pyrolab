@@ -38,12 +38,12 @@ class DM756_U830(Camera):
         arr = uvcsam.Uvcsam.enum()
         self.log('connecting to camera')
         if len(arr) == 0:
-            self.log("Warning", "No camera found.")
+            self.log("Warning, No camera found.")
         elif 1 == len(arr):
             self.cam_id = arr[0].id
         else:
             if cam_idx >= len(arr):
-                self.log("Warning", "Camera index out of range.")
+                self.log("Warning, Camera index out of range.")
             else:
                 self.cam_id = arr[cam_idx].id
     
@@ -408,13 +408,13 @@ class DM756_U830Client:
         """
         if len(serial) != self.IMAGE_MESSAGE_SIZE:
             self.log(f"Received message of size {len(serial)}, expected {self.IMAGE_MESSAGE_SIZE} bytes.")
-            return
+            return None
         img = np.frombuffer(serial, np.uint8)
         # print(img.shape)
         img = img.reshape(self.IMAGE_CHANNELS, self.IMAGE_WIDTH, self.IMAGE_HEIGHT, order='C')
         img.shape = (self.IMAGE_HEIGHT, self.IMAGE_WIDTH, self.IMAGE_CHANNELS)
         img = np.flip(img, [0,2])
-        return 
+        return img
 
     def _receive_video_loop(self) -> None:
         while not self.stop_video.is_set():
