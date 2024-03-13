@@ -163,6 +163,7 @@ class DM756_U830(Camera):
                 while total_sent < len(self.ser_msg):
                     sent = self.clientsocket.send(ser_msg[total_sent:])
                     if sent == 0:
+                        self.log("Socket connection broken")
                         raise RuntimeError("Socket connection broken")
                     total_sent += sent
                 self.log("Message sent")
@@ -173,6 +174,18 @@ class DM756_U830(Camera):
                 self.log('Connection timed out!')
                 self.end_stream()
 
+    def end_stream(self) -> None:
+        """
+        Ends the video stream.
+
+        Ends the video stream by setting the stop_video flag and closing the
+        socket connection. Because communication is via a flag, shutdown
+        may not be instantaneous.
+        """
+        self.stop_video.set()
+        self.clientsocket.close()
+        self.log("Video stream ended")
+    
     def _get_socket(self) -> Tuple[str, int]:
         """
         Opens an socket on the local machine using an available port and binds to it.
@@ -348,7 +361,7 @@ class DM756_U830Client:
 
         with locate_ns(**args) as ns:
             self.cam = Proxy(ns.lookup(name))
-        self.cam.autoconnect()
+        self.cam.connect()
     
     def start_stream(self) -> None:
         """
