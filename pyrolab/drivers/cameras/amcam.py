@@ -142,7 +142,7 @@ class DM756_U830(Camera):
         self.log("Waiting for client to connect...")
         self.serversocket.listen(5)
         self.clientsocket, address = self.serversocket.accept()
-        self.clientsocket.settimeout(25.0)
+        self.clientsocket.settimeout(35.0)
         self.log("Accepted client socket")
 
         while not self.stop_video.is_set():
@@ -445,7 +445,7 @@ class DM756_U830Client:
                         self.log("Socket connection broken")
                         raise RuntimeError("Socket connection broken")
                     message += submessage
-                self.log(f"Reced message of size {len(message)} bytes")
+                self.log(f"Recieved message of size {len(message)} bytes")
                 
             except TimeoutError:
                 self.log('Connection timed out!')
