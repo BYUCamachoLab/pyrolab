@@ -90,10 +90,10 @@ class DM756_U830(Camera):
         if self._hcam is not None:
             if uvcsam.UVCSAM_EVENT_ERROR & nEvent != 0:
                 self.closeCamera()
-                print(self, "Warning", "Generic error.")
+                self.log('Error: Camera error.')
             elif uvcsam.UVCSAM_EVENT_DISCONNECT & nEvent != 0:
                 self.closeCamera()
-                print(self, "Warning", "Camera disconnect.")
+                self.log('Error: Camera disconnected.')
             else:
                 if uvcsam.UVCSAM_EVENT_IMAGE & nEvent != 0:
                     self.onImageEvent()
@@ -160,7 +160,7 @@ class DM756_U830(Camera):
                 ser_msg = self.pop_data()
                 total_sent = 0
                 self.log(f"Sending message ({len(ser_msg)} bytes)")
-                while total_sent < len(self.ser_msg):
+                while total_sent < len(ser_msg):
                     sent = self.clientsocket.send(ser_msg[total_sent:])
                     if sent == 0:
                         self.log("Socket connection broken")
@@ -471,7 +471,7 @@ class DM756_U830Client:
             time.sleep(0.001)
         self.cam.stop_capture()
 
-    def await_stream(self, timeout: float = 3.0) -> bool:
+    def await_stream(self, timeout: float = 10.0) -> bool:
         """
         Blocks until the first image is available from the stream.
 
