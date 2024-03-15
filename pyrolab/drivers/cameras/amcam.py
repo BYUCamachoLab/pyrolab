@@ -147,18 +147,6 @@ class DM756_U830(Camera):
         self.log("Accepted client socket")
 
         while not self.stop_video.is_set():
-            # log.debug("Getting frame")
-            # encode_param = [int(cv.IMWRITE_JPEG_QUALITY), 90]
-            # success, msg = cv.imencode(".jpg", self.get_frame(), encode_param)
-
-            # if not success:
-            #     log.debug("Compression failed")
-
-            # log.debug("Serializing")
-            # ser_msg = msg.tobytes()
-            # header = self._write_header(len(ser_msg), *msg.shape)
-            # ser_msg = header.tobytes() + ser_msg
-
             try:
                 ser_msg = self.pop_data()
                 if ser_msg is None:
@@ -171,9 +159,6 @@ class DM756_U830(Camera):
                         raise RuntimeError("Socket connection broken")
                     total_sent += sent
                 self.frames_sent += 1
-                check_msg = self.clientsocket.recv(4096)
-                if check_msg != b"ACK":
-                    self.log("Error: ACK not received")
             except TimeoutError:
                 self.log('Connection timed out!')
                 self.end_stream()
@@ -192,8 +177,7 @@ class DM756_U830(Camera):
         may not be instantaneous.
         """
         self.stop_video.set()
-        while self.video_thread.is_alive():
-            time.sleep(0.001)
+        self.log("set stop_video flag")
         self.clientsocket.close()
         self.log("Video stream ended")
     
@@ -259,7 +243,7 @@ class DM756_U830(Camera):
     def get_frame(self):
         print('Getting frame')
         if len(self.data_buffer) > 0:
-            data = self.data_buffer.pop(0)
+            data = self.pop_data()
             if data is not None:
                 img = np.frombuffer(data, np.uint8)
                 img = img.reshape(3, 3840, 2160, order='C')
@@ -267,13 +251,14 @@ class DM756_U830(Camera):
                 img = np.flip(img, [0,2])
             else:
                 img = None
-                print('No data in buffer')
             return img
         else:
             return None
         
     def stop_capture(self):
+        self.log('stopping capture')
         if not self.local:
+            self.log('not local, ending stream')
             self.end_stream()
             self.closeCamera()
             
@@ -296,7 +281,7 @@ class DM756_U830Client:
         The size of the sub-message chunks used.
     """
 
-    def __init__(self):
+    def __init__(self, on_new_frame=None):
         self.remote_attributes = []
         self.SUB_MESSAGE_LENGTH = 4096*2160*8
         self.IMAGE_WIDTH = 3840
@@ -308,7 +293,10 @@ class DM756_U830Client:
         self.video_stopped = threading.Event()
         self.last_image = None
         self._logs = ""
+        self.cam_logs_bu = ""
         self.frames_received = 0
+        self.new_image = False
+        self.on_new_frame = on_new_frame
 
     def __getattr__(self, attr):
         """
@@ -452,8 +440,6 @@ class DM756_U830Client:
 
             # Read size of the incoming message
             try:
-                # header = self.clientsocket.recv(self._LOCAL_HEADERSIZE)
-                # length, shape = self._decode_header(header)
                 while len(message) < self.IMAGE_MESSAGE_SIZE:
                     submessage = self.clientsocket.recv(min(self.SUB_MESSAGE_LENGTH, self.IMAGE_MESSAGE_SIZE - len(message)))
                     if submessage == b"":
@@ -468,16 +454,15 @@ class DM756_U830Client:
                 self.log(f"Error: {e}")
                 self.end_stream()
 
-            # Deserialize the message and break
-            # self.last_image = cv.imdecode(
-            #     np.frombuffer(message, dtype=np.uint8).reshape(shape), 1
-            # )
             self.last_image = self._serial_to_image(message)
-            self.clientsocket.send(b"ACK")
+            if self.on_new_frame is not None:
+                self.on_new_frame(self.last_image)
+            self.new_image = True
         self.log(f"Video loop ended after receiving {self.frames_received} frames")
         self.clientsocket.close()
         self.log("Client socket closed")
         self.video_stopped.set()
+        
 
     def end_stream(self) -> None:
         """
@@ -488,9 +473,14 @@ class DM756_U830Client:
         may not be instantaneous.
         """
         self.stop_video.set()
+        
         while not self.video_stopped.is_set():
             time.sleep(0.001)
+        self.cam_logs_bu = self.cam.logs
+        self.log('stopping camera')
         self.cam.stop_capture()
+        
+        
 
     def await_stream(self, timeout: float = 3.0) -> bool:
         """
@@ -534,9 +524,10 @@ class DM756_U830Client:
         >>> cam.await_stream()
         >>> frame = cam.get_frame()
         """
-        frame = self.last_image
-        self.last_image = None
-        return frame
+        is_new = self.new_image
+        if is_new:
+            self.new_image = False
+        return self.last_image, is_new
 
     def close(self) -> None:
         """
