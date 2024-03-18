@@ -36,6 +36,7 @@ class DM756_U830(Camera):
     
     
     def connect(self, cam_idx=0, local=False):
+        self._logs = ""
         self.local = local
         arr = uvcsam.Uvcsam.enum()
         self.log(f'connecting to camera {self._conn_count}')
@@ -71,7 +72,7 @@ class DM756_U830(Camera):
     def log(self, msg):
         self._logs += msg + '\n'
     
-    def openCamera(self, id):
+    def open_camera(self, id):
         self.log('opening camera')
         self._hcam = uvcsam.Uvcsam.open(id)
         if self._hcam:
@@ -84,13 +85,13 @@ class DM756_U830(Camera):
             self.buf_size = uvcsam.TDIBWIDTHBYTES(self.imgWidth * 24) * self.imgHeight
             self.pData = bytes(self.buf_size)
             try:
-                self._hcam.start(None, self.eventCallBack, self) # Pull Mode
+                self._hcam.start(None, self.event_call_back, self) # Pull Mode
             except uvcsam.HRESULTException as ex:
                 self.closeCamera()
                 self.log('failed to start camera, hr=0x{:x}'.format(ex.hr))
 
     @staticmethod
-    def eventCallBack(nEvent, self):
+    def event_call_back(nEvent, self):
         self.event_handler(nEvent)
 
     def event_handler(self, nEvent):
@@ -193,10 +194,10 @@ class DM756_U830(Camera):
         -------
         address, port : Tuple[str, int]
             The address and port of the new socket.
-        """
+        """    
         self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.serversocket.settimeout(5.0)
-        self.serversocket.bind(('localhost', 0))
+        self.serversocket.bind((socket.gethostname(), 0))
         self.log(f"Socket bound to {self.serversocket.getsockname()}")
         return self.serversocket.getsockname()
 
