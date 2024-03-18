@@ -480,7 +480,7 @@ class ThorCamClient:
 
         with locate_ns(**args) as ns:
             self.cam = Proxy(ns.lookup(name))
-        self.cam.autoconnect()
+        self.cam.autconnect()
         self.remote_attributes = self.cam._pyroAttrs
         self._LOCAL_HEADERSIZE = self.HEADERSIZE
     

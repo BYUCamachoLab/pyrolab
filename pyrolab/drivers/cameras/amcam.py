@@ -27,7 +27,7 @@ class DM756_U830(Camera):
         self.pData = None
         self.data_buffer = []
         self.data_buffer_size = 10
-        self.cam_id = None
+        self._cam_id = None
         self.stop_video = threading.Event()
         self.local = False
         self._logs = ""
@@ -43,19 +43,23 @@ class DM756_U830(Camera):
         if len(arr) == 0:
             self.log("Warning, No camera found.")
         elif 1 == len(arr):
-            self.cam_id = arr[0].id
+            self._cam_id = arr[0].id
         else:
             if cam_idx >= len(arr):
                 self.log("Warning, Camera index out of range.")
             else:
-                self.cam_id = arr[cam_idx].id
+                self._cam_id = arr[cam_idx].id
     
     def start_capture(self):
         self.log('starting capture')
         self.openCamera(self.cam_id)
         if not self.local:
             return self.start_streaming_thread()
-                
+    
+    @property
+    def cam_id(self):
+        return self._cam_id
+     
     @property
     def cam_connected(self):
         return self._hcam is not None
@@ -331,7 +335,7 @@ class DM756_U830Client:
         else:
             return super().__setattr__(attr, value)
 
-    def cam_connect(self, name: str = "device", ns_host: str = None, ns_port: float = None, uri=None) -> None:
+    def cam_connect(self, name: str = "device", ns=None, uri=None) -> None:
         """
         Connect to a remote PyroLab-hosted UC480 camera.
 
@@ -351,19 +355,13 @@ class DM756_U830Client:
         >>> nscfg.update_pyro_config()
         >>> cam = ThorCamClient()
         >>> cam.connect("camera_name")
-        """
+        """ 
         self.log('connecting to camera')
         
         if uri is not None:
             self.cam = Proxy(uri)
-        else:
-            if ns_host or ns_port:
-                args = {"host": ns_host, "port": ns_port}
-            else:
-                args = {}
-
-            with locate_ns(**args) as ns:
-                self.cam = Proxy(ns.lookup(name))
+        elif ns is not None:
+            self.cam = Proxy(ns.lookup(name))
         
         self.cam.connect()
     
@@ -546,3 +544,7 @@ class DM756_U830Client:
     @property
     def cam_logs(self):
         return self.cam.logs
+    
+    @property
+    def cam_connected(self):
+        return self.cam.cam_connected
