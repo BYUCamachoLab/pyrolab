@@ -53,7 +53,7 @@ class DM756_U830(Camera):
     
     def start_capture(self):
         self.log('starting capture')
-        self.openCamera(self.cam_id)
+        self.open_camera(self.cam_id)
         if not self.local:
             return self.start_streaming_thread()
     
