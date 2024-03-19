@@ -33,6 +33,9 @@ class DM756_U830(Camera):
         self._logs = ""
         self._conn_count = 0
         self.frames_sent = 0
+        self.IMAGE_WIDTH = 3840
+        self.IMAGE_HEIGHT = 2160
+        self.IMAGE_CHANNELS = 3
     
     
     def connect(self, cam_idx=0, local=False):
@@ -135,6 +138,30 @@ class DM756_U830(Camera):
             self.data_buffer.pop(0)
             self.data_buffer.append(data)
             
+    def _write_header(
+        self, size: int, d1: int = 1, d2: int = 1, d3: int = 1
+    ) -> np.array:
+        """
+        Creates the message header for the image being transferred over socket.
+
+        Format is an array of 4 ``np.uintc`` values, ordered as
+        (size, d1, d2, d3) where d1, d2, d3 are the dimensions of the image
+        (typically ``img.shape``, if ``img`` is a numpy array).
+
+        Parameters
+        ----------
+        size : int
+            The total length of the message (excluding the header).
+        d1 : int, optional
+            The shape of the first dimension of the image (default 1).
+        d2 : int, optional
+            The shape of the second dimension of the image (default 1).
+        d3 : int, optional
+            The shape of the third dimension of the image (default 1).
+        """
+        # log.debug(f"Received: {size} {d1} {d2} {d3}")
+        return np.array((size, d1, d2, d3), dtype=np.uintc)  
+    
     def _remote_streaming_loop(self):
         """
         Starts a separate thread to stream frames.
@@ -152,6 +179,19 @@ class DM756_U830(Camera):
         self.log("Accepted client socket")
 
         while not self.stop_video.is_set():
+            raw_frame = self.get_frame()
+            if raw_frame is None:
+                self.log("No frame received")
+                continue
+            encode_param = [int(cv.IMWRITE_JPEG_QUALITY), 90]
+            success, msg = cv.imencode(".jpg", self.get_frame(), encode_param)
+            if not success:
+                self.log("Compression failed")
+                continue
+            # self.log("Serializing")
+            ser_msg = msg.tobytes()
+            header = self._write_header(len(ser_msg), *msg.shape)
+            ser_msg = header.tobytes() + ser_msg
             try:
                 ser_msg = self.pop_data()
                 if ser_msg is None:
@@ -251,8 +291,9 @@ class DM756_U830(Camera):
             data = self.pop_data()
             if data is not None:
                 img = np.frombuffer(data, np.uint8)
-                img = img.reshape(3, 3840, 2160, order='C')
-                img.shape = (2160, 3840, 3)
+                # print(img.shape)
+                img = img.reshape(self.IMAGE_CHANNELS, self.IMAGE_WIDTH, self.IMAGE_HEIGHT, order='C')
+                img.shape = (self.IMAGE_HEIGHT, self.IMAGE_WIDTH, self.IMAGE_CHANNELS)
                 img = np.flip(img, [0,2])
             else:
                 img = None
@@ -436,10 +477,16 @@ class DM756_U830Client:
         self.log("Starting video loop")
         while not self.stop_video.is_set():
             message = b""
+            header = b""
 
             # Read size of the incoming message
             try:
-                while len(message) < self.IMAGE_MESSAGE_SIZE:
+                while len(message) < self._LOCAL_HEADERSIZE:
+                    sub_header = self.clientsocket.recv(min(self._LOCAL_HEADERSIZE, self._LOCAL_HEADERSIZE - len(message)))
+                    header += sub_header
+                length, shape = self._decode_header(header)
+                
+                while len(message) < length:
                     submessage = self.clientsocket.recv(min(self.SUB_MESSAGE_LENGTH, self.IMAGE_MESSAGE_SIZE - len(message)))
                     if submessage == b"":
                         self.log("Socket connection broken")
@@ -453,7 +500,10 @@ class DM756_U830Client:
                 self.log(f"Error: {e}")
                 self.end_stream()
 
-            self.last_image = self._serial_to_image(message)
+            # self.last_image = self._serial_to_image(message)
+            self.last_image = cv.imdecode(
+                np.frombuffer(message, dtype=np.uint8).reshape(shape), 1
+            )
             if self.on_new_frame is not None:
                 self.on_new_frame(self.last_image)
             self.new_image = True
