@@ -404,14 +404,33 @@ def logs_export(filename: str):
     lines = list(fileinput.input(f_names))
     t_fmt = "%Y-%m-%d %H:%M:%S.%f"  # format of time stamps
     t_pat = re.compile(r"\[(.+?)\]")  # pattern to extract timestamp
-    lines = list(
-        try_itr(
-            lambda l: strptime(t_pat.search(l).group(1), t_fmt), lines, AttributeError
-        )
+
+    # Group lines into log entries
+    log_entries = []
+    current_entry = []
+    for line in lines:
+        # If we've found a new timestamp and we have a current entry, add it to 
+        # the list and start a new entry.
+        if t_pat.match(line) and current_entry:
+            log_entries.append("".join(current_entry))
+            current_entry = [line]
+        # Otherwise, keep extending the current entry.
+        else:
+            current_entry.append(line)
+    # Add the last entry to the list
+    if current_entry:
+        log_entries.append("".join(current_entry))
+
+    # Sort log entries by timestamp
+    log_entries = sorted(
+        log_entries,
+        key=lambda entry: strptime(t_pat.search(entry).group(1), t_fmt)
     )
+
+    # Write sorted log entries to the output file
     with Path(filename).open(mode="w") as f:
-        for l in sorted(lines, key=lambda l: strptime(t_pat.search(l).group(1), t_fmt)):
-            f.write(l)
+        for entry in log_entries:
+            f.write(entry)
     typer.secho(f"Exported logs to {filename}", fg=typer.colors.GREEN)
 
 
