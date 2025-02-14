@@ -1,0 +1,37 @@
+version: '1.0'
+nameservers:
+  production:
+    host: camacholab.ee.byu.edu
+    ns_port: 9090
+    broadcast: false
+    ns_bchost: null
+    ns_bcport: 9091
+    ns_autoclean: 0.0
+    storage: memory
+daemons:
+  triskelion.lockable:
+    module: pyrolab.server
+    classname: LockableDaemon
+    host: public
+    port: 0
+    unixsocket: null
+    nathost: null
+    natport: 0
+    servertype: thread
+    nameservers:
+    - production
+services:
+  triskelion.mobius:
+    module: pyroservices.drivers.raspberrypibox
+    classname: RaspberryPiBox
+    parameters:
+      arduino_port: /dev/ttyUSB0
+    description: Raspberry Pi environment controller
+    instancemode: single
+    daemon: triskelion.lockable
+    nameservers:
+    - production
+autolaunch:
+  nameservers: []
+  daemons:
+  - triskelion.lockable
