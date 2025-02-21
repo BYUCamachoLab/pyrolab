@@ -7,13 +7,17 @@ version: 2
 
 # Set the version of Python and other tools you might need
 build:
-  os: ubuntu-20.04
+  os: ubuntu-22.04
   tools:
-    python: "3.9"
+    python: "3.11"
+  jobs:
+    pre_build:
+      - "jupyter-book config sphinx docs/"
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
-   configuration: docs/conf.py
+   builder: html
+   fail_on_warning: false
 
 # Using Sphinx, build the docs in additional formats
 formats:
@@ -27,4 +31,3 @@ python:
    - requirements: docs/requirements.txt
    - method: pip
      path: .
-     

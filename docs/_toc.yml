@@ -1,0 +1,39 @@
+# Table of contents
+# Learn more at https://jupyterbook.org/customize/toc.html
+
+format: jb-book
+root: index
+parts:
+- caption: Getting Started
+  chapters:
+  - file: getting_started/overview
+  - file: getting_started/install
+  - file: getting_started/architecture
+  - file: getting_started/services
+  - file: getting_started/server
+  - file: getting_started/nameserver
+  - file: getting_started/configuration
+  - file: getting_started/cli
+  - file: getting_started/client
+  - file: getting_started/summary
+  - file: getting_started/license
+- caption: User Guide
+  chapters:
+  - file: user_guide/envvars
+  - file: user_guide/nameservers
+  - file: user_guide/servers
+  - file: user_guide/services
+  - file: user_guide/clients
+  - file: user_guide/configuration
+  - file: user_guide/deployment
+  - file: user_guide/libraries
+  - file: user_guide/webmonitor
+- caption: API Reference
+  chapters:
+  - file: reference/index
+- caption: Development
+  chapters:
+  - file: development/index
+  - file: development/code_standard
+  - file: development/developing
+  - file: development/documenting
