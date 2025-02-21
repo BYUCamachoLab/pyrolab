@@ -22,9 +22,9 @@ sphinx:
 
 # Using Sphinx, build the docs in additional formats
 formats:
-   - pdf
    - htmlzip
-   - epub
+   # - pdf
+   # - epub
 
 # Optionally declare the Python requirements required to build your docs
 python:
