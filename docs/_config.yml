@@ -1,0 +1,86 @@
+# Book settings
+# Learn more at https://jupyterbook.org/customize/config.html
+
+title: PyroLab
+author: Sequoia Ploeg, BYU CamachoLab
+copyright: "2025"
+logo: ./_static/images/pyrolab_logo.svg
+
+# Force re-execution of notebooks on each build.
+# See https://jupyterbook.org/content/execute.html
+execute:
+  execute_notebooks: force
+
+# Define the name of the latex output file for PDF builds
+latex:
+  latex_documents:
+    targetname: book.tex
+
+# Add a bibtex file so that we can create citations
+bibtex_bibfiles:
+  - references.bib
+
+# Information about where the book exists on the web
+repository:
+  url: https://github.com/BYUCamachoLab/pyrolab  # Online location of your book
+  path_to_book: docs  # Optional path to your book, relative to the repository root
+  branch: master  # Which branch of the repository should be used when creating links (optional)
+
+# Add GitHub buttons to your book
+# See https://jupyterbook.org/customize/config.html#add-a-link-to-your-repository
+html:
+  use_issues_button: true
+  use_repository_button: true
+
+sphinx:
+  extra_extensions:
+    - 'sphinx.ext.autodoc'
+    - 'numpydoc'
+    - 'sphinx.ext.autosummary'
+    - 'sphinx.ext.autodoc.typehints'
+    - 'sphinx.ext.viewcode'
+    - 'sphinx.ext.todo'
+    - 'sphinx.ext.mathjax'
+    - 'sphinx_design'
+    - 'sphinx_copybutton'
+    - 'sphinx_togglebutton'
+    # - 'sphinx.ext.intersphinx'
+    # - 'sphinx.ext.napoleon'
+    # - 'sphinx.ext.coverage'
+    # - 'matplotlib.sphinxext.mathmpl'
+    # - 'matplotlib.sphinxext.plot_directive'
+  config:
+    # numpydoc_class_members_toctree: False
+    add_module_names: False
+    autodoc_typehints: 'signature'
+    autodoc_mock_imports: [
+        "appnope",
+        "deprecation",
+        "typer",
+        "colorama",
+        "tabulate",
+        "serial",
+        "thorlabs_kinesis",
+        "pyfirmata",
+        "sacher_tec",
+        "pyvisa",
+        "pyfirmata",
+        "cv2",
+    ]
+    autodoc_default_options: {"show-inheritance": true}
+    autosummary_generate: True
+    autodoc_member_order: 'bysource'
+    autoclass_content: "class"
+    autodoc_inherit_docstrings: true
+    html_static_path: ['_static']
+    # html_css_files: []
+    templates_path: ['_templates']
+    # mathjax_path: https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+  intersphinx_mapping:
+    sipann:
+      - "https://sipann.readthedocs.io/en/latest/"
+      - null
+    sax:
+      - "https://flaport.github.io/sax/index.html"
+      - "objects.inv"
+  language: en

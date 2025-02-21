@@ -49,7 +49,7 @@ If you use PyroLab, we'd appreciate you citing our work:
         introduction to *PyroLab's* main concepts and a step-by-step tutorial for
         beginners.
 
-        .. button-ref:: getting_started
+        .. button-ref:: getting_started_overview
             :color: primary
             :shadow:
             :expand:
@@ -109,13 +109,3 @@ If you use PyroLab, we'd appreciate you citing our work:
             :expand:
 
             To the development guide
-
-
-.. toctree::
-   :maxdepth: 2
-   :hidden:
-
-   getting_started/index
-   user_guide/index
-   reference/index
-   development/index

@@ -1,12 +1,13 @@
-sphinx==5.3.0
-pydata-sphinx-theme==0.12.0
+jupyter-book==1.0.3
+# sphinx==7.4.7
+# pydata-sphinx-theme==0.15.4
 numpydoc==1.5.0
-numpy==1.24.2
-scipy==1.10.1
-sphinx_design==0.3.0
-sphinx-copybutton==0.5.1
-sphinx-togglebutton==0.3.2
-linkify-it-py==2.0.0
-pydantic==1.10.5
-pyyaml==6.0
-Pyro5==5.14
+numpy==2.2.3
+scipy==1.15.2
+# sphinx_design==0.6.1
+# sphinx-copybutton==0.5.2
+# sphinx-togglebutton==0.3.2
+linkify-it-py==2.0.3
+pydantic==1.10.21
+pyyaml==6.0.2
+Pyro5==5.15

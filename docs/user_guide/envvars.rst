@@ -1,21 +1,8 @@
 .. _user_guide:
 
 
-User Guide
-==========
-
-.. toctree::
-   :maxdepth: 2
-   :hidden:
-
-   nameservers
-   servers
-   services
-   clients
-   configuration
-   deployment
-   libraries
-   webmonitor
+Environment Variables
+=====================
    
 A few notes on simply starting PyroLab. When launched from the terminal,
 PyroLab reads a few environment variables for convenient configuration.
