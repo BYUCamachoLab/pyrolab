@@ -18,6 +18,7 @@ build:
 sphinx:
    builder: html
    fail_on_warning: false
+   configuration: docs/conf.py
 
 # Using Sphinx, build the docs in additional formats
 formats:
