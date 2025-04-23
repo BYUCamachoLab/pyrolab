@@ -28,7 +28,7 @@ Considerations
 Python Version Support
 ----------------------
 
-PyroLab officially supports Python 3.7 to 3.11.
+PyroLab officially supports Python 3.9 to 3.13.
 
 
 Installing PyroLab
