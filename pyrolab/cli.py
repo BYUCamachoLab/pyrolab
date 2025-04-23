@@ -409,7 +409,7 @@ def logs_export(filename: str):
     log_entries = []
     current_entry = []
     for line in lines:
-        # If we've found a new timestamp and we have a current entry, add it to 
+        # If we've found a new timestamp and we have a current entry, add it to
         # the list and start a new entry.
         if t_pat.match(line) and current_entry:
             log_entries.append("".join(current_entry))
@@ -423,8 +423,7 @@ def logs_export(filename: str):
 
     # Sort log entries by timestamp
     log_entries = sorted(
-        log_entries,
-        key=lambda entry: strptime(t_pat.search(entry).group(1), t_fmt)
+        log_entries, key=lambda entry: strptime(t_pat.search(entry).group(1), t_fmt)
     )
 
     # Write sorted log entries to the output file
@@ -503,6 +502,40 @@ def rename_service(
     else:
         typer.secho("No user configuration file found.", fg=typer.colors.RED)
         raise typer.Exit()
+
+
+###############################################################################
+# pyrolab ns_list
+###############################################################################
+
+
+@app.command("nslist")
+def ns_list(
+    host: str = typer.Option(
+        "localhost",
+        "--host",
+        "-h",
+        help="Nameserver host to list all registered services for (default localhost).",
+    ),
+    port: int = typer.Option(
+        9090, "--port", "-p", help="Port to use for the PyroLab daemon (default 9090)."
+    ),
+):
+    """
+    List all services registered with a nameserver.
+    """
+    from pyrolab.api import locate_ns
+
+    ns = locate_ns(host=host, port=port)
+    services = ns.list(return_metadata=True)
+
+    listing = []
+    for k, v in services.items():
+        name = k
+        uri, description = v
+        listing.append([name, uri, ": ".join(description)])
+
+    typer.echo(tabulate(listing, headers=["NAME", "URI", "DESCRIPTION"]))
 
 
 ###############################################################################
