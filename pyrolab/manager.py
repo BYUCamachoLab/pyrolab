@@ -179,30 +179,19 @@ class DaemonRunner(multiprocessing.Process):
     def __init__(
         self,
         *args,
-        name: str = "",
-        daemonconfig: DaemonConfiguration = None,
-        serviceconfigs: Dict[str, ServiceConfiguration] = None,
-        msg_queue: Queue = None,
+        name: str,
+        daemonconfig: DaemonConfiguration,
+        serviceconfigs: Dict[str, ServiceConfiguration],
+        msg_queue: Queue,
+        shared_uris: dict[str, URI],
         msg_polling: float = 1.0,
         **kwargs,
     ) -> None:
         log.debug("Building DaemonRunner")
-        # TODO: Add log statements before raising exceptions
         super().__init__(*args, **kwargs)
-        if not name:
-            raise ValueError("DaemonRunner requires a name")
-        if not daemonconfig:
-            raise ValueError("DaemonRunner requires a DaemonConfiguration")
-        if not serviceconfigs:
-            log.critical(
-                f"No services assigned to daemon '{name}', did you intend to register services?"
-            )
-            raise ValueError("DaemonRunner requires ServiceConfigurations")
-        if not msg_queue:
-            raise ValueError("DaemonRunner requires a message queue")
-
         self.name = name
         self.msg_queue: Queue = msg_queue
+        self.uris = shared_uris
         self.msg_polling = msg_polling
         self.daemonconfig = daemonconfig
         self.serviceconfigs = serviceconfigs
@@ -237,6 +226,8 @@ class DaemonRunner(multiprocessing.Process):
             uri = daemon.register(daemon)
             uris[self.name] = uri
 
+        self.uris.clear()
+        self.uris.update(uris)
         return daemon, uris
 
     def process_message_queue(self) -> None:
@@ -336,21 +327,30 @@ class DaemonRunner(multiprocessing.Process):
                 log.exception(e)
 
 
-class ProcessGroup:
+class NameServerProcessGroup:
     def __init__(
-        self, process: multiprocessing.Process, msg_queue: Queue, created: datetime
+        self,
+        process: NameServerRunner,
+        msg_queue: Queue,
+        created: datetime,
     ) -> None:
         self.process = process
         self.msg_queue = msg_queue
         self.created = created
 
 
-class NameServerProcessGroup(ProcessGroup):
-    pass
-
-
-class DaemonProcessGroup(ProcessGroup):
-    pass
+class DaemonProcessGroup:
+    def __init__(
+        self,
+        process: DaemonRunner,
+        msg_queue: Queue,
+        created: datetime,
+        shared_uris: dict[str, URI],
+    ) -> None:
+        self.process = process
+        self.msg_queue = msg_queue
+        self.created = created
+        self.shared_uris = shared_uris
 
 
 class ProcessManager:
@@ -364,6 +364,9 @@ class ProcessManager:
     _instance = None
     nameservers: Dict[str, NameServerProcessGroup] = {}
     daemons: Dict[str, DaemonProcessGroup] = {}
+    GLOBAL_CONFIG: GlobalConfiguration
+    manager: multiprocessing.Manager
+    _timer: threading.Timer
 
     def __init__(self) -> None:
         raise RuntimeError(
@@ -402,6 +405,7 @@ class ProcessManager:
             inst.daemons = {}
             inst.GLOBAL_CONFIG = GlobalConfiguration.instance()
             inst.start_checkup_timer()
+            inst.manager = multiprocessing.Manager()
             cls._instance = inst
         return cls._instance
 
@@ -456,14 +460,18 @@ class ProcessManager:
         log.debug("Entering get_nameserver_process_info()")
         if nameserver in self.nameservers:
             pgroup = self.nameservers[nameserver]
+
             if pgroup.process.is_alive():
                 status = running_time_human_readable(pgroup.created)
             else:
                 status = "Died"
+
+            uri = f"{pgroup.process.nsconfig.host}:{pgroup.process.nsconfig.ns_port}"
+
             return {
                 "created": pgroup.created.strftime("%Y-%m-%d %H:%M:%S"),
                 "status": status,
-                "uri": "",
+                "uri": uri,
             }
         else:
             return {
@@ -480,14 +488,18 @@ class ProcessManager:
         daemonconfig = self.GLOBAL_CONFIG.get_daemon_config(daemon)
         serviceconfigs = self.GLOBAL_CONFIG.get_service_configs_for_daemon(daemon)
         messenger = multiprocessing.Queue()
+        shared_uris = self.manager.dict()
         runner = DaemonRunner(
             name=daemon,
             daemonconfig=daemonconfig,
             serviceconfigs=serviceconfigs,
             msg_queue=messenger,
+            shared_uris=shared_uris,
             daemon=True,
         )
-        self.daemons[daemon] = DaemonProcessGroup(runner, messenger, datetime.now())
+        self.daemons[daemon] = DaemonProcessGroup(
+            runner, messenger, datetime.now(), shared_uris
+        )
         runner.start()
         return True
 
@@ -498,14 +510,21 @@ class ProcessManager:
         log.debug("Entering get_daemon_process_info()")
         if daemon in self.daemons:
             pgroup = self.daemons[daemon]
+
             if pgroup.process.is_alive():
                 status = running_time_human_readable(pgroup.created)
             else:
                 status = "Died"
+
+            if daemon in pgroup.shared_uris:
+                uri = str(pgroup.shared_uris[daemon])
+            else:
+                uri = ""
+
             return {
                 "created": pgroup.created.strftime("%Y-%m-%d %H:%M:%S"),
                 "status": status,
-                "uri": "",
+                "uri": uri,
             }
         else:
             return {
@@ -513,6 +532,24 @@ class ProcessManager:
                 "status": "Stopped",
                 "uri": "",
             }
+
+    def get_service_process_info(self, service: str) -> Dict[str, str]:
+        """
+        Return the process info for a service.
+        """
+        log.debug("Entering get_service_process_info()")
+
+        for daemon_name, daemon in self.daemons.items():
+            for srvc_name, srvc in daemon.process.serviceconfigs.items():
+                if srvc_name == service:
+                    return {
+                        "daemon": daemon_name,
+                        "uri": str(daemon.shared_uris[service]),
+                    }
+        return {
+            "daemon": "",
+            "uri": "",
+        }
 
     def checkup(self, continuous: bool = True) -> None:
         """

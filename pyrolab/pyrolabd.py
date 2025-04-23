@@ -56,6 +56,16 @@ class DaemonInfo(NamedTuple):
     uri: str
 
 
+class PSInfo(NamedTuple):
+    """
+    Named tuple for storing information about a running service.
+    """
+
+    name: str
+    daemon: str
+    uri: str
+
+
 @api.expose
 @api.behavior(instance_mode="single")
 class PyroLabDaemon:
@@ -147,10 +157,13 @@ class PyroLabDaemon:
             listing.append(DaemonInfo(name=daemon, **info))
         daemonstring = tabulate(listing, headers=["DAEMON", "CREATED", "STATUS", "URI"])
 
-        # for service in self.gconfig.get_config().services.keys():
-        #     listing.append(PSInfo(service, "service", "", "", ""))
+        listing = []
+        for service in self.gconfig.get_config().services.keys():
+            info = self.manager.get_service_process_info(service)
+            listing.append(PSInfo(service, **info))
+        servicestring = tabulate(listing, headers=["SERVICE", "DAEMON", "URI"])
 
-        return f"\n{nsstring}\n\n{daemonstring}\n"
+        return f"\n{nsstring}\n\n{daemonstring}\n\n{servicestring}\n"
 
     def start_nameserver(self, nameserver: str) -> None:
         """
