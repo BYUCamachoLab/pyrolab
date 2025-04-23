@@ -20,7 +20,7 @@ precommit:
 	pre-commit run --all-files
 
 doc:
-	cd docs && make html
+	jb build docs
 
 serve:
 	cd docs/_build/html && python3 -m http.server
