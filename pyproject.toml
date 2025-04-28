@@ -79,13 +79,12 @@ dependencies = [
 #
 #   $ pip install sampleproject[dev]
 [project.optional-dependencies]
-tsl550 = [
-  "pyserial",
-  "thorlabs_kinesis@git+https://github.com/BYUCamachoLab/thorlabs-kinesis",
-]
+tsl550 = ["pyserial"]
 ppcl55x = ["pyserial"]
+thorlabs = ["thorlabs_kinesis@git+https://github.com/BYUCamachoLab/thorlabs-kinesis"]
 rto = ["pyvisa", "pyvisa-py"]
 arduino = ["pyfirmata"]
+monitor = ["pyromonitor@git+https://github.com/BYUCamachoLab/pyromonitor"]
 test = ["pytest", "coverage"]
 dev = [
   "notebook",
