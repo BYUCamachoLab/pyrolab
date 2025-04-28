@@ -14,7 +14,7 @@ Key Features
 ------------
 
 - Free and open-source software provided under the GPLv3+ License.
-- Compatible with Python 3.7+.
+- Compatible with Python 3.9+.
 - Cross-platform: runs on Windows, MacOS, and Linux.
 - Included device drivers for several scopes and ThorLabs motion controllers.
 - Remotely controlled devices can be accessed through a `Pyro5`_ proxy.
