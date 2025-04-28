@@ -52,6 +52,7 @@ The full list of supported extras is:
 - ``ppcl55x`` (PurePhotonics lasers)
 - ``rto`` (Rohde & Schwarz oscilloscopes)
 - ``arduino`` (Arduino)
+- ``adiscovery`` (Analog Discovery boards from Digilent)
 - ``monitor`` (PyroMonitor web application)
 - ``test`` (PyroLab unit testing)
 

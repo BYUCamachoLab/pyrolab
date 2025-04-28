@@ -84,6 +84,7 @@ ppcl55x = ["pyserial"]
 thorlabs = ["thorlabs_kinesis@git+https://github.com/BYUCamachoLab/thorlabs-kinesis"]
 rto = ["pyvisa", "pyvisa-py"]
 arduino = ["pyfirmata"]
+adiscovery = ["WF_SDK@git+https://github.com/Digilent/WaveForms-SDK-Getting-Started-PY#egg=WF_SDK"]
 monitor = ["pyromonitor@git+https://github.com/BYUCamachoLab/pyromonitor"]
 test = ["pytest", "coverage"]
 dev = [
