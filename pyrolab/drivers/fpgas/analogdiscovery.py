@@ -27,7 +27,7 @@ Driver for the Digilent Analog Discovery 3.
 
 from WF_SDK import device, scope, wavegen, tools, error
 
-from pyrolab.drivers.FPGAs import FPGA
+from pyrolab.drivers.fpgas import FPGA
 from pyrolab.api import expose, behavior
 
 
