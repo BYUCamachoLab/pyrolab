@@ -79,7 +79,10 @@ dependencies = [
 #
 #   $ pip install sampleproject[dev]
 [project.optional-dependencies]
-tsl550 = ["pyserial"]
+tsl550 = [
+  "pyserial",
+  "thorlabs_kinesis@git+https://github.com/BYUCamachoLab/thorlabs-kinesis",
+]
 ppcl55x = ["pyserial"]
 rto = ["pyvisa", "pyvisa-py"]
 arduino = ["pyfirmata"]
@@ -101,27 +104,6 @@ dev = [
 docs = [
   "jupyter-book == 1.0.3",
   "numpydoc==1.5.0",
-  # "sphinx==5.3.0",
-  # "pydata-sphinx-theme==0.12.0",
-  # "numpy==1.24.2",
-  # "scipy==1.10.1",
-  # "sphinx_design==0.3.0",
-  # "sphinx-copybutton==0.5.1",
-  # "sphinx-togglebutton==0.3.2",
-  # "linkify-it-py==2.0.0",
-  # "pydantic==1.10.5",
-  # "pyyaml==6.0",
-  # "Pyro5==5.14",
-  # "sphinx-book-theme ~= 0.3.3",
-  # "jupyter-book ~= 0.13.2",
-  # "sphinx-design ~= 0.1.0",
-  # "matplotlib",
-  # "numpy",
-  # "numpydoc",
-  # # "sphinx-tippy",
-  # # sphinx==5.3.0
-  # # linkify-it-py==2.0.0
-  # # sphinxcontrib-bibtex==2.5.0
 ]
 
 [tool.setuptools.packages.find]
