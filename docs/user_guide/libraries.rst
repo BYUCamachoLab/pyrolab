@@ -15,7 +15,11 @@ thorlabs_kinesis
 Many of PyroLab's drivers depend on wrappers of ThorLab's Kinesis DLL's 
 (Windows only). Python wrappers for these DLL's are available in the
 `thorlabs_kinesis <https://github.com/BYUCamachoLab/thorlabs-kinesis>`_ 
-package.
+package and can automatically be installed with PyroLab:
+
+.. code-block:: bash
+
+    pip install pyrolab[thorlabs]
 
 The ``thorlabs_kinesis`` package is a wrapper for DLL's provided by ThorLabs
 Kinesis Software, available for `free download from their website 
@@ -24,4 +28,7 @@ installing their software, install ``thorlabs_kinesis`` into your Python
 environment of choice. 
 
 Configure ``thorlabs_kinesis`` to be able to locate the DLL's on import
-(avoids having to insert directories to PATH before importing).
+(avoids having to insert directories to PATH before importing). The Python 
+wrapper searches for the DLL's in their default installation directory, but if
+you have a non-standard installation, you can set the environment variable
+``THORLABS_DLL_PATHS`` to point to the directory where the DLL's are located.

@@ -27,7 +27,7 @@ Driver for ThorLabs cameras interfacing with the ThorCam software DLLs.
 .. admonition:: Dependencies
    :class: note
 
-   thorlabs_kinesis (:ref:`installation instructions <Thorlabs Kinesis Package>`)
+   thorlabs_kinesis (installed with pyrolab[thorlabs], see :ref:`configuration instructions <Thorlabs Kinesis Package>`)
 """
 
 import logging
@@ -300,7 +300,7 @@ class ThorCamBase(Camera):
                 check_msg = self.clientsocket.recv(4096)
                 log.debug(f"ACK: {check_msg}")
             except TimeoutError:
-                print('Connection timed out!')
+                print("Connection timed out!")
                 self.end_stream()
 
     def _get_socket(self) -> Tuple[str, int]:
@@ -377,19 +377,19 @@ class ThorCamBase(Camera):
         and then closes serial communication with the camera.
         """
         raise NotImplementedError
-    
+
     @expose
     def start_stream(self) -> None:
-        '''
+        """
         Starts a camera stream.
-        '''
+        """
         raise NotImplementedError
-    
+
     @expose
     def end_stream(self) -> None:
-        '''
+        """
         Ends a camera stream.
-        '''
+        """
         raise NotImplementedError
 
     @expose
@@ -483,7 +483,7 @@ class ThorCamClient:
         self.cam.autoconnect()
         self.remote_attributes = self.cam._pyroAttrs
         self._LOCAL_HEADERSIZE = self.HEADERSIZE
-    
+
     def start_stream(self) -> None:
         """
         Starts the video stream.
@@ -535,7 +535,7 @@ class ThorCamClient:
                     submessage = self.clientsocket.recv(self.SUB_MESSAGE_LENGTH)
                     message += submessage
             except TimeoutError:
-                print('Connection timed out!')
+                print("Connection timed out!")
                 self.end_stream()
 
             # Deserialize the message and break

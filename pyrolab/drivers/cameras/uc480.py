@@ -22,7 +22,7 @@ Driver for a Thorlabs Microscope.
 .. admonition:: Dependencies
    :class: note
 
-   thorlabs_kinesis (:ref:`installation instructions <Thorlabs Kinesis Package>`)
+   thorlabs_kinesis (installed with pyrolab[thorlabs], see :ref:`configuration instructions <Thorlabs Kinesis Package>`)
 """
 
 # TODO: Investigate Linux support

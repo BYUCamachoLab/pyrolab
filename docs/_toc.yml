@@ -33,6 +33,6 @@ parts:
   - file: reference/index
 - caption: Development
   chapters:
+  - file: development/contributing
   - file: development/code_standard
-  - file: development/developing
   - file: development/documenting
