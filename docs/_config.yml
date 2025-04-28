@@ -66,6 +66,9 @@ sphinx:
         "pyvisa",
         "pyfirmata",
         "cv2",
+        "WF_SDK",
+        # "pyrolab.drivers.fpgas.analogdiscovery",
+        # "pyrolab.manager.ProcessGroup",
     ]
     autodoc_default_options: {"show-inheritance": true}
     autosummary_generate: True

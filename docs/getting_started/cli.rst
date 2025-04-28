@@ -28,7 +28,8 @@ You can view all options in the PyroLab CLI by running ``pyrolab --help``:
     config  Configure PyroLab nameservers, daemons, and services.
     down    Stop the background PyroLab daemon.
     info    Print details about a nameserver, daemon, or service.
-    logs
+    logs    Compile and export log files.   
+    nslist  List all services registered with a nameserver.
     ps      Process status: list all running PyroLab nameservers, daemons,...
     reload  Reload the PyroLab daemon using the latest configuration file.
     rename  Rename a nameserver, daemon or service.
