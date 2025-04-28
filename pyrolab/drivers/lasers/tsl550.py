@@ -197,7 +197,7 @@ class TSL550(Laser):
         self.terminator = terminator.encode("ASCII")
 
         # Make sure the shutter is on
-        # self.is_on = True
+        self.is_on = True
         self.query("SU")
         shutter = self.close_shutter()
 
