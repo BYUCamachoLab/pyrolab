@@ -19,7 +19,7 @@ package and can automatically be installed with PyroLab:
 
 .. code-block:: bash
 
-    pip install pyrolab[thorlabs]
+    pip install git+https://github.com/BYUCamachoLab/thorlabs-kinesis
 
 The ``thorlabs_kinesis`` package is a wrapper for DLL's provided by ThorLabs
 Kinesis Software, available for `free download from their website 
@@ -32,3 +32,16 @@ Configure ``thorlabs_kinesis`` to be able to locate the DLL's on import
 wrapper searches for the DLL's in their default installation directory, but if
 you have a non-standard installation, you can set the environment variable
 ``THORLABS_DLL_PATHS`` to point to the directory where the DLL's are located.
+
+
+.. _Analog Discovery:
+
+WF_SDK
+------
+
+To use the Digilent Analog Discovery boards, you need to install their software
+development kit (SDK):
+
+.. code-block:: bash
+
+    pip install git+https://github.com/Digilent/WaveForms-SDK-Getting-Started-PY#egg=WF_SDK

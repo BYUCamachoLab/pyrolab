@@ -12,11 +12,12 @@ Driver for the Digilent Analog Discovery 3.
 
 .. attention::
 
-   Requires the waveform SDK from Digilent
+   Requires the `waveform SDK <https://github.com/Digilent/WaveForms-SDK-Getting-Started-PY#egg=WF_SDK>`_
+   from Digilent, which can be installed with:
 
-   .. _github.com: https://github.com/Digilent/WaveForms-SDK-Getting-Started-PY#egg=WF_SDK
+   .. code-block:: shell
 
-   which can be installed with "pip install git+https://github.com/Digilent/WaveForms-SDK-Getting-Started-PY#egg=WF_SDK"
+        pip install git+https://github.com/Digilent/WaveForms-SDK-Getting-Started-PY#egg=WF_SDK"
 
 .. admonition:: Dependencies
    :class: note

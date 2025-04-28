@@ -48,13 +48,13 @@ pip install pyrolab[tsl550, oscope]
 
 The full list of supported extras is:
 - ``tsl550`` (Santec lasers)
-- ``thorlabs`` (ThorLabs motion controllers)
 - ``ppcl55x`` (PurePhotonics lasers)
 - ``rto`` (Rohde & Schwarz oscilloscopes)
 - ``arduino`` (Arduino)
-- ``adiscovery`` (Analog Discovery boards from Digilent)
-- ``monitor`` (PyroMonitor web application)
 - ``test`` (PyroLab unit testing)
+<!-- - ``thorlabs`` (ThorLabs motion controllers) -->
+<!-- - ``adiscovery`` (Analog Discovery boards from Digilent) -->
+<!-- - ``monitor`` (PyroMonitor web application) -->
 
 You can also clone the repository, navigate to the toplevel, and install in 
 editable mode (make sure you have pip >= 21.1):

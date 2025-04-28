@@ -27,7 +27,7 @@ Driver for ThorLabs cameras interfacing with the ThorCam software DLLs.
 .. admonition:: Dependencies
    :class: note
 
-   thorlabs_kinesis (installed with pyrolab[thorlabs], see :ref:`configuration instructions <Thorlabs Kinesis Package>`)
+   thorlabs_kinesis (:ref:`installation instructions <Thorlabs Kinesis Package>`)
 """
 
 import logging
