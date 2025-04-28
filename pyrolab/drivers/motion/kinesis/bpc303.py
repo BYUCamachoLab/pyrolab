@@ -321,11 +321,11 @@ class BPC303(KinesisInstrument):
         """
         Returns the position of the requested channel in microns. The result is undefined if not in closed loop mode
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         channel : int
             The channel to get the position of (1-n)
-        
+
         Returns
         -------
         position : float
@@ -337,12 +337,12 @@ class BPC303(KinesisInstrument):
         """
         Sets the position of the requested channel in microns. The command is ignored if not in closed loop mode
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         channel : int
             The channel to set the position of (1-n)
         distance_microns : float
-            The position to be moved to, specified in microns 
+            The position to be moved to, specified in microns
         """
         position_device_units = int(position_microns / 20 * 32767)
         position_control_mode = bp.PBC_GetPositionControlMode(self._serialno, channel)

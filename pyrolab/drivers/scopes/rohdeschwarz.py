@@ -230,7 +230,9 @@ class RTO(Scope):
         force_realtime : bool, optional
             Defaults to False.
         """
-        short_command = f"ACQ:POIN:AUTO RES;:TIM:RANG {duration};:ACQ:SRAT {sample_rate}"
+        short_command = (
+            f"ACQ:POIN:AUTO RES;:TIM:RANG {duration};:ACQ:SRAT {sample_rate}"
+        )
         if force_realtime:
             self.write_block("ACQ:MODE RTIM")
         self.write_block(short_command)
@@ -263,7 +265,7 @@ class RTO(Scope):
         range : float, optional
             Sets the voltage range across the 10 vertical divisions of the diagram
             in V/div. Possible values depend on the coupling: 10 mV to 10 V for
-            50 :math:`\Omega` coupling, and 10 mV to 100 V for 1 M :math:`\Omega`
+            50 ohm coupling, and 10 mV to 100 V for 1 megaohm
             coupling. Default is 0.5 (see ``CHANnel<m>:RANGe``).
         position : float, optional
             Sets the vertical position of the indicated channel as a graphical value.
@@ -331,7 +333,7 @@ class RTO(Scope):
         # Add a trigger.
         self.write_block(short_command + settings)
 
-    def edge_trigger(self, channel: int, voltage: float, mode: str = 'NORM') -> None:
+    def edge_trigger(self, channel: int, voltage: float, mode: str = "NORM") -> None:
         """
         Add an edge trigger to the specified channel.
 

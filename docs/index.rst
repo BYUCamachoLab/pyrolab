@@ -103,7 +103,7 @@ If you use PyroLab, we'd appreciate you citing our work:
         existing functionalities? The contributing guidelines will guide
         you through the process of improving PyroLab.
 
-        .. button-ref:: development
+        .. button-ref:: development_contributing
             :color: primary
             :shadow:
             :expand:
