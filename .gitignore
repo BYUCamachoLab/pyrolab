@@ -137,3 +137,4 @@ tests/data/config_test.yaml
 
 # Local data
 pyrolab/data/local/
+src/pyrolab/data/local/
