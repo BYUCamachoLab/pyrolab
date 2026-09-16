@@ -582,20 +582,71 @@ class ProcessManager:
             self.start_checkup_timer()
 
     def shutdown_nameserver(self, nameserver: str) -> bool:
+        """
+        Shut down a nameserver process.
+
+        Sends the graceful KILL sentinel first, then escalates to ``terminate()``
+        and finally ``kill()`` if the process does not exit on its own, confirming
+        with ``is_alive()`` at each step. The entry is only removed from tracking
+        once the process is confirmed dead (or escalation is exhausted), so a
+        process wedged in a blocking call (e.g. a hardware driver call that never
+        polls the message queue) is not silently orphaned while still holding its
+        port or hardware handle.
+
+        Returns
+        -------
+        bool
+            True if the process was confirmed dead, False if it could not be
+            killed even after escalating to SIGKILL.
+        """
         log.info(f"Sending KILL message to nameserver '{nameserver}'")
-        group = self.nameservers.pop(nameserver)
+        group = self.nameservers[nameserver]
         polling = group.process.msg_polling
         group.msg_queue.put(None)
-        time.sleep(2 * polling)
-        return True
+        group.process.join(2 * polling)
+        if group.process.is_alive():
+            log.warning(
+                f"Nameserver '{nameserver}' did not exit gracefully, terminating"
+            )
+            group.process.terminate()
+            group.process.join(5)
+        if group.process.is_alive():
+            log.warning(f"Nameserver '{nameserver}' did not terminate, killing")
+            group.process.kill()
+            group.process.join()
+        alive = group.process.is_alive()
+        self.nameservers.pop(nameserver, None)
+        return not alive
 
     def shutdown_daemon(self, daemon: str) -> bool:
+        """
+        Shut down a daemon process.
+
+        See :py:meth:`shutdown_nameserver` for the escalation and confirmation
+        behavior; this is identical but operates on ``self.daemons``.
+
+        Returns
+        -------
+        bool
+            True if the process was confirmed dead, False if it could not be
+            killed even after escalating to SIGKILL.
+        """
         log.info(f"Sending KILL message to daemon '{daemon}'")
-        group = self.daemons.pop(daemon)
+        group = self.daemons[daemon]
         polling = group.process.msg_polling
         group.msg_queue.put(None)
-        time.sleep(2 * polling)
-        return True
+        group.process.join(2 * polling)
+        if group.process.is_alive():
+            log.warning(f"Daemon '{daemon}' did not exit gracefully, terminating")
+            group.process.terminate()
+            group.process.join(5)
+        if group.process.is_alive():
+            log.warning(f"Daemon '{daemon}' did not terminate, killing")
+            group.process.kill()
+            group.process.join()
+        alive = group.process.is_alive()
+        self.daemons.pop(daemon, None)
+        return not alive
 
     def reload(self) -> bool:
         """
