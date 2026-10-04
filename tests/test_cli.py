@@ -406,8 +406,8 @@ def test_rename_nameserver_updates_references(user_config):
     assert result.exit_code == 0, result.output
     assert "Renamed nameserver 'local' to 'lab'." in result.output
     assert "service 'sample.echo', daemon 'lockable', autolaunch" in result.output
-    # reload alone won't start it under the new name; say what will.
-    assert "'pyrolab start nameserver lab'" in result.output
+    # It's in autolaunch, which reload starts, so reload alone is enough.
+    assert "Run 'pyrolab reload' to apply the new name." in result.output
 
     config = _load(user_config)
     assert list(config.nameservers) == ["lab", "persistent"]  # order kept
@@ -477,6 +477,13 @@ def test_rename_to_same_name(user_config):
     result = runner.invoke(cli.app, ["rename", "service", "sample.echo", "sample.echo"])
     assert result.exit_code == 0
     assert user_config.read_text() == before
+
+
+def test_rename_outside_autolaunch_explains_restart(user_config):
+    # "persistent" isn't autolaunched, so reload won't start it under its new
+    # name; say what will.
+    result = runner.invoke(cli.app, ["rename", "nameserver", "persistent", "archive"])
+    assert "'pyrolab start nameserver archive'" in result.output
 
 
 def test_rename_persistent_nameserver_mentions_storage(user_config):

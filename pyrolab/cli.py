@@ -304,7 +304,8 @@ def reload():
     """
     Reload the PyroLab daemon using the latest configuration file.
 
-    Useful if the configuration file has been updated.
+    Restarts everything that was running (if still configured) and starts every
+    autolaunch entry.
     """
     daemon = get_daemon(suppress_reload_message=True)
     if not USER_CONFIG_FILE.exists():
@@ -636,11 +637,12 @@ def _rename(kind: str, old_name: str, new_name: str, force: bool) -> None:
                 "Move the file before reloading to keep them.",
                 fg=typer.colors.YELLOW,
             )
-    if kind == "service":
-        typer.echo("Run 'pyrolab reload' for a running daemon to use the new name.")
+    if kind == "service" or new_name in getattr(renamed.autolaunch, SECTIONS[kind]):
+        # reload restarts the service's daemon, and starts autolaunch entries.
+        typer.echo("Run 'pyrolab reload' to apply the new name.")
     else:
-        # reload restarts only what is running under a name still in the
-        # configuration; it can't tell the renamed entity is the same one.
+        # reload restarts what was running under names still configured; it
+        # can't tell the renamed entity is the same one.
         typer.echo(
             f"If '{old_name}' is running, 'pyrolab reload' will stop it; then "
             f"start it under its new name with 'pyrolab start {kind} {new_name}'."

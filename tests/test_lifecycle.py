@@ -390,6 +390,27 @@ def test_reload_restarts_and_reports_success(pm):
     assert len(pm.spawned["plain"]) == 2
 
 
+def test_reload_starts_autolaunch_entries(pm):
+    # The sample config autolaunches nameserver "local" and daemon "lockable";
+    # only "plain" (not in autolaunch) is running before the reload.
+    pm.launch_daemon("plain", wait=True)
+    assert pm.reload() is True
+    assert set(pm.nameservers) == {"local"}
+    assert set(pm.daemons) == {"plain", "lockable"}
+    assert len(pm.spawned["plain"]) == 2  # restarted, not duplicated
+
+
+def test_reload_starts_each_entity_once(pm):
+    pm.launch_nameserver("local", wait=True)  # running and in autolaunch
+    assert pm.reload() is True
+    assert len(pm.spawned["local"]) == 2  # stopped once, started once
+
+
+def test_reload_reports_failing_autolaunch_entry(pm):
+    pm.behavior["lockable"] = {"fail": "RuntimeError: no instrument"}
+    assert pm.reload() is False
+
+
 def test_reload_reports_failure(pm):
     pm.launch_daemon("plain", wait=True)
     pm.behavior["plain"] = {"fail": "ValueError: bad parameter"}
@@ -401,6 +422,7 @@ def test_reload_drops_entities_removed_from_config(pm):
     del pm.GLOBAL_CONFIG.config.daemons["plain"]
     assert pm.reload() is True
     assert "plain" not in pm.daemons
+    assert len(pm.spawned["plain"]) == 1
 
 
 def test_reload_revives_failed_entity(pm):
