@@ -108,7 +108,13 @@ Most commands are thin wrappers that proxy to the running `PyroLabDaemon`.
 `pyrolab/__init__.py` creates and exports the data-dir constants at import time: `PYROLAB_DATA_DIR`
 (`pyrolab/data/local/` inside the package), `USER_CONFIG_FILE`, `RUNTIME_CONFIG`, `LOCKFILE`,
 `NAMESERVER_STORAGE`, `PYROLAB_LOGDIR`. It also installs a rotating file handler writing to
-`logs/pyrolab_<pid>.log`. Env vars: `PYROLAB_LOGLEVEL`, `PYROLAB_LOGFILE`, `PYROLAB_HUSH_DEPRECATION`.
+`logs/pyrolab_<pid>.log`. Env vars: `PYROLAB_LOGLEVEL`, `PYROLAB_LOGFILE`, `PYROLAB_HUSH_DEPRECATION`,
+`PYROLAB_NO_VERSION_CHECK`.
+
+**Importing `pyrolab` must never touch the network.** The PyPI update check lives in `pyrolab/updates.py`
+and runs only from the CLI's main callback, at most once a day (result cached in `UPDATE_CHECK_FILE`).
+An autouse test fixture sets `PYROLAB_NO_VERSION_CHECK` so CLI tests stay offline, and
+`test_updates.py` fails if importing the package performs any hostname lookup.
 
 Other modules bind these constants by value (`from pyrolab import LOCKFILE, ...` in `api`, `cli`,
 `configure`, `manager`, `pyrolabd`), so redirecting a path means patching it in each of those modules —

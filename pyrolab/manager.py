@@ -405,9 +405,10 @@ class ProcessManager:
             inst.nameservers = {}
             inst.daemons = {}
             inst.GLOBAL_CONFIG = GlobalConfiguration.instance()
-            inst.start_checkup_timer()
             inst.manager = multiprocessing.Manager()
             cls._instance = inst
+            # Last: checkup() relaunches processes, which needs everything above.
+            inst.start_checkup_timer()
         return cls._instance
 
     def start_checkup_timer(self, duration: float = 30.0) -> None:
@@ -587,6 +588,17 @@ class ProcessManager:
             self.start_checkup_timer()
 
     def shutdown_nameserver(self, nameserver: str) -> bool:
+        """
+        Stop a running nameserver.
+
+        Returns
+        -------
+        bool
+            False if no nameserver by that name is running, True otherwise.
+        """
+        if nameserver not in self.nameservers:
+            log.warning("Cannot stop nameserver '%s': not running", nameserver)
+            return False
         log.info(f"Sending KILL message to nameserver '{nameserver}'")
         group = self.nameservers.pop(nameserver)
         polling = group.process.msg_polling
@@ -595,6 +607,17 @@ class ProcessManager:
         return True
 
     def shutdown_daemon(self, daemon: str) -> bool:
+        """
+        Stop a running daemon and its services.
+
+        Returns
+        -------
+        bool
+            False if no daemon by that name is running, True otherwise.
+        """
+        if daemon not in self.daemons:
+            log.warning("Cannot stop daemon '%s': not running", daemon)
+            return False
         log.info(f"Sending KILL message to daemon '{daemon}'")
         group = self.daemons.pop(daemon)
         polling = group.process.msg_polling
@@ -641,12 +664,26 @@ class ProcessManager:
         for nameserver in list(self.nameservers.keys()):
             self.shutdown_nameserver(nameserver)
 
+        # The multiprocessing.Manager runs its own server process; without
+        # this it can outlive the daemon.
+        manager = getattr(self, "manager", None)
+        if manager is not None:
+            manager.shutdown()
+            self.manager = None
+        # Everything this instance owned is gone; let a later instance() call
+        # build a fresh one rather than hand back this shut-down one.
+        if ProcessManager._instance is self:
+            ProcessManager._instance = None
+
         log.info("All running entities successfully shut down.")
 
 
 def running_time_human_readable(start: datetime, end: datetime = None) -> str:
     """
-    Return the time delta of two times (or one and now) in plain English.
+    Return the time elapsed between two times (or one and now), for ``ps``.
+
+    Shows the two most significant units, e.g. "Up 6d 23h", "Up 4h 0m",
+    "Up 45s".
 
     Parameters
     ----------
@@ -658,19 +695,18 @@ def running_time_human_readable(start: datetime, end: datetime = None) -> str:
     Returns
     -------
     str
-        The time delta in plain English.
+        The elapsed time, e.g. "Up 2d 5h".
     """
-    if end:
-        delta = end - start
-    else:
-        delta = datetime.now() - start
-    if delta.days > 0:
-        return f"Up {delta.days} days"
-    elif delta.seconds > 3600:
-        return f"Up {delta.seconds // 3600} hours"
-    elif delta.seconds > 120:
-        return f"Up {delta.seconds // 60} minutes"
-    elif delta.seconds > 60:
-        return f"Up 1 minute"
-    else:
-        return f"Up {delta.seconds} seconds"
+    if end is None:
+        end = datetime.now()
+    # Clamp at zero in case the clock moved backwards.
+    remaining = max(0, int((end - start).total_seconds()))
+
+    parts = []
+    for suffix, size in (("d", 86400), ("h", 3600), ("m", 60), ("s", 1)):
+        value, remaining = divmod(remaining, size)
+        if value or parts:
+            parts.append(f"{value}{suffix}")
+        if len(parts) == 2:
+            break
+    return "Up " + (" ".join(parts) or "0s")

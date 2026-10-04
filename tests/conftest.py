@@ -62,6 +62,15 @@ def pyro_config():
         setattr(Pyro5.config, key, value)
 
 
+@pytest.fixture(autouse=True)
+def no_version_check(monkeypatch):
+    """
+    Keep CLI tests off the network: every CLI command checks PyPI for updates
+    unless this variable is set. Tests of the check itself delete it.
+    """
+    monkeypatch.setenv("PYROLAB_NO_VERSION_CHECK", "1")
+
+
 @pytest.fixture
 def data_dir(tmp_path, monkeypatch):
     """
@@ -75,6 +84,7 @@ def data_dir(tmp_path, monkeypatch):
         USER_CONFIG_FILE=tmp_path / "user_configuration.yaml",
         RUNTIME_CONFIG=tmp_path / "runtime_config.yaml",
         LOCKFILE=tmp_path / "pyrolabd.lock",
+        UPDATE_CHECK_FILE=tmp_path / "update_check.json",
         PYROLAB_LOGDIR=tmp_path / "logs",
         NAMESERVER_STORAGE=tmp_path / "nameserver",
     )
