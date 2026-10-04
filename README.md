@@ -199,8 +199,15 @@ make release-major
 This checks that the tree is clean and the changelog exists, bumps the version
 with ``uv version --bump``, commits ``pyproject.toml`` and ``uv.lock``, tags
 ``vX.Y.Z``, and pushes the commit and tag. The tag triggers the release
-workflow, which runs the test suite and then publishes to PyPI and creates the
-GitHub release.
+workflow, which runs the test suite, builds and checks the package, publishes
+it to PyPI, and creates the GitHub release with the changelog as its notes.
+
+Publishing uses PyPI's
+[Trusted Publishing](https://docs.pypi.org/trusted-publishers/): PyPI accepts
+uploads only from this repository's ``release.yml`` workflow running in the
+``pypi`` environment, so no PyPI token is stored in GitHub. Any PR that edits
+``release.yml`` gets a dry run (checks and build, nothing published), and the
+workflow can also be dry-run by hand from the Actions tab.
 
 ## Code Quality
 
