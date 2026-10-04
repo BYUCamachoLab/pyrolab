@@ -144,3 +144,11 @@ def test_daemon_release_force_unlocks(lockable_daemon, serve):
 
         assert admin.release(str(uri)) is True
         assert other.echo("y") == "SERVER RECEIVED: y"
+
+
+def test_lock_reports_whether_caller_holds_it(lockable_daemon):
+    # Regression: _lock returned True even when another client held it (#59).
+    alice, bob = object(), object()
+    assert lockable_daemon._lock("obj", alice, "alice") is True
+    assert lockable_daemon._lock("obj", bob, "bob") is False
+    assert lockable_daemon._lock("obj", alice, "alice") is True  # already hers

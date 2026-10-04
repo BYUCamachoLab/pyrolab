@@ -36,7 +36,10 @@ class FakeDaemonProxy:
     def __getattr__(self, name):
         def record(*args):
             self.calls.append((name, *args))
-            return self.returns.get(name, True)
+            default = {"status": "running", "error": ""}
+            return self.returns.get(
+                name, default if name.startswith(("start_", "restart_")) else True
+            )
 
         return record
 
@@ -152,6 +155,33 @@ def test_stop_something_not_running(running_daemon, kind, method, label):
     result = runner.invoke(cli.app, ["stop", kind, "lockabl"])
     assert result.exit_code == 1
     assert f"{label} 'lockabl' is not running." in result.output
+
+
+@pytest.mark.parametrize(
+    "result, exit_code, message",
+    [
+        ({"status": "running", "error": ""}, 0, "Daemon 'd1' is running."),
+        ({"status": "already running", "error": ""}, 0, "already running"),
+        (
+            {"status": "unknown", "error": ""},
+            1,
+            "There is no daemon named 'd1' in the configuration.",
+        ),
+        (
+            {"status": "failed", "error": "OSError: port in use"},
+            1,
+            "Daemon 'd1' failed to start: OSError: port in use",
+        ),
+        ({"status": "timeout", "error": ""}, 1, "did not report ready in time"),
+    ],
+)
+def test_start_reports_outcome(running_daemon, result, exit_code, message):
+    # Regression: start always "succeeded", even if the process died at once
+    # (#59).
+    running_daemon.returns["start_daemon"] = result
+    outcome = runner.invoke(cli.app, ["start", "daemon", "d1"])
+    assert outcome.exit_code == exit_code
+    assert message in outcome.output
 
 
 @pytest.mark.parametrize("kind", ["nameserver", "daemon"])
@@ -417,6 +447,10 @@ def test_logs_export_merges_and_sorts(data_dir, tmp_path):
         "[2026-01-01 10:00:01.000] INFO second",
         "[2026-01-01 10:00:03.000] INFO fourth",
     )
+    # Raw daemon output (tracebacks, no timestamps) is not merged.
+    (data_dir.PYROLAB_LOGDIR / cli.DAEMON_OUTPUT_LOG).write_text(
+        "Traceback (most recent call last):\nRuntimeError: boom\n"
+    )
     out = tmp_path / "merged.log"
 
     result = runner.invoke(cli.app, ["logs", "export", str(out)])
@@ -560,3 +594,21 @@ def test_up_times_out(spawn, data_dir):
     result = runner.invoke(cli.app, ["up", "--timeout", "0"])
     assert result.exit_code == 1
     assert "did not respond within 0 seconds" in result.output
+
+
+def test_spawned_daemon_output_goes_to_log_file(data_dir, monkeypatch):
+    # Crashing child processes print tracebacks; they must not land in the
+    # terminal that ran `pyrolab up`.
+    seen = {}
+
+    def fake_popen(args, **kwargs):
+        seen["args"] = args
+        seen.update(kwargs)
+        return object()
+
+    monkeypatch.setattr(cli.subprocess, "Popen", fake_popen)
+    cli._spawn_daemon(port=None)
+    assert seen["stdin"] is cli.subprocess.DEVNULL
+    assert seen["stderr"] is cli.subprocess.STDOUT
+    assert seen["stdout"].name == str(data_dir.PYROLAB_LOGDIR / cli.DAEMON_OUTPUT_LOG)
+    assert seen["start_new_session"] is True

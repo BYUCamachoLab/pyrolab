@@ -101,9 +101,26 @@ reaches the daemon through `read_lockfile()`; a lockfile whose PID isn't running
 uses ctypes on Windows because `os.kill` would kill the process) is stale. It owns a `ProcessManager` (`pyrolab/manager.py`) singleton that spawns
 each nameserver and each daemon as its own `multiprocessing.Process` (`NameServerRunner`, `DaemonRunner`), so
 a hung instrument kills only its own process. Runners are controlled by sentinel `None` on a
-`multiprocessing.Queue`; `ProcessManager.checkup()` restarts dead ones on a timer. Pyro request threads, the checkup timer, and
-autolaunch all use the `ProcessManager` concurrently, so methods touching its process tables are
-`@_synchronized` on a reentrant class-level lock.
+`multiprocessing.Queue`; Lifecycle policy (constants at the top of `manager.py`, which tests shrink):
+
+- **Stop**: sentinel, wait `STOP_GRACE` (10s), `terminate()`, wait `TERMINATE_GRACE` (5s), `kill()`. An entry is
+  forgotten only once its process is confirmed dead; several are stopped in parallel (`_stop_many`). A killed
+  daemon couldn't deregister, so the manager removes its nameserver entries.
+- **Restart**: `checkup()` runs every second; a crash is restarted after `RESTART_BACKOFF` (5, 15, 60, 300s),
+  and after `MAX_CONSECUTIVE_FAILURES` (5) the entity is `failed` until started by hand or `reload`. Running
+  `STABLE_UPTIME` (10 min) before dying resets the count. `ps` shows status plus `LAST ERROR`.
+- **Ready**: runners publish `ready`/`error` in a shared dict. `launch_*(wait=True)` (used by `pyrolab start`
+  and `reload`) returns `{"status", "error"}`; autolaunch and automatic restarts don't wait.
+- **Registration** (`Registrations` class, child side) is non-fatal and retried every `REGISTRATION_RETRY` (30s)
+  in a background thread; every nameserver call goes through `nameserver_proxy()`, which sets a 5s timeout
+  (Pyro's default is none) and always releases the proxy.
+
+Pyro request threads, the checkup timer, and autolaunch all use the `ProcessManager` concurrently, so
+anything touching its process tables holds a reentrant class-level lock — but long waits (stopping, waiting
+for ready, nameserver calls) happen **outside** it so `ps` stays responsive. Tests replace runners through the
+`_create_runner`/`_shared_dict`/`_message_queue`/`_clock` seams (see `tests/test_lifecycle.py`).
+
+The background daemon's stdout/stderr go to `logs/pyrolabd_output.log`, not the terminal that ran `up`.
 
 Everything spawn-related lives in `manager.py` specifically because child processes re-import the target
 module — keeping process creation out of that import path prevents recursive spawning.

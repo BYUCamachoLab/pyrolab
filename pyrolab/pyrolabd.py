@@ -64,6 +64,14 @@ def read_lockfile() -> Optional[InstanceInfo]:
         return None
 
 
+def _short_error(info: dict, width: int = 60) -> dict:
+    """Truncate the ``error`` entry of a process-info dict for display."""
+    error = info.get("error", "")
+    if len(error) > width:
+        error = error[: width - 3] + "..."
+    return {**info, "error": error}
+
+
 class NameServerInfo(NamedTuple):
     """
     Named tuple for storing information about a running nameserver.
@@ -73,6 +81,7 @@ class NameServerInfo(NamedTuple):
     created: str
     status: str
     uri: str
+    error: str = ""
 
 
 class DaemonInfo(NamedTuple):
@@ -84,6 +93,7 @@ class DaemonInfo(NamedTuple):
     created: str
     status: str
     uri: str
+    error: str = ""
 
 
 class PSInfo(NamedTuple):
@@ -147,14 +157,16 @@ class PyroLabDaemon:
         """
         log.info("Autolaunching PyroLab entities.")
         autodetails = self.gconfig.config.autolaunch
+        # Don't wait for each to become ready: one slow instrument shouldn't
+        # hold up the rest. Crashes are handled by the restart policy.
         for ns in autodetails.nameservers:
             try:
-                self.start_nameserver(ns)
+                self.manager.launch_nameserver(ns)
             except Exception:
                 log.exception("Autolaunch of nameserver '%s' failed", ns)
         for daemon in autodetails.daemons:
             try:
-                self.start_daemon(daemon)
+                self.manager.launch_daemon(daemon)
             except Exception:
                 log.exception("Autolaunch of daemon '%s' failed", daemon)
         log.info("Autolaunch complete.")
@@ -201,14 +213,18 @@ class PyroLabDaemon:
         listing = []
         for ns in self.gconfig.get_config().nameservers.keys():
             info = self.manager.get_nameserver_process_info(ns)
-            listing.append(NameServerInfo(name=ns, **info))
-        nsstring = tabulate(listing, headers=["NAMESERVER", "CREATED", "STATUS", "URI"])
+            listing.append(NameServerInfo(name=ns, **_short_error(info)))
+        nsstring = tabulate(
+            listing, headers=["NAMESERVER", "CREATED", "STATUS", "URI", "LAST ERROR"]
+        )
 
         listing = []
         for daemon in self.gconfig.get_config().daemons.keys():
             info = self.manager.get_daemon_process_info(daemon)
-            listing.append(DaemonInfo(name=daemon, **info))
-        daemonstring = tabulate(listing, headers=["DAEMON", "CREATED", "STATUS", "URI"])
+            listing.append(DaemonInfo(name=daemon, **_short_error(info)))
+        daemonstring = tabulate(
+            listing, headers=["DAEMON", "CREATED", "STATUS", "URI", "LAST ERROR"]
+        )
 
         listing = []
         for service in self.gconfig.get_config().services.keys():
@@ -218,29 +234,41 @@ class PyroLabDaemon:
 
         return f"\n{nsstring}\n\n{daemonstring}\n\n{servicestring}\n"
 
-    def start_nameserver(self, nameserver: str) -> None:
+    def start_nameserver(self, nameserver: str) -> dict:
         """
-        Starts a nameserver.
+        Starts a nameserver and waits until it is serving.
 
         Parameters
         ----------
         nameserver : str
             The name of the nameserver to start.
+
+        Returns
+        -------
+        dict
+            ``status``: "running", "failed", "timeout", "already running", or
+            "unknown" (not in the configuration); ``error``: why it failed.
         """
         log.debug(f"Starting nameserver '{nameserver}'.")
-        self.manager.launch_nameserver(nameserver)
+        return self.manager.launch_nameserver(nameserver, wait=True)
 
-    def start_daemon(self, daemon: str) -> None:
+    def start_daemon(self, daemon: str) -> dict:
         """
-        Starts a daemon.
+        Starts a daemon and waits until it is serving.
 
         Parameters
         ----------
         daemon : str
             The name of the daemon to start.
+
+        Returns
+        -------
+        dict
+            ``status``: "running", "failed", "timeout", "already running", or
+            "unknown" (not in the configuration); ``error``: why it failed.
         """
         log.debug(f"Starting daemon '{daemon}'.")
-        self.manager.launch_daemon(daemon)
+        return self.manager.launch_daemon(daemon, wait=True)
 
     def stop_nameserver(self, nameserver: str) -> bool:
         """
@@ -276,31 +304,43 @@ class PyroLabDaemon:
         log.debug(f"Stopping daemon '{daemon}'.")
         return self.manager.shutdown_daemon(daemon)
 
-    def restart_nameserver(self, name: str) -> None:
+    def restart_nameserver(self, name: str) -> dict:
         """
-        Restarts a nameserver.
+        Restarts a nameserver (starting it if it wasn't running).
 
         Parameters
         ----------
         name : str
             The name of the nameserver to restart.
+
+        Returns
+        -------
+        dict
+            ``status``: "running", "failed", "timeout", "already running", or
+            "unknown" (not in the configuration); ``error``: why it failed.
         """
         log.debug(f"Restarting nameserver '{name}'.")
         self.manager.shutdown_nameserver(name)
-        self.manager.launch_nameserver(name)
+        return self.manager.launch_nameserver(name, wait=True)
 
-    def restart_daemon(self, name: str) -> None:
+    def restart_daemon(self, name: str) -> dict:
         """
-        Restarts a daemon.
+        Restarts a daemon (starting it if it wasn't running).
 
         Parameters
         ----------
         name : str
             The name of the daemon to restart.
+
+        Returns
+        -------
+        dict
+            ``status``: "running", "failed", "timeout", "already running", or
+            "unknown" (not in the configuration); ``error``: why it failed.
         """
         log.debug(f"Restarting daemon '{name}'.")
         self.manager.shutdown_daemon(name)
-        self.manager.launch_daemon(name)
+        return self.manager.launch_daemon(name, wait=True)
 
     @api.oneway
     def shutdown(self) -> None:

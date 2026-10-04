@@ -335,11 +335,14 @@ class LockableDaemon(Daemon):
         Returns
         -------
         bool
-            A success status flag.
+            True if ``conn`` now holds the lock (including if it already did),
+            False if another connection holds it.
         """
-        if pyroId not in self.locked_instances:
+        owner = self.locked_instances.get(pyroId)
+        if owner is None:
             self.locked_instances[pyroId] = (conn, user)
-        return True
+            return True
+        return owner[0] == conn
 
     def _release(self, pyroId: str) -> bool:
         """

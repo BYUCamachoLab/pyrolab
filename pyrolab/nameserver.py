@@ -12,7 +12,7 @@ Wrapped nameserver functions that references PyroLab configuration settings.
 import logging
 import socket
 import sys
-from typing import Callable
+from typing import Callable, Optional
 
 from Pyro5.nameserver import BroadcastServer, NameServerDaemon
 from Pyro5.nameserver import start_ns as _pyro_start_ns
@@ -36,7 +36,9 @@ STORAGE_FILE = NAMESERVER_STORAGE / "storage"
 
 
 def start_ns_loop(
-    cfg: NameServerConfiguration, loop_condition: Callable = lambda: True
+    cfg: NameServerConfiguration,
+    loop_condition: Callable = lambda: True,
+    on_ready: Optional[Callable[[], None]] = None,
 ) -> None:
     """
     Utility function that starts a new NameServer and enters its requestloop.
@@ -53,6 +55,9 @@ def start_ns_loop(
         A callable that returns a boolean value. If the value is True, the loop
         will continue. If the value is False, the loop will stop. Defaults to
         ``lambda: True``.
+    on_ready : callable, optional
+        Called with no arguments once the nameserver is bound and about to
+        start serving requests.
     """
     # Parameters from the original function
     host = cfg.host
@@ -111,6 +116,8 @@ def start_ns_loop(
         log.warning(
             "Couldn't flush stdout! (Not a problem if running under pythonw.exe)"
         )
+    if on_ready is not None:
+        on_ready()
     try:
         daemon.requestLoop(loopCondition=loop_condition)
     finally:
