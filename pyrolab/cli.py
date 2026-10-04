@@ -164,7 +164,13 @@ def main(
 
 
 def _spawn_daemon(port: Optional[int]) -> subprocess.Popen:
-    """Launch pyrolabd.py as a detached background process."""
+    """
+    Launch pyrolabd.py as a detached background process.
+
+    Its stdout and stderr (including tracebacks from crashing child
+    processes) go to a file in the log directory, not the terminal that ran
+    `pyrolab up`.
+    """
     try:
         rsrc = pkg_resources.files(pyrolab) / "pyrolabd.py"
     except AttributeError:
@@ -174,18 +180,25 @@ def _spawn_daemon(port: Optional[int]) -> subprocess.Popen:
     if port:
         args.append(str(port))
 
-    if platform.system() == "Windows":
-        DETACHED_PROCESS = 0x00000008
-        # Replace python.exe with pythonw.exe on Windows, usually in the
-        # same directory (certainly true for conda installations).
-        args[0] = str(Path(sys.exec_prefix) / "pythonw.exe")
-        return subprocess.Popen(
-            args,
+    PYROLAB_LOGDIR.mkdir(parents=True, exist_ok=True)
+    with open(PYROLAB_LOGDIR / DAEMON_OUTPUT_LOG, "ab") as output:
+        options = dict(
+            stdin=subprocess.DEVNULL,
+            stdout=output,
+            stderr=subprocess.STDOUT,
             close_fds=True,
             start_new_session=True,
-            creationflags=DETACHED_PROCESS,
         )
-    return subprocess.Popen(args, close_fds=True, start_new_session=True)
+        if platform.system() == "Windows":
+            DETACHED_PROCESS = 0x00000008
+            # Replace python.exe with pythonw.exe on Windows, usually in the
+            # same directory (certainly true for conda installations).
+            args[0] = str(Path(sys.exec_prefix) / "pythonw.exe")
+            options["creationflags"] = DETACHED_PROCESS
+        return subprocess.Popen(args, **options)
+
+
+DAEMON_OUTPUT_LOG = "pyrolabd_output.log"
 
 
 def _daemon_responds(uri: str) -> bool:
@@ -260,13 +273,27 @@ def up(
 
 
 @app.command()
-def down():
+def down(
+    timeout: float = typer.Option(
+        60.0, "--timeout", help="Seconds to wait for everything to stop."
+    ),
+):
     """
-    Stop the background PyroLab daemon.
+    Stop the background PyroLab daemon and everything it runs.
     """
     daemon = get_daemon(suppress_reload_message=True)
     daemon.shutdown()
+    # Stopping escalates to terminate/kill for anything that hangs, so this
+    # normally finishes well within the timeout.
+    deadline = time.monotonic() + timeout
     while LOCKFILE.exists():
+        if time.monotonic() > deadline:
+            typer.secho(
+                f"PyroLab daemon has not exited after {timeout:g} seconds; see the "
+                f"logs in {PYROLAB_LOGDIR}.",
+                fg=typer.colors.RED,
+            )
+            raise typer.Exit(1)
         sleep(0.1)
     typer.secho("PyroLab daemon shutdown.", fg=typer.colors.GREEN)
 
@@ -368,19 +395,42 @@ app.add_typer(
 @start_app.command("nameserver")
 def start_nameserver(name: str):
     """
-    Start a nameserver.
+    Start a nameserver and wait until it is serving.
     """
     daemon = get_daemon()
-    daemon.start_nameserver(name)
+    _report_start("Nameserver", "nameserver", name, daemon.start_nameserver(name))
 
 
 @start_app.command("daemon")
 def start_daemon(name: str):
     """
-    Start a daemon.
+    Start a daemon (and its services) and wait until it is serving.
     """
     daemon = get_daemon()
-    daemon.start_daemon(name)
+    _report_start("Daemon", "daemon", name, daemon.start_daemon(name))
+
+
+def _report_start(label: str, kind: str, name: str, result: dict) -> None:
+    status, error = result.get("status"), result.get("error", "")
+    if status == "running":
+        typer.secho(f"{label} '{name}' is running.", fg=typer.colors.GREEN)
+    elif status == "already running":
+        typer.secho(f"{label} '{name}' is already running.")
+    elif status == "unknown":
+        typer.secho(
+            f"There is no {kind} named '{name}' in the configuration.",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    elif status == "failed":
+        typer.secho(f"{label} '{name}' failed to start: {error}", fg=typer.colors.RED)
+        raise typer.Exit(1)
+    else:
+        typer.secho(
+            f"{label} '{name}' did not report ready in time; check 'pyrolab ps'.",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
 
 
 ###############################################################################
@@ -508,7 +558,8 @@ def logs_export(filename: str):
     """
     Exports the log file to a file.
     """
-    f_names = PYROLAB_LOGDIR.glob("*.*")
+    # The daemon's raw stdout/stderr isn't in the timestamped log format.
+    f_names = [f for f in PYROLAB_LOGDIR.glob("*.*") if f.name != DAEMON_OUTPUT_LOG]
     lines = list(fileinput.input(f_names))
     t_fmt = "%Y-%m-%d %H:%M:%S.%f"  # format of time stamps
     t_pat = re.compile(r"\[(.+?)\]")  # pattern to extract timestamp

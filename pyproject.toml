@@ -121,6 +121,10 @@ addopts = "--maxfail=2 -rf"
 testpaths = ["tests"]
 console_output_style = "progress"
 filterwarnings = ["ignore::UserWarning", "ignore::DeprecationWarning"]
+# A test running longer than this dumps every thread's traceback to stderr,
+# so a hang shows where it is stuck instead of silently running until CI's
+# job timeout.
+faulthandler_timeout = 60
 markers = [
   "hardware: needs physical lab instruments; skipped unless --run-hardware is given",
 ]

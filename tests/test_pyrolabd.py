@@ -21,15 +21,17 @@ class FakeManager:
         self.calls = []
         self.broken = set()  # names whose launch raises
 
-    def launch_nameserver(self, name):
-        self.calls.append(("launch_nameserver", name))
+    def launch_nameserver(self, name, wait=False):
+        self.calls.append(("launch_nameserver", name) + (("wait",) if wait else ()))
         if name in self.broken:
             raise KeyError(name)
+        return {"status": "running" if wait else "started", "error": ""}
 
-    def launch_daemon(self, name):
-        self.calls.append(("launch_daemon", name))
+    def launch_daemon(self, name, wait=False):
+        self.calls.append(("launch_daemon", name) + (("wait",) if wait else ()))
         if name in self.broken:
             raise KeyError(name)
+        return {"status": "running" if wait else "started", "error": ""}
 
     def shutdown_all(self):
         self.calls.append(("shutdown_all",))
@@ -50,7 +52,14 @@ class FakeManager:
         return {"created": "2026-01-01 00:00:00", "status": "Up 5 seconds", "uri": ""}
 
     def get_daemon_process_info(self, name):
-        return {"created": "", "status": "Stopped", "uri": ""}
+        if name == "lockable":
+            return {
+                "created": "2026-01-01 00:00:00",
+                "status": "Restarting in 12s (2/5)",
+                "uri": "",
+                "error": "RuntimeError: " + "x" * 100,
+            }
+        return {"created": "", "status": "Stopped", "uri": "", "error": ""}
 
     def get_service_process_info(self, name):
         return {"daemon": "", "uri": ""}
@@ -149,15 +158,21 @@ def test_stop_reports_whether_anything_was_running(pld, method):
 
 def test_start_stop_restart_delegate_to_manager(pld, fake_manager):
     fake_manager.calls.clear()
-    pld.start_daemon("plain")
+    # Starting from the CLI waits until ready (#59); the result goes back.
+    assert pld.start_daemon("plain") == {"status": "running", "error": ""}
     pld.stop_nameserver("local")
-    pld.restart_daemon("plain")
+    assert pld.restart_daemon("plain")["status"] == "running"
     assert fake_manager.calls == [
-        ("launch_daemon", "plain"),
+        ("launch_daemon", "plain", "wait"),
         ("shutdown_nameserver", "local"),
         ("shutdown_daemon", "plain"),
-        ("launch_daemon", "plain"),
+        ("launch_daemon", "plain", "wait"),
     ]
+
+
+def test_autolaunch_does_not_wait(pld, fake_manager):
+    pld.autolaunch()
+    assert all("wait" not in call for call in fake_manager.calls)
 
 
 def test_ps_lists_every_configured_entity(pld):
@@ -170,6 +185,14 @@ def test_ps_lists_every_configured_entity(pld):
         assert name in out
     assert "Up 5 seconds" in out
     assert "Stopped" in out
+
+
+def test_ps_shows_last_error_truncated(pld):
+    out = pld.ps()
+    assert "LAST ERROR" in out
+    assert "Restarting in 12s (2/5)" in out
+    assert "RuntimeError: xxx" in out
+    assert "x" * 100 not in out  # long errors are shortened
 
 
 def test_ps_returns_plain_string(pld):

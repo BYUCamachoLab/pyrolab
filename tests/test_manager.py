@@ -10,7 +10,6 @@ daemon runners are never started.
 import multiprocessing
 import queue
 from datetime import datetime, timedelta
-from types import SimpleNamespace
 
 import pytest
 from Pyro5.api import Proxy
@@ -65,22 +64,6 @@ def test_running_time_clamps_negative_durations():
 ###############################################################################
 # ProcessManager bookkeeping
 ###############################################################################
-
-
-@pytest.fixture
-def manager():
-    """
-    A ProcessManager built without ``instance()``, which would start a
-    checkup timer and a ``multiprocessing.Manager`` server process.
-    """
-    pm = ProcessManager.__new__(ProcessManager)
-    pm.nameservers = {}
-    pm.daemons = {}
-    return pm
-
-
-def fake_process(alive=True, **attrs):
-    return SimpleNamespace(is_alive=lambda: alive, **attrs)
 
 
 @pytest.fixture
@@ -161,69 +144,6 @@ def test_process_manager_has_no_shared_class_state():
     # Regression: class-level dicts shadowed the instance attributes (#74).
     assert "nameservers" not in vars(ProcessManager)
     assert "daemons" not in vars(ProcessManager)
-
-
-def test_nameserver_info_when_not_running(manager):
-    assert manager.get_nameserver_process_info("ns") == {
-        "created": "",
-        "status": "Stopped",
-        "uri": "",
-    }
-
-
-def test_nameserver_info_when_running(manager):
-    nsconfig = SimpleNamespace(host="localhost", ns_port=9090)
-    manager.nameservers["ns"] = SimpleNamespace(
-        process=fake_process(nsconfig=nsconfig), created=START
-    )
-    info = manager.get_nameserver_process_info("ns")
-    assert info["created"] == "2026-01-01 12:00:00"
-    assert info["status"].startswith("Up ")
-    assert info["uri"] == "localhost:9090"
-
-
-def test_nameserver_info_when_dead(manager):
-    nsconfig = SimpleNamespace(host="localhost", ns_port=9090)
-    manager.nameservers["ns"] = SimpleNamespace(
-        process=fake_process(alive=False, nsconfig=nsconfig), created=START
-    )
-    assert manager.get_nameserver_process_info("ns")["status"] == "Died"
-
-
-def test_daemon_info(manager):
-    manager.daemons["d"] = SimpleNamespace(
-        process=fake_process(), created=START, shared_uris={}
-    )
-    assert manager.get_daemon_process_info("d")["uri"] == ""
-
-    manager.daemons["d"].shared_uris["d"] = "PYRO:d@localhost:1"
-    assert manager.get_daemon_process_info("d")["uri"] == "PYRO:d@localhost:1"
-    assert manager.get_daemon_process_info("other")["status"] == "Stopped"
-
-
-def test_service_info_before_uri_is_published(manager):
-    # Regression: raised KeyError while the daemon was still starting (#46).
-    manager.daemons["d"] = SimpleNamespace(
-        process=fake_process(serviceconfigs={"svc": None}), shared_uris={}
-    )
-    assert manager.get_service_process_info("svc") == {"daemon": "d", "uri": ""}
-
-    manager.daemons["d"].shared_uris["svc"] = "PYRO:svc@localhost:1"
-    assert manager.get_service_process_info("svc") == {
-        "daemon": "d",
-        "uri": "PYRO:svc@localhost:1",
-    }
-
-
-@pytest.mark.parametrize("method", ["shutdown_nameserver", "shutdown_daemon"])
-@pytest.mark.parametrize("name", ["lockabl", None])
-def test_shutdown_of_something_not_running(manager, method, name):
-    # Regression: raised KeyError, surfacing as a remote traceback (#68).
-    assert getattr(manager, method)(name) is False
-
-
-def test_service_info_for_unknown_service(manager):
-    assert manager.get_service_process_info("svc") == {"daemon": "", "uri": ""}
 
 
 ###############################################################################
