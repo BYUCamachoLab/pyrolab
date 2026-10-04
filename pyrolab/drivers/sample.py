@@ -12,7 +12,7 @@ is working properly.
 
 import logging
 import time
-from typing import Any, List, Union
+from typing import Any, List, Optional, Union
 
 from pyrolab.api import behavior, expose
 from pyrolab.drivers import Instrument
@@ -189,8 +189,8 @@ class SelectiveSampleService(Service):
         A catalog of items.
     """
 
-    def __init__(self, items: List[Any] = []) -> None:
-        self._items = items
+    def __init__(self, items: Optional[List[Any]] = None) -> None:
+        self._items = list(items) if items is not None else []
         self.some_attribute = True
 
     @property

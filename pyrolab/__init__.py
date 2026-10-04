@@ -45,7 +45,7 @@ if pyversion < (3, 7, 0):
 
 
 # Metadata
-__name__ = "PyroLab"
+__title__ = "PyroLab"
 __author__ = "CamachoLab"
 __copyright__ = "Copyright 2020, The PyroLab Project"
 __version__ = "0.4.0"
