@@ -94,7 +94,9 @@ def test_unreachable_nameserver_does_not_block_the_others(live_ns, dead_ns):
 
 def test_pending_registration_succeeds_once_nameserver_appears(serve):
     port = free_port()
-    regs = Registrations({"later": NameServerConfiguration(ns_port=port)})
+    regs = Registrations(
+        {"later": NameServerConfiguration(host="127.0.0.1", ns_port=port)}
+    )
     regs.add("later", "lab.thing", URI)
     assert regs.register_pending() is False
 
