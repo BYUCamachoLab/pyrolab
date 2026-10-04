@@ -9,7 +9,9 @@ fails the test.
 """
 
 import importlib
+import pathlib
 import pkgutil
+import warnings
 
 import pytest
 
@@ -59,3 +61,20 @@ def test_api_exports_resolve():
 
     for name in api.__all__:
         assert hasattr(api, name), name
+
+
+PACKAGE_DIR = pathlib.Path(pyrolab.__file__).parent
+SOURCE_FILES = sorted(PACKAGE_DIR.rglob("*.py"))
+
+
+@pytest.mark.parametrize(
+    "path", SOURCE_FILES, ids=lambda p: p.relative_to(PACKAGE_DIR).as_posix()
+)
+def test_source_compiles_without_warnings(path):
+    # Compiling directly (rather than importing) checks every file, including
+    # drivers whose dependencies are missing, and isn't masked by cached .pyc
+    # files. Invalid escape sequences warn today and become errors in a future
+    # Python release.
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        compile(path.read_text(encoding="utf-8"), str(path), "exec")
