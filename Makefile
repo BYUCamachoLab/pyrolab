@@ -1,77 +1,68 @@
 help:
-	@echo 'make venv:			Create venv for development'
-	@echo 'make install:        Install package for development'
-	@echo 'make precommit: 		Configure pre-commit on your system'
-	@echo 'make doc:			Build the static documentation site'
-	@echo 'make serve: 			Serve the documentation site on localhost for browsing'
+	@echo 'make install:        Set up the dev environment (uv) and pre-commit hooks'
+	@echo 'make precommit:      Run all pre-commit hooks on every file'
+	@echo 'make doc:            Build the static documentation site'
+	@echo 'make serve:          Serve the documentation site on localhost for browsing'
 	@echo 'make test:           Run tests with pytest'
-
-venv:
-	python3 -m venv env
+	@echo 'make format:         Sort imports and format code with ruff'
+	@echo 'make release-patch:  Bump, tag, and push a release (also -minor, -major)'
 
 install:
-	pip install --upgrade pip setuptools wheel
-	pip install -r requirements.txt
-	pip install -e .[dev]
-	pre-commit install
+	uv sync --all-extras
+	uv run pre-commit install
 
 precommit:
-	pre-commit install
-	pre-commit run --all-files
+	uv run pre-commit run --all-files
 
 doc:
-	jb build docs
+	uv run --group docs jb build docs
 
 serve:
 	cd docs/_build/html && python3 -m http.server
 
 format:
-	black pyrolab
+	uv run ruff check --fix
+	uv run ruff format
 
 mypy:
-	mypy -p pyrolab
-
-# lint:
-# 	flake8 .
+	uv run mypy -p pyrolab
 
 test:
-	coverage run -m pytest
-	coverage report
+	uv run coverage run -m pytest
+	uv run coverage report
 
 jupytext:
-	jupytext **/*.ipynb --to py
+	uvx jupytext **/*.ipynb --to py
 
 notebooks:
-	jupytext docs/notebooks/**/*.py --to ipynb
-	jupytext docs/notebooks/*.py --to ipynb
+	uvx jupytext docs/notebooks/**/*.py --to ipynb
+	uvx jupytext docs/notebooks/*.py --to ipynb
 
 build:
 	rm -rf dist
-	python -m build
+	uv build
 
 ###############################################################################
-# Devloper shouldn't use these targets, use release-[patch|minor|major] instead
+# Releasing: bumps the version in pyproject.toml (and uv.lock), commits, tags
+# vX.Y.Z, and pushes. The tag triggers .github/workflows/release.yml.
 
-patch:
-	bumpversion patch
+release-patch: BUMP = patch
+release-minor: BUMP = minor
+release-major: BUMP = major
 
-minor:
-	bumpversion minor
-
-major:
-	bumpversion major
-
-release:
-	VERSION=$(shell python3 -c "import pyrolab; print(pyrolab.__version__)") && \
-	echo Releasing version $$VERSION && \
-	TAG_NAME=v$$VERSION && \
+release-patch release-minor release-major:
+	@test -z "$$(git status --porcelain)" || \
+		{ echo "Working tree is not clean; commit or stash changes first."; exit 1; }
+	@OLD=$$(uv version --short) && \
+	NEW=$$(uv version --bump $(BUMP) --dry-run --short) && \
+	test -f docs/changelog/$$NEW-changelog.md || \
+		{ echo "Missing docs/changelog/$$NEW-changelog.md (the release body)."; exit 1; } && \
+	uv version --bump $(BUMP) && \
+	git add pyproject.toml uv.lock && \
+	git commit -m "Bump version: $$OLD → $$NEW" && \
+	git tag v$$NEW && \
 	git push && \
-	git push origin $$TAG_NAME
+	git push origin v$$NEW
 
-###############################################################################
-
-release-patch: patch release
-
-release-minor: minor release
-
-release-major: major release
+.PHONY: help install precommit doc serve format mypy test jupytext notebooks build \
+	release-patch release-minor release-major

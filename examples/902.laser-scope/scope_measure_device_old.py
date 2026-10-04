@@ -50,16 +50,17 @@ else:
 # Libraries
 # ---------------------------------------------------------------------------- #
 import os
-from pathlib import Path
 
 # import time
 import sys
 from datetime import datetime
+from pathlib import Path
 
+import numpy as np
+
+from pyrolab.analysis import WavelengthAnalyzer
 from pyrolab.drivers.lasers.tsl550 import TSL550
 from pyrolab.drivers.scopes.rohdeschwarz import RTO
-from pyrolab.analysis import WavelengthAnalyzer
-import numpy as np
 
 # VisualizeData
 
@@ -101,7 +102,7 @@ if not os.path.exists(folderPath):
 print("Initializing laser.")
 try:
     # Remote Computer via PyroLab
-    from pyrolab.api import locate_ns, Proxy
+    from pyrolab.api import Proxy, locate_ns
 
     ns = locate_ns(host="camacholab.ee.byu.edu")
     laser = Proxy(ns.lookup("TSL550"))
@@ -205,7 +206,7 @@ if add_trigger:
 
     for i in range(3):
         np.savez(
-            Path(folderPath, f"Channel{i+2}.npz"),
+            Path(folderPath, f"Channel{i + 2}.npz"),
             wavelength=np.array(data[i + 2]["wavelengths"]),
             power=np.array(data[i + 2]["data"]),
         )

@@ -35,15 +35,13 @@ import socket
 import threading
 import time
 from ctypes import *
-from typing import Tuple, Optional
+from typing import Optional, Tuple
 
-import numpy as np
 import cv2 as cv
+import numpy as np
 
-from pyrolab.api import expose
+from pyrolab.api import Proxy, expose, locate_ns
 from pyrolab.drivers.cameras import Camera
-from pyrolab.api import locate_ns, Proxy
-
 
 log = logging.getLogger(__name__)
 

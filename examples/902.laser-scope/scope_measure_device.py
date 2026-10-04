@@ -12,11 +12,12 @@ A series of convenience functions for processing raw data.
 
 from pathlib import Path
 from typing import NamedTuple
+
 import numpy as np
 from scipy.signal import find_peaks
 
+from pyrolab.api import Proxy, locate_ns
 from pyrolab.drivers.scopes.rohdeschwarz import RTO
-from pyrolab.api import locate_ns, Proxy
 
 
 class AnalysisResult(NamedTuple):
@@ -207,7 +208,7 @@ data[1:] = [
 folderPath = "."
 for i in range(3):
     np.savez(
-        Path(folderPath, f"Channel{i+2}.npz"),
+        Path(folderPath, f"Channel{i + 2}.npz"),
         wavelength=np.array(data[i + 2]["wavelengths"]),
         power=np.array(data[i + 2]["data"]),
     )

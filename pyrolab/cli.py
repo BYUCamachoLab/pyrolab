@@ -10,16 +10,18 @@ Usage: pyrolab [OPTIONS] COMMAND [ARGS]...
 
 Try ``pyrolab --help`` for help.
 """
+
+import fileinput
 import platform
+import re
 import shutil
 import subprocess
 import sys
 import textwrap
-import fileinput
-import re
 from pathlib import Path
-from typing import Callable, Iterable, Optional
 from time import sleep, strptime
+from typing import Callable, Iterable, Optional
+
 from tabulate import tabulate
 
 try:
@@ -338,7 +340,7 @@ def info():
         ns_data.append({"name": name, **config.nameservers[name].dict()})
     for item in ns_data:
         item["ns_autoclean"] = (
-            f'{item["ns_autoclean"]} sec' if item["ns_autoclean"] else "Off"
+            f"{item['ns_autoclean']} sec" if item["ns_autoclean"] else "Off"
         )
     if ns_data:
         typer.echo("\nNameservers")

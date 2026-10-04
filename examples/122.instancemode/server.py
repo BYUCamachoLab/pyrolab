@@ -8,19 +8,19 @@
 Instance Mode Server
 --------------------
 
-Registers the same class, SampleService, with the nameserver in three 
+Registers the same class, SampleService, with the nameserver in three
 different modes:
 
-1. ``single`` A single instance is created and all calls, across proxies, 
+1. ``single`` A single instance is created and all calls, across proxies,
    access the same object.
 2. ``session`` An instance is created per incoming Proxy connection. Until
    the connection is closed, the same instance is used. Simultaneous Proxies
    get their own instance.
-3. ``percall`` An instance is created for each call, even if it's from the 
+3. ``percall`` An instance is created for each call, even if it's from the
    same Proxy connection.
 """
 
-from pyrolab.api import config, behavior, serve, locate_ns
+from pyrolab.api import behavior, config, locate_ns, serve
 from pyrolab.drivers.sample import SampleService
 
 config.reset()

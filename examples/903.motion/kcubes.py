@@ -2,8 +2,8 @@ import os
 
 os.add_dll_directory("C:\\Program Files\\Thorlabs\\Kinesis")
 
-from ctypes import c_int, c_double, byref, pointer
 import time
+from ctypes import byref, c_double, c_int, pointer
 
 from pyrolab.drivers.motion.z8xx import Z825B
 

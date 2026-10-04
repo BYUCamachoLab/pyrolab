@@ -1,13 +1,12 @@
+import math
 import os
 import time
-import math
-
 from ctypes import *
 
 from sacher_tec._utils import (
-    c_word,
-    c_dword,
     bind,
+    c_dword,
+    c_word,
     not_implemented,
 )
 

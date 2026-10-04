@@ -44,7 +44,6 @@ from thorlabs_kinesis._utils import c_dword, c_word
 from pyrolab.api import expose
 from pyrolab.drivers.motion.kinesis import ERROR_CODES, KinesisInstrument
 
-
 log = logging.getLogger(__name__)
 
 

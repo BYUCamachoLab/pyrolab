@@ -1,18 +1,19 @@
-import tkinter
-from tkinter import filedialog
-from tkinter import colorchooser
-import tkinter.ttk
-import cv2
-import PIL.Image, PIL.ImageTk
-import time
-from pyrolab.api import locate_ns, Proxy
-import numpy as np
-import socket
-import pickle
-import time
-from datetime import datetime
-import threading
 import os
+import pickle
+import socket
+import threading
+import time
+import tkinter
+import tkinter.ttk
+from datetime import datetime
+from tkinter import colorchooser, filedialog
+
+import cv2
+import numpy as np
+import PIL.Image
+import PIL.ImageTk
+
+from pyrolab.api import Proxy, locate_ns
 
 HEADERSIZE = 10
 BRIGHTNESS = 5

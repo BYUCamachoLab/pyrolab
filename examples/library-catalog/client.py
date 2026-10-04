@@ -11,7 +11,7 @@
 ...
 """
 
-from pyrolab.api import locate_ns, Proxy
+from pyrolab.api import Proxy, locate_ns
 
 with locate_ns(host="localhost") as ns:
     uri = ns.lookup("library")

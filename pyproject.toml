@@ -72,36 +72,32 @@ dependencies = [
   "packaging>=23.0",
 ]
 
-# List additional groups of dependencies here (e.g. development
-# dependencies). Users will be able to install these using the "extras"
-# syntax, for example:
+# Optional hardware dependencies, installed with the "extras" syntax, e.g.
 #
-#   $ pip install sampleproject[dev]
+#   $ pip install pyrolab[arduino]
 [project.optional-dependencies]
 tsl550 = ["pyserial"]
 ppcl55x = ["pyserial"]
 # thorlabs = ["thorlabs_kinesis@git+https://github.com/BYUCamachoLab/thorlabs-kinesis"]
 rto = ["pyvisa", "pyvisa-py"]
 arduino = ["pyfirmata"]
+cameras = ["opencv-python"]
 # adiscovery = ["WF_SDK@git+https://github.com/Digilent/WaveForms-SDK-Getting-Started-PY#egg=WF_SDK"]
 # monitor = ["pyromonitor@git+https://github.com/BYUCamachoLab/pyromonitor"]
-test = ["pytest", "coverage"]
+
+# Development-only dependencies; not published. `uv sync` installs "dev" by
+# default; add `--group docs` for the documentation toolchain.
+[dependency-groups]
 dev = [
-  "notebook",
-  "pytest",
-  "mypy",
   "coverage",
-  "flake8 >= 4.0.1",
-  "isort >= 5.10.1",
-  "black >= 22.1.0",
-  "autopep8 >= 1.6.0",
-  "twine >= 4.0.0",
-  "build >= 0.10.0",
+  "mypy",
   "pre-commit",
-  "bump2version ~= 1.0.1",
+  "pytest",
+  "ruff==0.16.10",  # keep in step with .pre-commit-config.yaml
 ]
 docs = [
   "jupyter-book == 1.0.3",
+  "notebook",
   "numpydoc==1.5.0",
 ]
 
@@ -139,22 +135,17 @@ skip_empty = true
 requires = ["setuptools>=62.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.isort]
-profile = "black"
-extend_skip_glob = "api.py"
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-line_length = 88
-known_third_party = [
-    "Pyro5",
-    "matplotlib",
-    "numpy",
-    "pytest",
-    "scipy",
-    "setuptools",
-    "typer",
-    "tabulate",
-]
-known_first_party = ["pyrolab"]
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+# Import sorting only, replacing isort. Ruff's default rule set is not
+# enabled yet.
+select = ["I"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["pyrolab"]
+
+[tool.ruff.lint.per-file-ignores]
+# Import order in api.py is load-bearing.
+"pyrolab/api.py" = ["I"]

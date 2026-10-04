@@ -16,7 +16,6 @@ from typing import Callable, Optional
 
 from pyrolab.server import expose
 
-
 log = logging.getLogger(__name__)
 
 

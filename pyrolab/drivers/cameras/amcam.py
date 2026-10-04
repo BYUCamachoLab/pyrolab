@@ -1,7 +1,8 @@
 import cv2
-from pyrolab.api import expose, locate_ns, Proxy
-from pyrolab.drivers.cameras import Camera
+
+from pyrolab.api import Proxy, expose, locate_ns
 from pyrolab.drivers import Instrument
+from pyrolab.drivers.cameras import Camera
 
 
 @expose

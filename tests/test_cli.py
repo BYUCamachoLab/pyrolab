@@ -239,15 +239,20 @@ def test_rename_without_config(data_dir):
 
 
 def test_logs_export_merges_and_sorts(data_dir, tmp_path):
-    (data_dir.PYROLAB_LOGDIR / "pyrolab_1.log").write_text(
-        "[2026-01-01 10:00:00.000] INFO first\n"
-        "[2026-01-01 10:00:02.000] ERROR third\n"
-        "Traceback (most recent call last):\n"
-        "  boom\n"
+    def write_log(name, *lines):
+        (data_dir.PYROLAB_LOGDIR / name).write_text("".join(f"{x}\n" for x in lines))
+
+    write_log(
+        "pyrolab_1.log",
+        "[2026-01-01 10:00:00.000] INFO first",
+        "[2026-01-01 10:00:02.000] ERROR third",
+        "Traceback (most recent call last):",
+        "  boom",
     )
-    (data_dir.PYROLAB_LOGDIR / "pyrolab_2.log").write_text(
-        "[2026-01-01 10:00:01.000] INFO second\n"
-        "[2026-01-01 10:00:03.000] INFO fourth\n"
+    write_log(
+        "pyrolab_2.log",
+        "[2026-01-01 10:00:01.000] INFO second",
+        "[2026-01-01 10:00:03.000] INFO fourth",
     )
     out = tmp_path / "merged.log"
 

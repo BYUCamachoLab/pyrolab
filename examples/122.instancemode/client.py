@@ -11,7 +11,7 @@ Instance Mode Client
 ...
 """
 
-from pyrolab.api import config, locate_ns, Proxy
+from pyrolab.api import Proxy, config, locate_ns
 
 config.reset()
 

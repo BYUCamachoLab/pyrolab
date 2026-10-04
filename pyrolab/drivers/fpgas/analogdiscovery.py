@@ -25,11 +25,10 @@ Driver for the Digilent Analog Discovery 3.
    WF_SDK (`repository <https://github.com/Digilent/WaveForms-SDK-Getting-Started-PY#egg=WF_SDK>`_)
 """
 
+from WF_SDK import device, error, scope, tools, wavegen
 
-from WF_SDK import device, scope, wavegen, tools, error
-
+from pyrolab.api import behavior, expose
 from pyrolab.drivers.fpgas import FPGA
-from pyrolab.api import expose, behavior
 
 
 @behavior(instance_mode="single")
