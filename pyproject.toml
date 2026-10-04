@@ -126,6 +126,15 @@ addopts = "--maxfail=2 -rf"
 testpaths = ["tests"]
 console_output_style = "progress"
 filterwarnings = ["ignore::UserWarning", "ignore::DeprecationWarning"]
+markers = [
+  "hardware: needs physical lab instruments; skipped unless --run-hardware is given",
+]
+
+[tool.coverage.run]
+source = ["pyrolab"]
+
+[tool.coverage.report]
+skip_empty = true
 
 [build-system]
 requires = ["setuptools>=62.0.0", "wheel"]

@@ -5,22 +5,17 @@
 # (see pyrolab/__init__.py for details)
 
 import os
-import sys
+import time
 
-import numpy as np
 import pytest
 
-from pyrolab.drivers.motion.kinesis import bpc303 as bp
-
-if sys.version_info < (3, 8, 0):
-    os.environ["PATH"] = (
-        "C:\\Program Files\\Thorlabs\\Kinesis" + ";" + os.environ["PATH"]
-    )
-else:
-    os.add_dll_directory("C:\\Program Files\\Thorlabs\\Kinesis")
+pytestmark = pytest.mark.hardware
 
 
 def test_bpc303():
+    os.add_dll_directory("C:\\Program Files\\Thorlabs\\Kinesis")
+    from pyrolab.drivers.motion.kinesis import bpc303 as bp
+
     piezo = bp.BPC303("71874833", closed_loop=True)
     print("Connected!")
     # print("Zeroing (with blocking)")

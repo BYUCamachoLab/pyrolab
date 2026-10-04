@@ -3,29 +3,30 @@ from pyrolab.api import expose, locate_ns, Proxy
 from pyrolab.drivers.cameras import Camera
 from pyrolab.drivers import Instrument
 
+
 @expose
 class AmScope(Camera):
     def __init__(self, cam_idx=0):
         self.cam_idx = cam_idx
         self.capture = None
-    
+
     @expose
     def start_camera(self):
         self.capture = cv2.VideoCapture(self.cam_idx)
         if not self.capture.isOpened():
             raise Exception("Could not open video device")
         return self.capture
-    
+
     @expose
     def stop_camera(self):
         if self.capture is not None:
             self.capture.release()
             self.capture = None
-            
-    @expose 
+
+    @expose
     def autoconnect(self):
         return super().autoconnect()
-    
+
     def connect(self, name: str, ns_host: str = None, ns_port: float = None) -> None:
         """
         Connect to a remote PyroLab-hosted UC480 camera.
@@ -57,5 +58,3 @@ class AmScope(Camera):
         self.cam.autoconnect()
         self.remote_attributes = self.cam._pyroAttrs
         self._LOCAL_HEADERSIZE = self.HEADERSIZE
-        
-
