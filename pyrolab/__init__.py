@@ -36,9 +36,9 @@ from pathlib import Path
 
 # Check if Python version is supported
 pyversion = sys.version_info
-if pyversion < (3, 7, 0):
+if pyversion < (3, 11, 0):
     raise Exception(
-        "PyroLab requires Python 3.7+ (version "
+        "PyroLab requires Python 3.11+ (version "
         + platform.python_version()
         + " detected)."
     )
@@ -67,14 +67,9 @@ if "PYROLAB_HUSH_DEPRECATION" in os.environ:
 
 
 # Configuration directories
-# Old api deprecated in 3.11, new api added in 3.9
-if pyversion < (3, 9, 0):
-    base_path = pathlib.Path(__file__).resolve().parent
-else:
-    from importlib.resources import files
+from importlib.resources import files
 
-    base_path = files("pyrolab")
-base_path = base_path / "data" / "local"
+base_path = files("pyrolab") / "data" / "local"
 
 # Data directories
 PYROLAB_DATA_DIR = pathlib.Path(base_path)
