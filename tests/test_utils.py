@@ -63,3 +63,27 @@ def test_pid_is_running_for_an_exited_process():
 def test_pid_is_running_rejects_invalid_pids():
     assert not utils.pid_is_running(0)
     assert not utils.pid_is_running(-1)
+
+
+def test_atomic_write_text(tmp_path):
+    target = tmp_path / "file.txt"
+    utils.atomic_write_text(target, "first")
+    utils.atomic_write_text(target, "second")
+    assert target.read_text() == "second"
+    assert [f.name for f in tmp_path.iterdir()] == ["file.txt"]
+
+
+def test_atomic_write_text_failure_leaves_original(tmp_path, monkeypatch):
+    target = tmp_path / "file.txt"
+    target.write_text("original")
+
+    def boom(src, dst):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(utils.os, "replace", boom)
+    try:
+        utils.atomic_write_text(target, "new")
+    except OSError:
+        pass
+    assert target.read_text() == "original"
+    assert [f.name for f in tmp_path.iterdir()] == ["file.txt"]  # no temp left

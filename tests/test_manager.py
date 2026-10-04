@@ -9,6 +9,7 @@ daemon runners are never started.
 
 import multiprocessing
 import queue
+import socket
 from datetime import datetime, timedelta
 
 import pytest
@@ -253,3 +254,59 @@ def test_daemon_runner_setup_self_registers_with_nameservers(serve):
 
     hosted = daemon.objectsById[uris["sample.instrument"].object]
     assert issubclass(hosted, Lockable)
+
+
+###############################################################################
+# Daemon placement (#47)
+###############################################################################
+
+
+def _plain_runner(daemonconfig):
+    return _daemon_runner(daemonconfig, {}, {})
+
+
+def test_daemon_binds_configured_port():
+    # Regression: port was only "applied" through Pyro5.config, which has no
+    # such option, so the daemon always picked a random port (#47).
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    daemon, _ = _plain_runner(
+        DaemonConfiguration(host="127.0.0.1", port=port)
+    ).setup_daemon()
+    try:
+        assert daemon.locationStr == f"127.0.0.1:{port}"
+    finally:
+        daemon.close()
+
+
+@pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="no Unix sockets")
+def test_daemon_binds_configured_unixsocket(tmp_path):
+    path = tmp_path / "lab.sock"
+    daemon, _ = _plain_runner(DaemonConfiguration(unixsocket=str(path))).setup_daemon()
+    try:
+        assert daemon.locationStr == f"./u:{path}"
+        assert path.exists()
+    finally:
+        daemon.close()
+
+
+def test_daemon_public_host_is_resolved(monkeypatch):
+    import pyrolab.manager
+
+    monkeypatch.setattr(pyrolab.manager, "get_ip", lambda: "127.0.0.1")
+    daemon, _ = _plain_runner(DaemonConfiguration(host="public")).setup_daemon()
+    try:
+        assert daemon.locationStr.startswith("127.0.0.1:")
+    finally:
+        daemon.close()
+
+
+def test_daemon_nat_settings_are_passed_through():
+    daemon, _ = _plain_runner(
+        DaemonConfiguration(host="127.0.0.1", nathost="lab.example.org", natport=9999)
+    ).setup_daemon()
+    try:
+        assert daemon.natLocationStr == "lab.example.org:9999"
+    finally:
+        daemon.close()

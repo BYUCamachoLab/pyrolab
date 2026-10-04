@@ -84,7 +84,17 @@ otherwise clobber each other.
 `PyroLabConfiguration` validates **cross-references** on load: every service's `daemon`/`nameservers`, every
 daemon's `nameservers`, and every `autolaunch` entry must name something defined (a service with no `daemon:`
 refers to one called `default`). `describe_config_error()` turns a load error into readable lines for the CLI.
-Anything that writes a config (e.g. `pyrolab rename`) must re-validate before saving.
+Anything that writes a config must re-validate before saving; `rename_entity()` renames an entity together with
+every reference to it.
+
+The models derive from `_ConfigModel` (plain pydantic `BaseModel`, `extra = "forbid"`), **not** `BaseSettings`:
+settings models fill unset fields from same-named environment variables (`PORT`, `HOST`, ...), which silently
+changed configurations. Unknown keys are errors. `update_pyro_config()` warns about any field it can't apply
+unless the model lists it in `NOT_PYRO_OPTIONS`. Daemon placement (`host`, `port`, `unixsocket`, `nathost`,
+`natport`) goes to the daemon's constructor, since Pyro5 has no global `PORT`/`UNIXSOCKET` options.
+Nameservers get their names (used for storage paths) whenever a `PyroLabConfiguration` is constructed.
+
+Every config/lockfile write goes through `utils.atomic_write_text()` (temp file + fsync + `os.replace`).
 
 `GlobalConfiguration` is a singleton and **must only be touched from the main process**. Child processes read
 the frozen `RUNTIME_CONFIG` file instead, which is why config changes require `pyrolab reload` rather than

@@ -422,8 +422,17 @@ class DaemonRunner(multiprocessing.Process):
             The instantiated Daemon object and the URI for the hosted object,
             to be registered with the nameserver.
         """
-        daemon = self.daemonconfig._get_daemon()
-        daemon = daemon()
+        cfg = self.daemonconfig
+        # Placement goes to the constructor: port and unixsocket have no
+        # Pyro5.config equivalent, so setting them globally did nothing.
+        daemon = cfg._get_daemon()(
+            host=get_ip() if cfg.host == "public" else cfg.host,
+            port=cfg.port,
+            unixsocket=cfg.unixsocket,
+            nathost=cfg.nathost,
+            # Pyro wants both NAT settings or neither; 0 means "same as port".
+            natport=cfg.natport if cfg.nathost else None,
+        )
 
         uris = {}
         for sname, sconfig in self.serviceconfigs.items():

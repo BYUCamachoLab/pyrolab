@@ -37,10 +37,10 @@ import importlib
 import logging
 import uuid
 from pathlib import Path
-from typing import IO, Any, Dict, List, Optional, Type, Union
+from typing import IO, Any, ClassVar, Dict, List, Optional, Tuple, Type, Union
 
 import Pyro5
-from pydantic import BaseModel, BaseSettings, root_validator, validator
+from pydantic import BaseModel, root_validator, validator
 from pydantic.fields import PrivateAttr
 from yaml import dump, load
 from yaml.constructor import ConstructorError
@@ -54,7 +54,7 @@ except ImportError:
 from pyrolab import NAMESERVER_STORAGE, USER_CONFIG_FILE
 from pyrolab.server import Daemon
 from pyrolab.service import Service
-from pyrolab.utils import generate_random_name, get_ip
+from pyrolab.utils import atomic_write_text, generate_random_name, get_ip
 
 log = logging.getLogger(__name__)
 
@@ -171,7 +171,14 @@ class UniqueOrAutoKeyLoader(Loader):
 class PyroConfigMixin:
     """
     Mixin for pydantic models, updates fields that are Pyro5 configuration options.
+
+    A field is applied when its uppercased name is a Pyro5 config option. Fields
+    that are used some other way are listed in ``NOT_PYRO_OPTIONS``; any other
+    field that can't be applied is logged as a warning rather than silently
+    dropped.
     """
+
+    NOT_PYRO_OPTIONS: ClassVar[frozenset] = frozenset()
 
     def update_pyro_config(self, values: dict = None) -> Dict[str, Any]:
         """
@@ -203,13 +210,37 @@ class PyroConfigMixin:
                     values[key] = get_ip()
 
         pyroset = {}
+        ignored = []
         for key, value in values.items():
-            key = key.upper()
-            if key in Pyro5.config.__slots__:
-                # All Pyro config options are fully uppercased
-                setattr(Pyro5.config, key, value)
-                pyroset[key] = value
+            option = key.upper()  # All Pyro config options are fully uppercased
+            if option in Pyro5.config.__slots__:
+                setattr(Pyro5.config, option, value)
+                pyroset[option] = value
+            elif key not in self.NOT_PYRO_OPTIONS:
+                ignored.append(key)
+        log.debug("%s applied Pyro5 settings: %s", type(self).__name__, pyroset)
+        if ignored:
+            log.warning(
+                "%s settings ignored (not Pyro5 options): %s",
+                type(self).__name__,
+                ", ".join(ignored),
+            )
         return pyroset
+
+
+class _ConfigModel(BaseModel):
+    """
+    Base for PyroLab's configuration models.
+
+    These are plain pydantic models rather than ``BaseSettings``: a settings
+    model also fills any field the file leaves out from an environment variable
+    of the same name (case-insensitively), so an unrelated ``PORT`` or ``HOST``
+    in the environment would silently change the configuration.
+    """
+
+    class Config:
+        extra = "forbid"  # a misspelled key is an error, not silently ignored
+        validate_all = True
 
 
 class YAMLMixin:
@@ -294,7 +325,7 @@ class YAMLMixin:
             raise FileNotFoundError(f"File does not exist: '{filename}'")
 
 
-class NameServerConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
+class NameServerConfiguration(_ConfigModel, PyroConfigMixin, YAMLMixin):
     """
     The NameServer Settings class.
 
@@ -364,6 +395,9 @@ class NameServerConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
     storage: str = "memory"
     _name: str = PrivateAttr("")
 
+    # Passed to the nameserver directly rather than through Pyro5.config.
+    NOT_PYRO_OPTIONS: ClassVar[frozenset] = frozenset({"broadcast", "storage"})
+
     @validator("storage")
     def valid_memory_format(cls, v: str):
         if v == "memory":
@@ -424,7 +458,7 @@ class NameServerConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
         return super().update_pyro_config(values=values)
 
 
-class DaemonConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
+class DaemonConfiguration(_ConfigModel, PyroConfigMixin, YAMLMixin):
     """
     Server configuration object.
 
@@ -495,6 +529,12 @@ class DaemonConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
     servertype: str = "thread"
     nameservers: List[str] = []
 
+    # Used to load and construct the daemon (host, port, unixsocket, nathost,
+    # and natport are passed to its constructor), not Pyro5 options.
+    NOT_PYRO_OPTIONS: ClassVar[frozenset] = frozenset(
+        {"module", "classname", "port", "unixsocket", "nameservers"}
+    )
+
     def _get_daemon(self) -> Type[Daemon]:
         """
         Dynamically loads the class object for the daemon given by the configuration.
@@ -517,7 +557,7 @@ class DaemonConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
         return obj
 
 
-class ServiceConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
+class ServiceConfiguration(_ConfigModel, YAMLMixin):
     """
     Groups together information about a PyroLab service.
 
@@ -623,12 +663,12 @@ class ServiceConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
         return uobj
 
 
-class AutolaunchSettings(BaseSettings, YAMLMixin):
+class AutolaunchSettings(_ConfigModel, YAMLMixin):
     nameservers: List[str] = []
     daemons: List[str] = []
 
 
-class PyroLabConfiguration(BaseSettings, YAMLMixin):
+class PyroLabConfiguration(_ConfigModel, YAMLMixin):
     """
     Global configuration options for PyroLab.
 
@@ -637,10 +677,10 @@ class PyroLabConfiguration(BaseSettings, YAMLMixin):
        load trusted or untampered files! If in doubt, examine the file first.
        It's a short text file, and should not be hard to vet.
 
-    Please call ``initialize_nameservers()`` anytime after modifying the
-    nameservers dictionary. Nameservers themselves contain a private attribute
-    of their own name, which can only be given to them by the parent
-    configuration object.
+    Nameservers know their own name (used e.g. for their storage file) only
+    through this parent object. Names are assigned whenever a configuration is
+    created or loaded; call ``initialize_nameservers()`` again after changing
+    the nameservers dictionary in place.
 
     Every name a section refers to must be defined: each service's ``daemon``
     and ``nameservers``, each daemon's ``nameservers``, and every
@@ -683,6 +723,10 @@ class PyroLabConfiguration(BaseSettings, YAMLMixin):
         if problems:
             raise ValueError("; ".join(problems))
         return values
+
+    def __init__(self, **data: Any) -> None:
+        super().__init__(**data)
+        self.initialize_nameservers()
 
     def initialize_nameservers(self):
         for name, nscfg in self.nameservers.items():
@@ -815,9 +859,7 @@ class GlobalConfiguration:
         filename : str or Path
             The path to save the configuration file to.
         """
-        filename = Path(filename)
-        with filename.open("w") as f:
-            f.write(self.config.yaml())
+        atomic_write_text(filename, self.config.yaml())
 
     def set_config(self, cfg: PyroLabConfiguration) -> None:
         """
@@ -931,10 +973,9 @@ def update_config(filename: Union[str, Path]) -> None:
     """
     filename = Path(filename)
     if not filename.exists():
-        raise FileNotFoundError(f"File does not: '{filename}'")
+        raise FileNotFoundError(f"File does not exist: '{filename}'")
     config = PyroLabConfiguration.from_file(filename)
-    with open(USER_CONFIG_FILE, "w") as f:
-        f.write(config.yaml())
+    atomic_write_text(USER_CONFIG_FILE, config.yaml())
 
 
 def reset_config() -> None:
@@ -959,5 +1000,75 @@ def export_config(config: PyroLabConfiguration, filename: Union[str, Path]) -> N
     filename : str or Path
         The path to the configuration file or directory to export to.
     """
-    with Path(filename).open("w") as f:
-        f.write(config.yaml())
+    atomic_write_text(filename, config.yaml())
+
+
+SECTIONS = {"nameserver": "nameservers", "daemon": "daemons", "service": "services"}
+
+
+def rename_entity(
+    config: PyroLabConfiguration, kind: str, old: str, new: str
+) -> Tuple[PyroLabConfiguration, List[str]]:
+    """
+    Rename a nameserver, daemon, or service, and every reference to it.
+
+    References are each service's ``daemon`` and ``nameservers``, each
+    daemon's ``nameservers``, and the ``autolaunch`` lists. If ``new`` already
+    exists it is replaced. Entry order is kept, so the saved file changes as
+    little as possible.
+
+    Parameters
+    ----------
+    config : PyroLabConfiguration
+        The configuration to rename within (not modified).
+    kind : str
+        "nameserver", "daemon", or "service".
+    old, new : str
+        The current and new names.
+
+    Returns
+    -------
+    config, changes
+        The renamed, validated configuration, and a description of each
+        reference that was updated.
+
+    Raises
+    ------
+    KeyError
+        If there is no ``kind`` named ``old``.
+    """
+    data = config.dict()
+    section = data[SECTIONS[kind]]
+    if old not in section:
+        raise KeyError(old)
+    data[SECTIONS[kind]] = {
+        (new if name == old else name): entry
+        for name, entry in section.items()
+        if name != new or new == old
+    }
+
+    changes = []
+
+    def swap(names: List[str], where: str) -> List[str]:
+        if old not in names:
+            return names
+        changes.append(where)
+        renamed = [new if name == old else name for name in names]
+        return list(dict.fromkeys(renamed))  # drop duplicates, keep order
+
+    if kind == "nameserver":
+        for sname, svc in data["services"].items():
+            svc["nameservers"] = swap(svc["nameservers"], f"service '{sname}'")
+        for dname, dcfg in data["daemons"].items():
+            dcfg["nameservers"] = swap(dcfg["nameservers"], f"daemon '{dname}'")
+        auto = data["autolaunch"]
+        auto["nameservers"] = swap(auto["nameservers"], "autolaunch")
+    elif kind == "daemon":
+        for sname, svc in data["services"].items():
+            if svc["daemon"] == old:
+                svc["daemon"] = new
+                changes.append(f"service '{sname}'")
+        auto = data["autolaunch"]
+        auto["daemons"] = swap(auto["daemons"], "autolaunch")
+
+    return PyroLabConfiguration.parse_obj(data), changes

@@ -14,7 +14,6 @@ Try ``pyrolab --help`` for help.
 import fileinput
 import platform
 import re
-import shutil
 import subprocess
 import sys
 import textwrap
@@ -45,14 +44,16 @@ from pyrolab import (
 )
 from pyrolab.api import Proxy
 from pyrolab.configure import (
+    SECTIONS,
     PyroLabConfiguration,
     describe_config_error,
     export_config,
+    rename_entity,
     reset_config,
     update_config,
 )
 from pyrolab.pyrolabd import PyroLabDaemon, read_lockfile
-from pyrolab.utils import pid_is_running
+from pyrolab.utils import atomic_write_text, pid_is_running
 
 
 def _print_config_problems(source, exc: Exception) -> None:
@@ -376,7 +377,7 @@ def config_reset():
 def config_export(filename: str):
     """Export the configuration file"""
     if USER_CONFIG_FILE.exists():
-        shutil.copy(USER_CONFIG_FILE, filename)
+        atomic_write_text(filename, USER_CONFIG_FILE.read_text())
     else:
         typer.secho("No configuration file found.", fg=typer.colors.RED)
         raise typer.Abort()
@@ -597,89 +598,87 @@ def logs_export(filename: str):
 ###############################################################################
 
 
-def _save_renamed(config: PyroLabConfiguration, old_name: str) -> None:
-    # Renaming only moves the entry; anything that still refers to the old
-    # name would leave an invalid configuration (which the daemon refuses to
-    # start with), so check before writing.
-    try:
-        PyroLabConfiguration.parse_obj(config.dict())
-    except ValueError as e:
+def _rename(kind: str, old_name: str, new_name: str, force: bool) -> None:
+    """Rename an entity in the user configuration, with every reference."""
+    if not USER_CONFIG_FILE.exists():
+        typer.secho("No user configuration file found.", fg=typer.colors.RED)
+        raise typer.Exit(1)
+    config = _load_config_or_exit(USER_CONFIG_FILE)
+    entities = getattr(config, SECTIONS[kind])
+    if old_name not in entities:
+        typer.secho(f"{kind.capitalize()} '{old_name}' not found.", fg=typer.colors.RED)
+        raise typer.Exit(1)
+    if new_name == old_name:
+        typer.secho(f"{kind.capitalize()} '{old_name}' already has that name.")
+        return
+    if new_name in entities and not force:
         typer.secho(
-            f"Can't rename '{old_name}': other entries still refer to it.",
+            f"A {kind} named '{new_name}' already exists. Use --force to replace "
+            "it (and point its references at the renamed one).",
             fg=typer.colors.RED,
         )
-        for line in describe_config_error(e):
-            typer.secho(f"  - {line}", fg=typer.colors.RED)
-        typer.secho("Update those references first. Nothing was changed.")
         raise typer.Exit(1)
-    export_config(config, USER_CONFIG_FILE)
+
+    renamed, changes = rename_entity(config, kind, old_name, new_name)
+    export_config(renamed, USER_CONFIG_FILE)
+
+    typer.secho(f"Renamed {kind} '{old_name}' to '{new_name}'.", fg=typer.colors.GREEN)
+    if changes:
+        typer.echo("Updated references in: " + ", ".join(changes) + ".")
+    if kind == "nameserver":
+        before = config.nameservers[old_name]
+        if before.storage in ("sql", "dbm"):
+            after = renamed.nameservers[new_name]
+            typer.secho(
+                f"Note: its registrations are stored in "
+                f"{before.get_storage_location().split(':', 1)[1]}; under the new "
+                f"name it will use {after.get_storage_location().split(':', 1)[1]}. "
+                "Move the file before reloading to keep them.",
+                fg=typer.colors.YELLOW,
+            )
+    if kind == "service":
+        typer.echo("Run 'pyrolab reload' for a running daemon to use the new name.")
+    else:
+        # reload restarts only what is running under a name still in the
+        # configuration; it can't tell the renamed entity is the same one.
+        typer.echo(
+            f"If '{old_name}' is running, 'pyrolab reload' will stop it; then "
+            f"start it under its new name with 'pyrolab start {kind} {new_name}'."
+        )
 
 
 rename_app = typer.Typer()
 app.add_typer(rename_app, name="rename", help="Rename a nameserver, daemon or service.")
 
+_FORCE = typer.Option(
+    False, "--force", help="Replace an existing entity that already has the new name."
+)
+
 
 @rename_app.command("nameserver")
-def rename_nameserver(
-    old_name: str,
-    new_name: str,
-):
+def rename_nameserver(old_name: str, new_name: str, force: bool = _FORCE):
     """
-    Rename a nameserver.
+    Rename a nameserver, updating every service, daemon, and autolaunch entry
+    that refers to it.
     """
-    if USER_CONFIG_FILE.exists():
-        config = PyroLabConfiguration.from_file(USER_CONFIG_FILE)
-        if old_name in config.nameservers:
-            config.nameservers[new_name] = config.nameservers.pop(old_name)
-            _save_renamed(config, old_name)
-        else:
-            typer.secho("Nameserver not found.", fg=typer.colors.RED)
-            raise typer.Exit()
-    else:
-        typer.secho("No user configuration file found.", fg=typer.colors.RED)
-        raise typer.Exit()
+    _rename("nameserver", old_name, new_name, force)
 
 
 @rename_app.command("daemon")
-def rename_daemon(
-    old_name: str,
-    new_name: str,
-):
+def rename_daemon(old_name: str, new_name: str, force: bool = _FORCE):
     """
-    Rename a daemon.
+    Rename a daemon, updating every service and autolaunch entry that refers
+    to it.
     """
-    if USER_CONFIG_FILE.exists():
-        config = PyroLabConfiguration.from_file(USER_CONFIG_FILE)
-        if old_name in config.daemons:
-            config.daemons[new_name] = config.daemons.pop(old_name)
-            _save_renamed(config, old_name)
-        else:
-            typer.secho("Nameserver not found.", fg=typer.colors.RED)
-            raise typer.Exit()
-    else:
-        typer.secho("No user configuration file found.", fg=typer.colors.RED)
-        raise typer.Exit()
+    _rename("daemon", old_name, new_name, force)
 
 
 @rename_app.command("service")
-def rename_service(
-    old_name: str,
-    new_name: str,
-):
+def rename_service(old_name: str, new_name: str, force: bool = _FORCE):
     """
     Rename a service.
     """
-    if USER_CONFIG_FILE.exists():
-        config = PyroLabConfiguration.from_file(USER_CONFIG_FILE)
-        if old_name in config.services:
-            config.services[new_name] = config.services.pop(old_name)
-            _save_renamed(config, old_name)
-        else:
-            typer.secho("Nameserver not found.", fg=typer.colors.RED)
-            raise typer.Exit()
-    else:
-        typer.secho("No user configuration file found.", fg=typer.colors.RED)
-        raise typer.Exit()
+    _rename("service", old_name, new_name, force)
 
 
 ###############################################################################
