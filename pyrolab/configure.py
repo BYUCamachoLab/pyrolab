@@ -360,7 +360,7 @@ class NameServerConfiguration(BaseSettings, PyroConfigMixin, YAMLMixin):
     host: str = "localhost"
     ns_port: int = 9090
     broadcast: bool = False
-    ns_bchost: Optional[bool] = None
+    ns_bchost: Optional[str] = None
     ns_bcport: int = 9091
     ns_autoclean: float = 0.0
     storage: str = "memory"

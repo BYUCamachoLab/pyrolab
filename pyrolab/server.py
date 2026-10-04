@@ -459,7 +459,9 @@ class LockableDaemon(Daemon):
             The SocketConnection object that was disconnected.
         """
         for pyroId in list(self.locked_instances.keys()):
-            owner, username = self.locked_instances[pyroId][0]
+            owner, username = self.locked_instances[pyroId]
             if conn == owner:
                 del self.locked_instances[pyroId]
-            log.info(f"Client connection closed, releasing lock owned by '{username}'.")
+                log.info(
+                    f"Client connection closed, releasing lock owned by '{username}'."
+                )

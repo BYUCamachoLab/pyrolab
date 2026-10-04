@@ -14,7 +14,8 @@ import socket
 import sys
 from typing import Callable
 
-from Pyro5.nameserver import BroadcastServer, NameServerDaemon, start_ns
+from Pyro5.nameserver import BroadcastServer, NameServerDaemon
+from Pyro5.nameserver import start_ns as _pyro_start_ns
 
 from pyrolab import NAMESERVER_STORAGE
 from pyrolab.configure import NameServerConfiguration
@@ -119,21 +120,28 @@ def start_ns_loop(
     log.info("NS shut down.")
 
 
-def start_ns(cfg: NameServerConfiguration = None):
+def start_ns(cfg: NameServerConfiguration):
     """
     Utility fuction to quickly get a Nameserver daemon to be used in your own
     event loops.
+
+    Parameters
+    ----------
+    cfg : NameServerConfiguration
+        The configuration object for the nameserver.
 
     Returns
     -------
     nameserverUri, nameserverDaemon, broadcastServer
         A tuple containing three pieces of information.
     """
-    return start_ns(
-        host=cfg.host,
+    # Applies the host (resolving "public") to Pyro5.config.HOST, which the
+    # NameServerDaemon falls back to when no host is passed.
+    cfg.update_pyro_config()
+    return _pyro_start_ns(
         port=cfg.ns_port,
         enableBroadcast=cfg.broadcast,
-        bchost=cfg.bc_host,
-        bcport=cfg.bc_port,
-        storage=cfg.storage,
+        bchost=cfg.ns_bchost,
+        bcport=cfg.ns_bcport,
+        storage=cfg.get_storage_location(),
     )

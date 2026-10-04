@@ -286,8 +286,9 @@ class DaemonRunner(multiprocessing.Process):
                     log.debug(
                         f"Attempting to register '{sname}' with nameserver '{ns}' at {nscfg.host}:{nscfg.ns_port}"
                     )
+                    metadata = {sinfo.description} if sinfo.description else None
                     ns = locate_ns(nscfg.host, nscfg.ns_port)
-                    ns.register(sname, uris[sname], metadata={sinfo.description})
+                    ns.register(sname, uris[sname], metadata=metadata)
                 except Exception as e:
                     log.exception(e)
                     raise e
@@ -362,8 +363,8 @@ class ProcessManager:
     """
 
     _instance = None
-    nameservers: Dict[str, NameServerProcessGroup] = {}
-    daemons: Dict[str, DaemonProcessGroup] = {}
+    nameservers: Dict[str, NameServerProcessGroup]
+    daemons: Dict[str, DaemonProcessGroup]
     GLOBAL_CONFIG: GlobalConfiguration
     manager: multiprocessing.Manager
     _timer: threading.Timer
@@ -542,9 +543,13 @@ class ProcessManager:
         for daemon_name, daemon in self.daemons.items():
             for srvc_name, srvc in daemon.process.serviceconfigs.items():
                 if srvc_name == service:
+                    if service in daemon.shared_uris:
+                        uri = str(daemon.shared_uris[service])
+                    else:
+                        uri = ""
                     return {
                         "daemon": daemon_name,
-                        "uri": str(daemon.shared_uris[service]),
+                        "uri": uri,
                     }
         return {
             "daemon": "",

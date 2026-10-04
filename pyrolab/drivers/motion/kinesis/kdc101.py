@@ -66,7 +66,7 @@ log.info("Building ThorLabs device list (requires ThorLabs Kinesis DLL)")
 try:
     kcdc.TLI_BuildDeviceList()
 except:
-    log.warn(
+    log.warning(
         "Building ThorLabs device list failed; unable to connect to any instruments"
     )
 
@@ -182,7 +182,6 @@ class KDC101(KinesisInstrument):
             else:
                 self.go_home()
 
-
         log.debug("Exiting `connect()`")
 
     @staticmethod
@@ -279,7 +278,9 @@ class KDC101(KinesisInstrument):
         """
         Sets the homing velocity.
         """
-        status = kcdc.CC_SetHomingVelocity(self._serialno, c_uint(self._real_value_to_du(velocity, 1)))
+        status = kcdc.CC_SetHomingVelocity(
+            self._serialno, c_uint(self._real_value_to_du(velocity, 1))
+        )
         check_error(status)
 
     @property
@@ -539,7 +540,7 @@ class KDC101(KinesisInstrument):
     def homed(self) -> bool:
         """
         Returns whether the motor is homed.
-        
+
         Returns
         -------
         is_homed : bool
@@ -549,7 +550,6 @@ class KDC101(KinesisInstrument):
         if bits & 0x400:
             return True
         return False
-        
 
     def wait_for_completion(self, id="homed", MAX_WAIT_TIME=5):
         """
@@ -651,7 +651,7 @@ class KDC101(KinesisInstrument):
             self.wait_for_completion()
         log.debug(f"Homed: KDC101 device '{self.serialno}'")
 
-    def move_to(self, pos, block = True):
+    def move_to(self, pos, block=True):
         """
         Move the device to the specified position (index).
 
@@ -674,7 +674,7 @@ class KDC101(KinesisInstrument):
         # get an error.
         if block:
             self.wait_for_completion(id="moved", MAX_WAIT_TIME=15)
-        
+
         log.debug(f"Move completed (KDC101 {self.serialno})")
 
     # def move_to_unblocked(self, pos):

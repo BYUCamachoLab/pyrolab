@@ -49,7 +49,11 @@ def get_daemon(abort=True, suppress_reload_message=False) -> PyroLabDaemon:
             DAEMON._pyroBind()
         except CommunicationError:
             raise ConnectionRefusedError("Could not connect to daemon.")
-        if not suppress_reload_message and RUNTIME_CONFIG.exists():
+        if (
+            not suppress_reload_message
+            and RUNTIME_CONFIG.exists()
+            and USER_CONFIG_FILE.exists()
+        ):
             if RUNTIME_CONFIG.stat().st_mtime < USER_CONFIG_FILE.stat().st_mtime:
                 typer.secho(
                     "The configuration file has been updated. Run 'pyrolab reload' for changes to take effect.",
