@@ -19,9 +19,11 @@ class FakeManager:
 
     def shutdown_nameserver(self, name):
         self.calls.append(("shutdown_nameserver", name))
+        return name != "not-running"
 
     def shutdown_daemon(self, name):
         self.calls.append(("shutdown_daemon", name))
+        return name != "not-running"
 
     def reload(self):
         self.calls.append(("reload",))
@@ -78,6 +80,23 @@ def test_reload_picks_up_new_user_config(pld, data_dir, fake_manager):
     assert fake_manager.calls[-1] == ("reload",)
     assert set(pld.gconfig.get_config().daemons) == {"only-this-one"}
     assert "only-this-one" in data_dir.RUNTIME_CONFIG.read_text()
+
+
+def test_reload_without_user_config(pld, data_dir, fake_manager):
+    # Regression: raised FileNotFoundError inside the daemon (#55).
+    before = data_dir.RUNTIME_CONFIG.read_text()
+    data_dir.USER_CONFIG_FILE.unlink()  # as `pyrolab config reset` does
+
+    assert pld.reload() is False
+    assert ("reload",) not in fake_manager.calls  # nothing was restarted
+    assert data_dir.RUNTIME_CONFIG.read_text() == before
+
+
+@pytest.mark.parametrize("method", ["stop_nameserver", "stop_daemon"])
+def test_stop_reports_whether_anything_was_running(pld, method):
+    # The CLI relies on this to report an unknown name (#68).
+    assert getattr(pld, method)("local") is True
+    assert getattr(pld, method)("not-running") is False
 
 
 def test_start_stop_restart_delegate_to_manager(pld, fake_manager):

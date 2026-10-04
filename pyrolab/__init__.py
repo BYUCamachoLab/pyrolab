@@ -91,6 +91,7 @@ PYROLAB_MASTERLOG = PYROLAB_LOGDIR / "pyrolab.log"
 LOCKFILE = PYROLAB_DATA_DIR / "pyrolabd.lock"
 USER_CONFIG_FILE = PYROLAB_DATA_DIR / "user_configuration.yaml"
 RUNTIME_CONFIG = PYROLAB_DATA_DIR / "runtime_config.yaml"
+UPDATE_CHECK_FILE = PYROLAB_DATA_DIR / "update_check.json"
 
 
 # Set up logging to file
@@ -125,33 +126,6 @@ if len(logging.root.handlers) == 0:
 import Pyro5.errors
 
 sys.excepthook = Pyro5.errors.excepthook
-
-
-# Check for updates to PyroLab
-try:
-    import json
-
-    import requests
-    from packaging.version import parse
-    from requests.adapters import HTTPAdapter
-
-    url = "https://pypi.org/pypi/pyrolab/json"
-    with requests.Session() as s:
-        s.mount("https://pypi.org", HTTPAdapter(max_retries=3))
-        resp = s.get(url).text
-
-    v = json.loads(resp)["info"]["version"]
-    curver = parse(__version__)
-    latest = parse(v)
-
-    log = logging.getLogger(__name__)
-
-    if curver < latest:
-        message = f"A new version of PyroLab is available (latest is {latest}, but {curver} is installed)."
-        warnings.warn(message, stacklevel=2)
-        log.info(message)
-except:
-    pass
 
 
 def try_itr(func: Callable, itr: Iterable, *exceptions, **kwargs):

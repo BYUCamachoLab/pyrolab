@@ -16,6 +16,8 @@ class FakeDaemonProxy:
 
     instances = []
     fail_bind = False
+    # Return values for recorded calls, by method name (default True).
+    returns = {}
 
     def __init__(self, uri):
         self.uri = uri
@@ -32,6 +34,7 @@ class FakeDaemonProxy:
     def __getattr__(self, name):
         def record(*args):
             self.calls.append((name, *args))
+            return self.returns.get(name, True)
 
         return record
 
@@ -41,6 +44,7 @@ def running_daemon(data_dir, monkeypatch):
     """Pretend pyrolabd is up: write a lockfile and fake the proxy."""
     FakeDaemonProxy.instances = []
     FakeDaemonProxy.fail_bind = False
+    FakeDaemonProxy.returns = {}
     monkeypatch.setattr(cli, "Proxy", FakeDaemonProxy)
     data_dir.LOCKFILE.write_text(
         InstanceInfo(pid=1, uri="PYRO:pyrolabd@localhost:1").json()
@@ -101,6 +105,78 @@ def test_start_stop_commands(running_daemon, args, call):
     result = runner.invoke(cli.app, args)
     assert result.exit_code == 0, result.output
     assert running_daemon.instances[0].calls == [call]
+
+
+@pytest.mark.parametrize(
+    "kind, method, label",
+    [
+        ("nameserver", "stop_nameserver", "Nameserver"),
+        ("daemon", "stop_daemon", "Daemon"),
+    ],
+)
+def test_stop_something_not_running(running_daemon, kind, method, label):
+    # Regression: an unknown name surfaced as a remote KeyError (#68).
+    running_daemon.returns[method] = False
+    result = runner.invoke(cli.app, ["stop", kind, "lockabl"])
+    assert result.exit_code == 1
+    assert f"{label} 'lockabl' is not running." in result.output
+
+
+@pytest.mark.parametrize("kind", ["nameserver", "daemon"])
+def test_stop_requires_a_name(running_daemon, kind):
+    # Regression: a missing name was passed through as None (#68).
+    result = runner.invoke(cli.app, ["stop", kind])
+    assert result.exit_code == 2  # usage error
+    assert running_daemon.instances == []  # never reached the daemon
+
+
+def test_reload(running_daemon, user_config):
+    result = runner.invoke(cli.app, ["reload"])
+    assert result.exit_code == 0, result.output
+    assert "reloaded" in result.output
+    assert running_daemon.instances[0].calls == [("reload",)]
+
+
+def test_reload_failure_exits_nonzero(running_daemon, user_config):
+    running_daemon.returns["reload"] = False
+    result = runner.invoke(cli.app, ["reload"])
+    assert result.exit_code == 1
+    assert "reload failed" in result.output
+
+
+def test_reload_without_user_config(running_daemon, data_dir):
+    # Regression: the daemon crashed copying a missing file (#55).
+    result = runner.invoke(cli.app, ["reload"])
+    assert result.exit_code == 1
+    assert "pyrolab config update" in result.output
+    assert running_daemon.instances[0].calls == []
+
+
+###############################################################################
+# Update check
+###############################################################################
+
+
+def test_update_notice_goes_to_stderr(running_daemon, monkeypatch):
+    monkeypatch.delenv("PYROLAB_NO_VERSION_CHECK")
+    monkeypatch.setattr(cli.updates, "fetch_latest_version", lambda: "999.0.0")
+
+    result = runner.invoke(cli.app, ["ps"])
+    assert result.exit_code == 0, result.output
+    assert "999.0.0" in result.stderr
+    assert "999.0.0" not in result.stdout
+    assert "FAKE PS OUTPUT" in result.stdout
+
+
+def test_update_check_skipped_for_version_flag(data_dir, monkeypatch):
+    monkeypatch.delenv("PYROLAB_NO_VERSION_CHECK")
+
+    def fail():
+        raise AssertionError("--version must not contact PyPI")
+
+    monkeypatch.setattr(cli.updates, "fetch_latest_version", fail)
+    result = runner.invoke(cli.app, ["--version"])
+    assert result.exit_code == 0
 
 
 def test_reload_message_when_user_config_is_newer(running_daemon, data_dir):

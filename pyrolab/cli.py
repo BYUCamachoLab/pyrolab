@@ -32,7 +32,14 @@ import typer
 from Pyro5.errors import CommunicationError
 
 import pyrolab
-from pyrolab import LOCKFILE, PYROLAB_LOGDIR, RUNTIME_CONFIG, USER_CONFIG_FILE
+from pyrolab import (
+    LOCKFILE,
+    PYROLAB_LOGDIR,
+    RUNTIME_CONFIG,
+    UPDATE_CHECK_FILE,
+    USER_CONFIG_FILE,
+    updates,
+)
 from pyrolab.api import Proxy
 from pyrolab.configure import (
     PyroLabConfiguration,
@@ -122,7 +129,17 @@ def main(
         is_eager=True,
     ),
 ):
-    return
+    # Runs before every subcommand (but not --version or --data, which exit
+    # first). Checks PyPI at most once a day; see pyrolab.updates.
+    latest = updates.check_for_update(pyrolab.__version__, UPDATE_CHECK_FILE)
+    if latest:
+        typer.secho(
+            f"A new version of PyroLab is available ({latest}; you have "
+            f"{pyrolab.__version__}). Set {updates.DISABLE_ENV_VAR} to turn "
+            "off this check.",
+            fg=typer.colors.YELLOW,
+            err=True,
+        )
 
 
 @app.command()
@@ -200,11 +217,21 @@ def reload():
     Useful if the configuration file has been updated.
     """
     daemon = get_daemon(suppress_reload_message=True)
-    result = daemon.reload()
-    if result:
+    if not USER_CONFIG_FILE.exists():
+        typer.secho(
+            "No user configuration is installed, so there is nothing to reload "
+            "from. Install one with 'pyrolab config update <file>' first.",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    if daemon.reload():
         typer.secho("PyroLab daemon reloaded.", fg=typer.colors.GREEN)
     else:
-        typer.secho("PyroLab daemon reload failed.", fg=typer.colors.RED)
+        typer.secho(
+            "PyroLab daemon reload failed; see the logs for details.",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
 
 
 @app.command()
@@ -297,24 +324,28 @@ app.add_typer(
 
 @stop_app.command("nameserver")
 def stop_nameserver(
-    name: Optional[str] = typer.Argument(None, help="Name of the service to stop"),
+    name: str = typer.Argument(..., help="Name of the nameserver to stop"),
 ):
     """
     Stop a nameserver.
     """
     daemon = get_daemon()
-    daemon.stop_nameserver(name)
+    if not daemon.stop_nameserver(name):
+        typer.secho(f"Nameserver '{name}' is not running.", fg=typer.colors.RED)
+        raise typer.Exit(1)
 
 
 @stop_app.command("daemon")
 def stop_daemon(
-    name: Optional[str] = typer.Argument(None, help="Name of the service to stop"),
+    name: str = typer.Argument(..., help="Name of the daemon to stop"),
 ):
     """
     Stop a daemon.
     """
     daemon = get_daemon()
-    daemon.stop_daemon(name)
+    if not daemon.stop_daemon(name):
+        typer.secho(f"Daemon '{name}' is not running.", fg=typer.colors.RED)
+        raise typer.Exit(1)
 
 
 ###############################################################################

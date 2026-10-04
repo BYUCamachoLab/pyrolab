@@ -123,9 +123,18 @@ class PyroLabDaemon:
         Returns
         -------
         bool
-            True if the reload was successful, False otherwise.
+            True if the reload was successful, False otherwise (including when
+            there is no user configuration file to reload from, in which case
+            nothing is changed).
         """
         log.debug("Daemon reload requested.")
+        if not USER_CONFIG_FILE.exists():
+            log.warning(
+                "Reload skipped: no user configuration file at %s; running "
+                "entities are left as they are.",
+                USER_CONFIG_FILE,
+            )
+            return False
         shutil.copy(USER_CONFIG_FILE, RUNTIME_CONFIG)
         self.gconfig.load_config(RUNTIME_CONFIG)
         return self.manager.reload()
@@ -189,7 +198,7 @@ class PyroLabDaemon:
         log.debug(f"Starting daemon '{daemon}'.")
         self.manager.launch_daemon(daemon)
 
-    def stop_nameserver(self, nameserver: str) -> None:
+    def stop_nameserver(self, nameserver: str) -> bool:
         """
         Stops a nameserver.
 
@@ -197,11 +206,16 @@ class PyroLabDaemon:
         ----------
         nameserver : str
             The name of the nameserver to stop.
+
+        Returns
+        -------
+        bool
+            False if no nameserver by that name was running.
         """
         log.debug(f"Stopping nameserver '{nameserver}'.")
-        self.manager.shutdown_nameserver(nameserver)
+        return self.manager.shutdown_nameserver(nameserver)
 
-    def stop_daemon(self, daemon: str) -> None:
+    def stop_daemon(self, daemon: str) -> bool:
         """
         Stops a daemon.
 
@@ -209,9 +223,14 @@ class PyroLabDaemon:
         ----------
         daemon : str
             The name of the daemon to stop.
+
+        Returns
+        -------
+        bool
+            False if no daemon by that name was running.
         """
         log.debug(f"Stopping daemon '{daemon}'.")
-        self.manager.shutdown_daemon(daemon)
+        return self.manager.shutdown_daemon(daemon)
 
     def restart_nameserver(self, name: str) -> None:
         """
