@@ -18,6 +18,7 @@ import shutil
 import subprocess
 import sys
 import textwrap
+import time
 from pathlib import Path
 from time import sleep, strptime
 from typing import Callable, Iterable, Optional
@@ -29,6 +30,7 @@ try:
 except ImportError:
     import pkg_resources
 import typer
+import yaml
 from Pyro5.errors import CommunicationError
 
 import pyrolab
@@ -36,6 +38,7 @@ from pyrolab import (
     LOCKFILE,
     PYROLAB_LOGDIR,
     RUNTIME_CONFIG,
+    STARTUP_ERROR_FILE,
     UPDATE_CHECK_FILE,
     USER_CONFIG_FILE,
     updates,
@@ -43,21 +46,39 @@ from pyrolab import (
 from pyrolab.api import Proxy
 from pyrolab.configure import (
     PyroLabConfiguration,
+    describe_config_error,
     export_config,
     reset_config,
     update_config,
 )
-from pyrolab.pyrolabd import InstanceInfo, PyroLabDaemon
+from pyrolab.pyrolabd import PyroLabDaemon, read_lockfile
+from pyrolab.utils import pid_is_running
+
+
+def _print_config_problems(source, exc: Exception) -> None:
+    typer.secho(f"Invalid configuration in {source}:", fg=typer.colors.RED)
+    for line in describe_config_error(exc):
+        typer.secho(f"  - {line}", fg=typer.colors.RED)
+
+
+def _load_config_or_exit(path: Path) -> PyroLabConfiguration:
+    try:
+        return PyroLabConfiguration.from_file(path)
+    except (ValueError, yaml.YAMLError) as e:
+        _print_config_problems(path, e)
+        raise typer.Exit(1)
 
 
 def get_daemon(abort=True, suppress_reload_message=False) -> PyroLabDaemon:
-    if LOCKFILE.exists():
-        ii = InstanceInfo.parse_file(LOCKFILE)
+    info = read_lockfile()
+    if info is not None and pid_is_running(info.pid):
         try:
-            DAEMON = Proxy(ii.uri)
+            DAEMON = Proxy(info.uri)
             DAEMON._pyroBind()
         except CommunicationError:
-            raise ConnectionRefusedError("Could not connect to daemon.")
+            raise ConnectionRefusedError(
+                f"PyroLab daemon (pid {info.pid}) is running but not responding."
+            )
         if (
             not suppress_reload_message
             and RUNTIME_CONFIG.exists()
@@ -142,59 +163,100 @@ def main(
         )
 
 
+def _spawn_daemon(port: Optional[int]) -> subprocess.Popen:
+    """Launch pyrolabd.py as a detached background process."""
+    try:
+        rsrc = pkg_resources.files(pyrolab) / "pyrolabd.py"
+    except AttributeError:
+        rsrc = Path(pkg_resources.resource_filename("pyrolab", "pyrolabd.py"))
+
+    args = [sys.executable, str(rsrc)]
+    if port:
+        args.append(str(port))
+
+    if platform.system() == "Windows":
+        DETACHED_PROCESS = 0x00000008
+        # Replace python.exe with pythonw.exe on Windows, usually in the
+        # same directory (certainly true for conda installations).
+        args[0] = str(Path(sys.exec_prefix) / "pythonw.exe")
+        return subprocess.Popen(
+            args,
+            close_fds=True,
+            start_new_session=True,
+            creationflags=DETACHED_PROCESS,
+        )
+    return subprocess.Popen(args, close_fds=True, start_new_session=True)
+
+
+def _daemon_responds(uri: str) -> bool:
+    try:
+        with Proxy(uri) as proxy:
+            proxy._pyroTimeout = 2
+            proxy._pyroBind()
+        return True
+    except CommunicationError:
+        return False
+
+
 @app.command()
 def up(
     port: int = typer.Option(
         None, "--port", "-p", help="Port to use for the PyroLab daemon."
     ),
+    timeout: float = typer.Option(
+        30.0, "--timeout", help="Seconds to wait for the daemon to respond."
+    ),
 ):
     """
-    Start the background PyroLab daemon.
+    Start the background PyroLab daemon and wait until it responds.
 
-    Only use the `--force` flag if you're sure the daemon is dead, or you may
-    orphan the process.
+    Nameservers and daemons listed under autolaunch keep starting in the
+    background after this returns; check on them with `pyrolab ps`.
     """
-    try:
-        daemon = get_daemon(abort=False, suppress_reload_message=True)
-        force = False
-    except ConnectionRefusedError:
-        daemon = None
-        force = True
-    if daemon is None or force:
-        if force and LOCKFILE.exists():
-            LOCKFILE.unlink()
-
-        try:
-            rsrc = pkg_resources.files(pyrolab) / "pyrolabd.py"
-        except AttributeError:
-            rsrc = Path(pkg_resources.resource_filename("pyrolab", "pyrolabd.py"))
-
-        if port:
-            args = [sys.executable, str(rsrc), str(port)]
+    existing = read_lockfile()
+    if existing is not None and pid_is_running(existing.pid):
+        if _daemon_responds(existing.uri):
+            typer.secho("PyroLab daemon is already running!", fg=typer.colors.RED)
         else:
-            args = [sys.executable, str(rsrc)]
-
-        if platform.system() == "Windows":
-            DETACHED_PROCESS = 0x00000008
-            # Replace python.exe with pythonw.exe on Windows, usually in the
-            # same directory (certainly true for conda installations).
-            executable = Path(sys.exec_prefix) / "pythonw.exe"
-            args[0] = str(executable)
-            subprocess.Popen(
-                args,
-                close_fds=True,
-                start_new_session=True,
-                creationflags=DETACHED_PROCESS,
+            typer.secho(
+                f"A PyroLab daemon (pid {existing.pid}) is running but not "
+                "responding. It may still be starting; otherwise stop that "
+                "process before running 'pyrolab up' again.",
+                fg=typer.colors.RED,
             )
-        else:
-            subprocess.Popen(
-                args, close_fds=True, start_new_session=True
-            )  # stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-
-        typer.secho("PyroLab daemon launched.", fg=typer.colors.GREEN)
-    else:
-        typer.secho("PyroLab daemon is already running!", fg=typer.colors.RED)
         raise typer.Abort()
+
+    # Any lockfile left now is stale: its process is gone.
+    LOCKFILE.unlink(missing_ok=True)
+    STARTUP_ERROR_FILE.unlink(missing_ok=True)
+    process = _spawn_daemon(port)
+
+    deadline = time.monotonic() + timeout
+    while True:
+        info = read_lockfile()
+        if info is not None and _daemon_responds(info.uri):
+            typer.secho("PyroLab daemon is running.", fg=typer.colors.GREEN)
+            return
+        if process.poll() is not None:
+            reason = (
+                STARTUP_ERROR_FILE.read_text().strip()
+                if STARTUP_ERROR_FILE.exists()
+                else f"it exited with code {process.returncode}; see the logs in "
+                f"{PYROLAB_LOGDIR}"
+            )
+            typer.secho(
+                f"PyroLab daemon failed to start: {reason}", fg=typer.colors.RED
+            )
+            raise typer.Exit(1)
+        if time.monotonic() > deadline:
+            typer.secho(
+                f"PyroLab daemon did not respond within {timeout:g} seconds. It may "
+                "still be starting; check with 'pyrolab ps', or see the logs in "
+                f"{PYROLAB_LOGDIR}.",
+                fg=typer.colors.RED,
+            )
+            raise typer.Exit(1)
+        sleep(0.2)
 
 
 @app.command()
@@ -258,7 +320,16 @@ app.add_typer(
 @config_app.command("update")
 def config_update(filename: str):
     """Update the configuration file"""
-    update_config(filename)
+    try:
+        update_config(filename)
+    except FileNotFoundError as e:
+        typer.secho(str(e), fg=typer.colors.RED)
+        raise typer.Exit(1)
+    except (ValueError, yaml.YAMLError) as e:
+        _print_config_problems(filename, e)
+        typer.secho("The installed configuration was not changed.")
+        raise typer.Exit(1)
+    typer.secho("Configuration updated.", fg=typer.colors.GREEN)
 
 
 @config_app.command("reset")
@@ -359,9 +430,9 @@ def info():
     Show details about the current PyroLab configuration.
     """
     if RUNTIME_CONFIG.exists():
-        config = PyroLabConfiguration.from_file(RUNTIME_CONFIG)
+        config = _load_config_or_exit(RUNTIME_CONFIG)
     elif USER_CONFIG_FILE.exists():
-        config = PyroLabConfiguration.from_file(USER_CONFIG_FILE)
+        config = _load_config_or_exit(USER_CONFIG_FILE)
     else:
         typer.secho("No configuration installed.", fg=typer.colors.RED)
         raise typer.Exit()
@@ -474,6 +545,25 @@ def logs_export(filename: str):
 # pyrolab rename
 ###############################################################################
 
+
+def _save_renamed(config: PyroLabConfiguration, old_name: str) -> None:
+    # Renaming only moves the entry; anything that still refers to the old
+    # name would leave an invalid configuration (which the daemon refuses to
+    # start with), so check before writing.
+    try:
+        PyroLabConfiguration.parse_obj(config.dict())
+    except ValueError as e:
+        typer.secho(
+            f"Can't rename '{old_name}': other entries still refer to it.",
+            fg=typer.colors.RED,
+        )
+        for line in describe_config_error(e):
+            typer.secho(f"  - {line}", fg=typer.colors.RED)
+        typer.secho("Update those references first. Nothing was changed.")
+        raise typer.Exit(1)
+    export_config(config, USER_CONFIG_FILE)
+
+
 rename_app = typer.Typer()
 app.add_typer(rename_app, name="rename", help="Rename a nameserver, daemon or service.")
 
@@ -490,7 +580,7 @@ def rename_nameserver(
         config = PyroLabConfiguration.from_file(USER_CONFIG_FILE)
         if old_name in config.nameservers:
             config.nameservers[new_name] = config.nameservers.pop(old_name)
-            export_config(config, USER_CONFIG_FILE)
+            _save_renamed(config, old_name)
         else:
             typer.secho("Nameserver not found.", fg=typer.colors.RED)
             raise typer.Exit()
@@ -511,7 +601,7 @@ def rename_daemon(
         config = PyroLabConfiguration.from_file(USER_CONFIG_FILE)
         if old_name in config.daemons:
             config.daemons[new_name] = config.daemons.pop(old_name)
-            export_config(config, USER_CONFIG_FILE)
+            _save_renamed(config, old_name)
         else:
             typer.secho("Nameserver not found.", fg=typer.colors.RED)
             raise typer.Exit()
@@ -532,7 +622,7 @@ def rename_service(
         config = PyroLabConfiguration.from_file(USER_CONFIG_FILE)
         if old_name in config.services:
             config.services[new_name] = config.services.pop(old_name)
-            export_config(config, USER_CONFIG_FILE)
+            _save_renamed(config, old_name)
         else:
             typer.secho("Nameserver not found.", fg=typer.colors.RED)
             raise typer.Exit()

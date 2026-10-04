@@ -1,8 +1,17 @@
+import os
+import threading
+
 import pytest
+from Pyro5.api import Proxy
 
 from pyrolab import pyrolabd
 from pyrolab.configure import PyroLabConfiguration
-from pyrolab.pyrolabd import InstanceInfo, PyroLabDaemon
+from pyrolab.pyrolabd import (
+    InstanceInfo,
+    PyroLabDaemon,
+    read_lockfile,
+    write_lockfile,
+)
 
 
 class FakeManager:
@@ -10,12 +19,20 @@ class FakeManager:
 
     def __init__(self):
         self.calls = []
+        self.broken = set()  # names whose launch raises
 
     def launch_nameserver(self, name):
         self.calls.append(("launch_nameserver", name))
+        if name in self.broken:
+            raise KeyError(name)
 
     def launch_daemon(self, name):
         self.calls.append(("launch_daemon", name))
+        if name in self.broken:
+            raise KeyError(name)
+
+    def shutdown_all(self):
+        self.calls.append(("shutdown_all",))
 
     def shutdown_nameserver(self, name):
         self.calls.append(("shutdown_nameserver", name))
@@ -42,7 +59,13 @@ class FakeManager:
 @pytest.fixture
 def fake_manager(monkeypatch):
     fake = FakeManager()
-    monkeypatch.setattr(pyrolabd.ProcessManager, "instance", lambda: fake)
+    fake.instance_calls = 0
+
+    def instance():
+        fake.instance_calls += 1
+        return fake
+
+    monkeypatch.setattr(pyrolabd.ProcessManager, "instance", instance)
     return fake
 
 
@@ -59,11 +82,36 @@ def test_startup_writes_runtime_config(pld, data_dir):
     ) == PyroLabConfiguration.from_file(data_dir.USER_CONFIG_FILE)
 
 
-def test_startup_autolaunches_nameservers_then_daemons(pld, fake_manager):
+def test_startup_does_not_autolaunch(pld, fake_manager):
+    # Autolaunch runs separately, in the background, once the daemon can
+    # already answer requests.
+    assert fake_manager.calls == []
+
+
+def test_autolaunch_starts_nameservers_then_daemons(pld, fake_manager):
+    pld.autolaunch()
     assert fake_manager.calls == [
         ("launch_nameserver", "local"),
         ("launch_daemon", "lockable"),
     ]
+
+
+def test_autolaunch_continues_past_a_failing_entry(pld, fake_manager):
+    # Regression: one failing entry stopped the rest, and killed the daemon
+    # when it ran during startup (#54).
+    fake_manager.broken = {"local"}
+    pld.autolaunch()
+    assert ("launch_daemon", "lockable") in fake_manager.calls
+
+
+def test_invalid_user_config_fails_before_starting_anything(
+    data_dir, global_config, fake_manager
+):
+    data_dir.USER_CONFIG_FILE.write_text("autolaunch:\n  daemons: [ghost]\n")
+    with pytest.raises(ValueError, match="ghost"):
+        PyroLabDaemon()
+    assert fake_manager.instance_calls == 0  # process manager never started
+    assert not data_dir.RUNTIME_CONFIG.exists()
 
 
 def test_startup_without_user_config(data_dir, global_config, fake_manager):
@@ -132,3 +180,98 @@ def test_ps_returns_plain_string(pld):
 def test_instance_info_round_trip():
     ii = InstanceInfo(pid=1234, uri="PYRO:pyrolabd@localhost:5555")
     assert InstanceInfo.parse_raw(ii.json()) == ii
+
+
+###############################################################################
+# Lockfile
+###############################################################################
+
+
+def test_lockfile_round_trip(data_dir):
+    info = InstanceInfo(pid=os.getpid(), uri="PYRO:pyrolabd@localhost:5555")
+    write_lockfile(info)
+    assert read_lockfile() == info
+    # The temporary file was moved into place, not left behind.
+    assert list(data_dir.root.glob("*.tmp")) == []
+
+
+def test_write_lockfile_replaces_existing(data_dir):
+    write_lockfile(InstanceInfo(pid=1, uri="PYRO:old@localhost:1"))
+    write_lockfile(InstanceInfo(pid=2, uri="PYRO:new@localhost:2"))
+    assert read_lockfile().uri == "PYRO:new@localhost:2"
+
+
+@pytest.mark.parametrize("contents", [None, "", "{", '{"pid": 1}'])
+def test_read_lockfile_missing_or_invalid(data_dir, contents):
+    if contents is not None:
+        data_dir.LOCKFILE.write_text(contents)
+    assert read_lockfile() is None
+
+
+###############################################################################
+# main(): the background daemon process
+###############################################################################
+
+
+@pytest.fixture
+def run_main(data_dir, global_config, fake_manager):
+    """Run pyrolabd.main() in a thread; returns (thread, result dict)."""
+    started = []
+
+    def start():
+        result = {}
+        thread = threading.Thread(
+            target=lambda: result.update(code=pyrolabd.main(port=0)), daemon=True
+        )
+        thread.start()
+        started.append(thread)
+        return thread, result
+
+    yield start
+    for thread in started:
+        thread.join(timeout=10)
+
+
+def test_main_publishes_lockfile_then_autolaunches_and_shuts_down(
+    run_main, data_dir, fake_manager, sample_config_file, wait_for
+):
+    data_dir.USER_CONFIG_FILE.write_text(sample_config_file.read_text())
+    thread, result = run_main()
+
+    info = wait_for(read_lockfile)
+    assert info is not None and info.pid == os.getpid()
+    assert wait_for(lambda: ("launch_daemon", "lockable") in fake_manager.calls)
+
+    with Proxy(info.uri) as proxy:
+        assert "at" in proxy.whoami()
+        proxy.shutdown()
+
+    thread.join(timeout=10)
+    assert result["code"] == 0
+    assert ("shutdown_all",) in fake_manager.calls
+    assert not data_dir.LOCKFILE.exists()
+    assert not data_dir.RUNTIME_CONFIG.exists()
+
+
+def test_main_reports_invalid_config(run_main, data_dir, fake_manager):
+    data_dir.USER_CONFIG_FILE.write_text("autolaunch:\n  nameservers: [ghost]\n")
+    thread, result = run_main()
+    thread.join(timeout=10)
+
+    assert result["code"] == 1
+    message = data_dir.STARTUP_ERROR_FILE.read_text()
+    assert "invalid configuration" in message
+    assert "autolaunch refers to nameserver 'ghost'" in message
+    assert not data_dir.LOCKFILE.exists()
+    assert fake_manager.instance_calls == 0
+
+
+def test_main_refuses_to_start_twice(run_main, data_dir):
+    other = InstanceInfo(pid=os.getpid(), uri="PYRO:pyrolabd@localhost:1")
+    write_lockfile(other)
+    thread, result = run_main()
+    thread.join(timeout=10)
+
+    assert result["code"] == 1
+    assert "already running" in data_dir.STARTUP_ERROR_FILE.read_text()
+    assert read_lockfile() == other  # the running daemon's lockfile is untouched

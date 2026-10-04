@@ -1,3 +1,7 @@
+import os
+import subprocess
+import sys
+
 import pyrolab
 from pyrolab import utils
 
@@ -44,3 +48,18 @@ def test_get_ip_returns_socket_address(monkeypatch):
     ip = utils.get_ip()
     assert ip == "10.1.2.3"
     assert calls["closed"]
+
+
+def test_pid_is_running_for_this_process():
+    assert utils.pid_is_running(os.getpid())
+
+
+def test_pid_is_running_for_an_exited_process():
+    proc = subprocess.Popen([sys.executable, "-c", "pass"])
+    proc.wait()
+    assert not utils.pid_is_running(proc.pid)
+
+
+def test_pid_is_running_rejects_invalid_pids():
+    assert not utils.pid_is_running(0)
+    assert not utils.pid_is_running(-1)

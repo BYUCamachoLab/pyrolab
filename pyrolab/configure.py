@@ -40,7 +40,7 @@ from pathlib import Path
 from typing import IO, Any, Dict, List, Optional, Type, Union
 
 import Pyro5
-from pydantic import BaseModel, BaseSettings, validator
+from pydantic import BaseModel, BaseSettings, root_validator, validator
 from pydantic.fields import PrivateAttr
 from yaml import dump, load
 from yaml.constructor import ConstructorError
@@ -642,6 +642,10 @@ class PyroLabConfiguration(BaseSettings, YAMLMixin):
     of their own name, which can only be given to them by the parent
     configuration object.
 
+    Every name a section refers to must be defined: each service's ``daemon``
+    and ``nameservers``, each daemon's ``nameservers``, and every
+    ``autolaunch`` entry. A dangling reference is rejected when the file is
+    loaded, rather than failing later inside a running process.
     """
 
     version: str = "1.0"
@@ -649,6 +653,36 @@ class PyroLabConfiguration(BaseSettings, YAMLMixin):
     daemons: Dict[str, DaemonConfiguration] = {}
     services: Dict[str, ServiceConfiguration] = {}
     autolaunch: AutolaunchSettings = AutolaunchSettings()
+
+    @root_validator(skip_on_failure=True)
+    def references_are_defined(cls, values):
+        nameservers = values["nameservers"]
+        daemons = values["daemons"]
+        problems = []
+
+        def check(kind, names, defined, where):
+            for name in names:
+                if name not in defined:
+                    problems.append(
+                        f"{where} refers to {kind} '{name}', which is not defined"
+                    )
+
+        for sname, svc in values["services"].items():
+            where = f"service '{sname}'"
+            if svc.daemon not in daemons:
+                hint = "" if "daemon" in svc.__fields_set__ else " (the default)"
+                problems.append(
+                    f"{where} refers to daemon '{svc.daemon}'{hint}, which is not defined"
+                )
+            check("nameserver", svc.nameservers, nameservers, where)
+        for dname, dcfg in daemons.items():
+            check("nameserver", dcfg.nameservers, nameservers, f"daemon '{dname}'")
+        check("nameserver", values["autolaunch"].nameservers, nameservers, "autolaunch")
+        check("daemon", values["autolaunch"].daemons, daemons, "autolaunch")
+
+        if problems:
+            raise ValueError("; ".join(problems))
+        return values
 
     def initialize_nameservers(self):
         for name, nscfg in self.nameservers.items():
@@ -659,6 +693,34 @@ class PyroLabConfiguration(BaseSettings, YAMLMixin):
 
     def get_daemon_settings(self, daemon: str) -> DaemonConfiguration:
         return self.daemons[daemon]
+
+
+def describe_config_error(exc: Exception) -> List[str]:
+    """
+    Turn a configuration loading error into one readable line per problem.
+
+    Parameters
+    ----------
+    exc : Exception
+        Typically a pydantic ``ValidationError`` from loading a configuration;
+        anything else is described by its message.
+
+    Returns
+    -------
+    List[str]
+        Human-readable problem descriptions, e.g.
+        ``"daemons.lab.port: value is not a valid integer"``.
+    """
+    from pydantic import ValidationError
+
+    if not isinstance(exc, ValidationError):
+        return [str(exc)]
+    lines = []
+    for err in exc.errors():
+        loc = ".".join(str(part) for part in err["loc"] if part != "__root__")
+        for msg in err["msg"].split("; "):
+            lines.append(f"{loc}: {msg}" if loc else msg)
+    return lines
 
 
 class GlobalConfiguration:

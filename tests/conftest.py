@@ -85,6 +85,7 @@ def data_dir(tmp_path, monkeypatch):
         RUNTIME_CONFIG=tmp_path / "runtime_config.yaml",
         LOCKFILE=tmp_path / "pyrolabd.lock",
         UPDATE_CHECK_FILE=tmp_path / "update_check.json",
+        STARTUP_ERROR_FILE=tmp_path / "pyrolabd_startup_error.txt",
         PYROLAB_LOGDIR=tmp_path / "logs",
         NAMESERVER_STORAGE=tmp_path / "nameserver",
     )

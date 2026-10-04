@@ -92,6 +92,8 @@ LOCKFILE = PYROLAB_DATA_DIR / "pyrolabd.lock"
 USER_CONFIG_FILE = PYROLAB_DATA_DIR / "user_configuration.yaml"
 RUNTIME_CONFIG = PYROLAB_DATA_DIR / "runtime_config.yaml"
 UPDATE_CHECK_FILE = PYROLAB_DATA_DIR / "update_check.json"
+# Why the background daemon exited before it could serve requests, for `up`.
+STARTUP_ERROR_FILE = PYROLAB_DATA_DIR / "pyrolabd_startup_error.txt"
 
 
 # Set up logging to file
