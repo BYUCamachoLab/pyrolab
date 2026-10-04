@@ -2,57 +2,108 @@ name: release
 
 on:
   push:
-    # Sequence of patterns matched against refs/tags
     tags:
-      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+      - "v*"
+  # Dry runs: build and run the release checks without publishing anything.
+  # Runs on any PR that edits this file, so changes to the release process are
+  # exercised before the next real release.
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   tests:
+    # PRs already run tests.yml; repeat it only before a real release.
+    if: github.event_name == 'push'
     uses: ./.github/workflows/tests.yml
 
   build:
-    name: Create Release
+    name: Build and check
     needs: tests
+    # Runs when tests passed, or were skipped on a dry run.
+    if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v10.2.0
-      - name: Get version number
-        id: get_version
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+      - name: Check version and changelog
+        id: version
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           VERSION=$(uv version --short)
-          if [ "v$VERSION" != "${{ github.ref_name }}" ]; then
-            echo "::error::Tag ${{ github.ref_name }} does not match pyproject.toml version $VERSION"
+          if [ "$REF_TYPE" = tag ] && [ "v$VERSION" != "$REF_NAME" ]; then
+            echo "::error::Tag $REF_NAME does not match pyproject.toml version $VERSION"
             exit 1
           fi
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          NOTES="docs/changelog/$VERSION-changelog.md"
+          if [ ! -s "$NOTES" ]; then
+            echo "::error::$NOTES is missing or empty; it becomes the GitHub release notes"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
       - name: Build
         # --no-sources builds exactly what PyPI users will get, ignoring any
         # development-only [tool.uv.sources] overrides.
         run: uv build --no-sources
-      - name: Load Release text
-        id: get_text
-        run: |
-          BODY=$(cat ./docs/changelog/${{ env.VERSION }}-changelog.md)
-          BODY="${BODY//'%'/'%25'}"
-          BODY="${BODY//$'\n'/'%0A'}"
-          BODY="${BODY//$'\r'/'%0D'}"
-          echo "BODY=$BODY" >> $GITHUB_OUTPUT
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.5.0
+      - name: Check distributions
+        # Catches metadata and README rendering problems PyPI would reject.
+        run: uvx twine check --strict dist/*
+      - uses: actions/upload-artifact@v7
         with:
-          user: __token__
-          password: ${{ secrets.PYPI_PASSWORD }}
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/pyrolab/${{ needs.build.outputs.version }}/
+    permissions:
+      # Trusted Publishing: PyPI exchanges this job's OIDC token for a
+      # short-lived upload token, so no PyPI secret is stored in the repo.
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@v1.14.2
+
+  github-release:
+    name: Create GitHub release
+    needs: [build, publish]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - name: Create release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: PyroLab ${{ env.VERSION }}
-          body: ${{ env.BODY }}
-          draft: false
-          prerelease: false
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --verify-tag \
+            --title "PyroLab $VERSION" \
+            --notes-file "docs/changelog/$VERSION-changelog.md"

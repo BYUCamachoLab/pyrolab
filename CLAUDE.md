@@ -144,6 +144,10 @@ The version lives only in `pyproject.toml`; `pyrolab.__version__` reads it from 
 Commit `docs/changelog/<major>.<minor>.<patch>-changelog.md` first and ensure a clean tree — the release
 workflow reads that exact file as the GitHub release body and fails without it. Then `make release-patch`
 (or `-minor`/`-major`), which checks both of those, runs `uv version --bump`, commits `pyproject.toml` and
-`uv.lock`, tags `vX.Y.Z`, and pushes. The `v*` tag triggers `.github/workflows/release.yml`, which runs the
-full test workflow, checks that the tag matches the `pyproject.toml` version, and only then builds with
-`uv build --no-sources`, publishes to PyPI, and creates the GitHub release.
+`uv.lock`, tags `vX.Y.Z`, and pushes. The `v*` tag triggers `.github/workflows/release.yml`: the full test
+workflow, then a build job (tag must match the `pyproject.toml` version, changelog must exist,
+`uv build --no-sources`, `twine check --strict`), then publishing via PyPI **Trusted Publishing** (OIDC from
+the `pypi` environment — there is no PyPI token secret), then `gh release create --notes-file` with the
+changelog. Renaming `release.yml` or the `pypi` environment breaks publishing until the trusted publisher on
+pypi.org is updated to match. PRs that touch `release.yml`, and manual `workflow_dispatch` runs, are dry runs:
+build and checks only, nothing published.
