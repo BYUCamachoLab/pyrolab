@@ -18,7 +18,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
       - name: Set up uv
-        uses: astral-sh/setup-uv@v10
+        uses: astral-sh/setup-uv@v10.2.0
       - name: Get version number
         id: get_version
         run: |
