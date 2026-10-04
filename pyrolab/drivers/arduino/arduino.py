@@ -24,8 +24,10 @@ Code also available in the PyroLab repository under ``/extras/arduino``.
    pyfirmata
 """
 
+import inspect
 import logging
 
+import pyfirmata.pyfirmata
 from pyfirmata import (
     ANALOG,
     INPUT,
@@ -43,6 +45,27 @@ from pyrolab.api import expose
 from pyrolab.drivers.arduino import Arduino as PyroArduino
 
 log = logging.getLogger(__name__)
+
+
+class _InspectCompat:
+    """
+    Stands in for ``inspect`` inside pyfirmata, restoring ``getargspec``.
+
+    pyfirmata 1.1.0, the latest release on PyPI, calls ``inspect.getargspec``
+    whenever a board is created, and Python 3.11 removed that function.
+    Upstream fixed it (tino/pyFirmata#120) but never published a release, so
+    this patches pyfirmata's own reference to ``inspect`` rather than the
+    standard library for the whole process.
+    """
+
+    getargspec = staticmethod(inspect.getfullargspec)
+
+    def __getattr__(self, name):
+        return getattr(inspect, name)
+
+
+if not hasattr(inspect, "getargspec"):
+    pyfirmata.pyfirmata.inspect = _InspectCompat()
 
 
 @expose

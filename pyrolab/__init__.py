@@ -48,7 +48,13 @@ if pyversion < (3, 11, 0):
 __title__ = "PyroLab"
 __author__ = "CamachoLab"
 __copyright__ = "Copyright 2020, The PyroLab Project"
-__version__ = "0.4.0"
+# pyproject.toml is the single source of the version (see `uv version`).
+import importlib.metadata as _metadata
+
+try:
+    __version__ = _metadata.version("pyrolab")
+except _metadata.PackageNotFoundError:  # source tree that isn't installed
+    __version__ = "0.0.0+unknown"
 __license__ = "GPLv3+"
 __maintainer__ = "Sequoia Ploeg"
 __maintainer_email__ = "sequoia.ploeg@byu.edu"

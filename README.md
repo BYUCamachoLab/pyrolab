@@ -5,7 +5,6 @@
 ---
 
 <p align="center">
-<img alt="Development version" src="https://img.shields.io/badge/master-v0.4.0-informational">
 <a href="https://pypi.python.org/pypi/pyrolab"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/pyrolab.svg"></a>
 <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/pyrolab">
 <a href="https://pyrolab.readthedocs.io/"><img alt="Documentation Status" src="https://readthedocs.org/projects/pyrolab/badge/?version=latest"></a>
@@ -43,7 +42,7 @@ PyroLab declares several "extras", depending on which instruments you need
 to support:
 
 ```
-pip install pyrolab[tsl550, oscope]
+pip install "pyrolab[tsl550,rto]"
 ```
 
 The full list of supported extras is:
@@ -51,17 +50,23 @@ The full list of supported extras is:
 - ``ppcl55x`` (PurePhotonics lasers)
 - ``rto`` (Rohde & Schwarz oscilloscopes)
 - ``arduino`` (Arduino)
-- ``test`` (PyroLab unit testing)
+- ``cameras`` (ThorCam and AmScope cameras, via OpenCV)
 <!-- - ``thorlabs`` (ThorLabs motion controllers) -->
 <!-- - ``adiscovery`` (Analog Discovery boards from Digilent) -->
 <!-- - ``monitor`` (PyroMonitor web application) -->
 
 You can also clone the repository, navigate to the toplevel, and install in 
-editable mode (make sure you have pip >= 21.1):
+editable mode:
 
 ```
 pip install -e .
 ```
+
+For development, use [uv](https://docs.astral.sh/uv/). From the toplevel,
+``make install`` (equivalent to ``uv sync --all-extras`` followed by
+``uv run pre-commit install``) creates a ``.venv`` with PyroLab, every extra,
+and the development tools, and installs the pre-commit hooks. Run tests with
+``make test`` (or ``uv run pytest``).
 
 ## Web Monitor
 
@@ -178,32 +183,31 @@ arrays, matplotlib plot objects, custom objects, etc.).
 
 ## Releasing
 
-Make sure you have committed a changelog file under ``docs/changelog`` titled 
-``<major>.<minor>.<patch>-changelog.md`` before bumping version. Also, the git
-directory should be clean (no uncommitted changes).
+The version lives only in ``pyproject.toml``; ``pyrolab.__version__`` reads it
+from the installed package's metadata.
 
-To bump version prior to a release, run one of the following commands:
+First commit a changelog file under ``docs/changelog`` titled
+``<major>.<minor>.<patch>-changelog.md`` for the new version; it becomes the
+GitHub release notes. Then, with a clean working tree, run one of:
 
 ```
-bumpversion major
-bumpversion minor
-bumpversion patch
+make release-patch
+make release-minor
+make release-major
 ```
 
-This will automatically create a git tag in the repository with the 
-corrresponding version number and commit the modified files (where version
-numbers were updated). Pushing the tags (a manual process) to the remote will 
-automatically create a new release. Releases are automatically published to 
-PyPI and GitHub when git tags matching the "v*" pattern are created 
-(e.g. "v0.4.0"), as bumpversion does.
+This checks that the tree is clean and the changelog exists, bumps the version
+with ``uv version --bump``, commits ``pyproject.toml`` and ``uv.lock``, tags
+``vX.Y.Z``, and pushes the commit and tag. The tag triggers the release
+workflow, which runs the test suite and then publishes to PyPI and creates the
+GitHub release.
 
-After bumping version, you can view the tags on the local machine by running 
-``git tag``. To push the tags to the remote server and trigger the release
-workflow, you can run ``git push origin <tagname>``.
+## Code Quality
 
-For code quality, please run isort and black before committing (note that the
-latest release of isort may not work through VSCode's integrated terminal, and
-it's safest to run it separately through another terminal).
+Formatting and import sorting use [ruff](https://docs.astral.sh/ruff/), run
+automatically by the pre-commit hooks that ``make install`` sets up. To run it
+by hand, use ``make format``; ``make precommit`` runs every hook on every file,
+as CI does.
 
 ## Building the Docs
 
@@ -219,7 +223,7 @@ make html
 
 ## Building the Package
 
-You can test the build and view the bundled artifacts using 
-[build](https://pypi.org/project/build/). It's recommended you build locally
+You can test the build and view the bundled artifacts with ``make build``
+(which runs ``uv build``). It's recommended you build locally
 before pushing to PyPI. In particular, double check the included files and make
 sure only the required files are there by modifying MANIFEST.in as necessary.
