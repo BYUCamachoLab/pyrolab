@@ -81,6 +81,11 @@ subclass, sets the Pyro instance mode, and stashes `parameters` on `_autoconnect
 exists because autoconnect parameters live as *class* attributes — two hardware units of the same model would
 otherwise clobber each other.
 
+`PyroLabConfiguration` validates **cross-references** on load: every service's `daemon`/`nameservers`, every
+daemon's `nameservers`, and every `autolaunch` entry must name something defined (a service with no `daemon:`
+refers to one called `default`). `describe_config_error()` turns a load error into readable lines for the CLI.
+Anything that writes a config (e.g. `pyrolab rename`) must re-validate before saving.
+
 `GlobalConfiguration` is a singleton and **must only be touched from the main process**. Child processes read
 the frozen `RUNTIME_CONFIG` file instead, which is why config changes require `pyrolab reload` rather than
 taking effect live.
@@ -88,11 +93,17 @@ taking effect live.
 ### Process model
 
 `pyrolab/pyrolabd.py` is the background daemon (`PyroLabDaemon`, `instance_mode="single"`), launched by
-`pyrolab up`, which runs `pyrolabd.py` as a detached subprocess (`pythonw.exe` on Windows). It writes pid+URI to `LOCKFILE`, and the
-CLI reaches it by reading that file. It owns a `ProcessManager` (`pyrolab/manager.py`) singleton that spawns
+`pyrolab up`, which runs `pyrolabd.py` as a detached subprocess (`pythonw.exe` on Windows) and **waits until it
+responds** (or reports why it exited, read from `STARTUP_ERROR_FILE`). `pyrolabd.main()` loads and validates the
+config, registers itself, then publishes pid+URI to `LOCKFILE` — written atomically (`write_lockfile`: temp
+file + `os.replace`) — and only then runs autolaunch in a background thread, each entry independently. The CLI
+reaches the daemon through `read_lockfile()`; a lockfile whose PID isn't running (`utils.pid_is_running`, which
+uses ctypes on Windows because `os.kill` would kill the process) is stale. It owns a `ProcessManager` (`pyrolab/manager.py`) singleton that spawns
 each nameserver and each daemon as its own `multiprocessing.Process` (`NameServerRunner`, `DaemonRunner`), so
 a hung instrument kills only its own process. Runners are controlled by sentinel `None` on a
-`multiprocessing.Queue`; `ProcessManager.checkup()` restarts dead ones on a timer.
+`multiprocessing.Queue`; `ProcessManager.checkup()` restarts dead ones on a timer. Pyro request threads, the checkup timer, and
+autolaunch all use the `ProcessManager` concurrently, so methods touching its process tables are
+`@_synchronized` on a reentrant class-level lock.
 
 Everything spawn-related lives in `manager.py` specifically because child processes re-import the target
 module — keeping process creation out of that import path prevents recursive spawning.
@@ -121,7 +132,9 @@ Other modules bind these constants by value (`from pyrolab import LOCKFILE, ...`
 which is what the `data_dir` test fixture does.
 
 `pyrolab/api.py` is the intended public surface — it re-exports the Pyro5 names plus PyroLab's, and on import
-applies the first configured nameserver's settings to `Pyro5.config` so `locate_ns()` just works. It is
+applies the first configured nameserver's settings to `Pyro5.config` so `locate_ns()` just works. That step is
+best-effort: **importing `pyrolab.api` must never fail** because of the local config (invalid, no nameservers,
+unresolvable `public` host), or no CLI command — including the ones that fix the config — could run. It is
 excluded from import sorting (a ruff per-file ignore); import order there is load-bearing.
 
 ## Conventions

@@ -1,11 +1,13 @@
 import os
+import subprocess
+import sys
 
 import pytest
 from Pyro5.errors import CommunicationError
 from typer.testing import CliRunner
 
 from pyrolab import __version__, cli
-from pyrolab.configure import PyroLabConfiguration
+from pyrolab.configure import DaemonConfiguration, PyroLabConfiguration
 from pyrolab.pyrolabd import InstanceInfo
 
 runner = CliRunner()
@@ -47,7 +49,7 @@ def running_daemon(data_dir, monkeypatch):
     FakeDaemonProxy.returns = {}
     monkeypatch.setattr(cli, "Proxy", FakeDaemonProxy)
     data_dir.LOCKFILE.write_text(
-        InstanceInfo(pid=1, uri="PYRO:pyrolabd@localhost:1").json()
+        InstanceInfo(pid=os.getpid(), uri="PYRO:pyrolabd@localhost:1").json()
     )
     return FakeDaemonProxy
 
@@ -77,6 +79,36 @@ def test_command_without_daemon_aborts(data_dir):
 
 def test_get_daemon_without_abort_returns_none(data_dir):
     assert cli.get_daemon(abort=False) is None
+
+
+@pytest.fixture
+def dead_pid():
+    """The PID of a process that has already exited."""
+    proc = subprocess.run(
+        [sys.executable, "-c", "import os; print(os.getpid())"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return int(proc.stdout)
+
+
+def test_stale_lockfile_means_not_running(data_dir, dead_pid):
+    data_dir.LOCKFILE.write_text(
+        InstanceInfo(pid=dead_pid, uri="PYRO:pyrolabd@localhost:1").json()
+    )
+    result = runner.invoke(cli.app, ["ps"])
+    assert result.exit_code == 1
+    assert "not running" in result.output
+
+
+@pytest.mark.parametrize("contents", ["", "{", '{"pid": "x"}'])
+def test_unreadable_lockfile_means_not_running(data_dir, contents):
+    # Regression: a partially written lockfile raised a ValidationError (#56).
+    data_dir.LOCKFILE.write_text(contents)
+    result = runner.invoke(cli.app, ["ps"])
+    assert result.exit_code == 1
+    assert "not running" in result.output
 
 
 def test_get_daemon_unreachable(running_daemon):
@@ -213,6 +245,33 @@ def test_commands_work_after_config_reset(running_daemon, data_dir):
 ###############################################################################
 
 
+def test_config_update_rejects_dangling_references(user_config, tmp_path):
+    # Regression: a bad autolaunch entry was accepted, then killed the
+    # background daemon at startup (#54).
+    before = user_config.read_text()
+    bad = tmp_path / "bad.yaml"
+    bad.write_text("daemons:\n  d: {}\nautolaunch:\n  daemons: [d, typo]\n")
+
+    result = runner.invoke(cli.app, ["config", "update", str(bad)])
+    assert result.exit_code == 1
+    assert "autolaunch refers to daemon 'typo', which is not defined" in result.output
+    assert "not changed" in result.output
+    assert user_config.read_text() == before
+
+
+def test_config_update_missing_file(data_dir, tmp_path):
+    result = runner.invoke(cli.app, ["config", "update", str(tmp_path / "x.yaml")])
+    assert result.exit_code == 1
+    assert "does not" in result.output
+
+
+def test_info_with_invalid_config(data_dir):
+    data_dir.RUNTIME_CONFIG.write_text("services:\n  s: {module: m, classname: C}\n")
+    result = runner.invoke(cli.app, ["info"])
+    assert result.exit_code == 1
+    assert "daemon 'default' (the default), which is not defined" in result.output
+
+
 def test_config_update(data_dir, sample_config_file):
     result = runner.invoke(cli.app, ["config", "update", str(sample_config_file)])
     assert result.exit_code == 0, result.output
@@ -278,15 +337,25 @@ def test_info_prefers_runtime_config(user_config, data_dir):
 ###############################################################################
 
 
+@pytest.fixture
+def config_with_spare_daemon(user_config):
+    """The sample config plus a daemon that nothing refers to."""
+    config = PyroLabConfiguration.from_file(user_config)
+    config.daemons["spare"] = DaemonConfiguration()
+    user_config.write_text(config.yaml())
+    return user_config
+
+
 @pytest.mark.parametrize(
     "kind, section, old",
     [
-        ("nameserver", "nameservers", "local"),
-        ("daemon", "daemons", "plain"),
+        ("nameserver", "nameservers", "persistent"),
+        ("daemon", "daemons", "spare"),
         ("service", "services", "sample.echo"),
     ],
 )
-def test_rename(user_config, kind, section, old):
+def test_rename(config_with_spare_daemon, kind, section, old):
+    user_config = config_with_spare_daemon
     before = getattr(PyroLabConfiguration.from_file(user_config), section)[old]
 
     result = runner.invoke(cli.app, ["rename", kind, old, "renamed"])
@@ -295,6 +364,24 @@ def test_rename(user_config, kind, section, old):
     entities = getattr(PyroLabConfiguration.from_file(user_config), section)
     assert old not in entities
     assert entities["renamed"] == before
+
+
+@pytest.mark.parametrize(
+    "kind, old, referrer",
+    [
+        ("nameserver", "local", "daemons.lockable"),
+        ("daemon", "plain", "service 'sample.echo'"),
+    ],
+)
+def test_rename_refuses_to_orphan_references(user_config, kind, old, referrer):
+    # Renaming moves only the entry itself; with references left pointing at
+    # the old name the config would be invalid, so nothing is written.
+    before = user_config.read_text()
+    result = runner.invoke(cli.app, ["rename", kind, old, "renamed"])
+    assert result.exit_code == 1
+    assert "still refer to it" in result.output
+    assert f"'{old}'" in result.output
+    assert user_config.read_text() == before
 
 
 def test_rename_unknown_nameserver(user_config):
@@ -350,3 +437,126 @@ def test_logs_clean(data_dir):
     result = runner.invoke(cli.app, ["logs", "clean"])
     assert result.exit_code == 0
     assert list(data_dir.PYROLAB_LOGDIR.iterdir()) == []
+
+
+###############################################################################
+# pyrolab up
+###############################################################################
+
+
+class FakeDaemonProcess:
+    """
+    Stands in for the spawned pyrolabd. After ``ready_after`` polls it
+    publishes a lockfile (or, if ``exit_code`` is set, exits instead).
+    """
+
+    def __init__(self, data_dir, ready_after=2, exit_code=None, error=None):
+        self.data_dir = data_dir
+        self.polls_left = ready_after
+        self.exit_code = exit_code
+        self.error = error
+        self.returncode = None
+
+    def poll(self):
+        self.polls_left -= 1
+        if self.polls_left > 0:
+            return None
+        if self.exit_code is None:
+            self.data_dir.LOCKFILE.write_text(
+                InstanceInfo(pid=os.getpid(), uri="PYRO:pyrolabd@localhost:1").json()
+            )
+            return None
+        if self.error:
+            self.data_dir.STARTUP_ERROR_FILE.write_text(self.error)
+        self.returncode = self.exit_code
+        return self.exit_code
+
+
+@pytest.fixture
+def spawn(data_dir, monkeypatch):
+    """
+    Replace process spawning; the daemon "responds" once its lockfile exists.
+    Set ``spawn.process`` before invoking `up`; ``spawn.count`` records spawns.
+    """
+
+    class Spawn:
+        process = FakeDaemonProcess(data_dir)
+        count = 0
+
+    def fake_spawn(port):
+        Spawn.count += 1
+        return Spawn.process
+
+    monkeypatch.setattr(cli, "_spawn_daemon", fake_spawn)
+    monkeypatch.setattr(cli, "_daemon_responds", lambda uri: data_dir.LOCKFILE.exists())
+    monkeypatch.setattr(cli, "sleep", lambda seconds: None)
+    return Spawn
+
+
+def test_up_waits_until_daemon_responds(spawn):
+    result = runner.invoke(cli.app, ["up"])
+    assert result.exit_code == 0, result.output
+    assert "PyroLab daemon is running." in result.output
+    assert spawn.count == 1
+
+
+def test_up_replaces_stale_lockfile(spawn, data_dir, dead_pid):
+    data_dir.LOCKFILE.write_text(
+        InstanceInfo(pid=dead_pid, uri="PYRO:pyrolabd@localhost:1").json()
+    )
+    result = runner.invoke(cli.app, ["up"])
+    assert result.exit_code == 0, result.output
+    assert spawn.count == 1
+
+
+def test_up_when_already_running(spawn, data_dir):
+    data_dir.LOCKFILE.write_text(
+        InstanceInfo(pid=os.getpid(), uri="PYRO:pyrolabd@localhost:1").json()
+    )
+    result = runner.invoke(cli.app, ["up"])
+    assert result.exit_code == 1
+    assert "already running" in result.output
+    assert spawn.count == 0
+
+
+def test_up_when_running_but_not_responding(spawn, data_dir, monkeypatch):
+    data_dir.LOCKFILE.write_text(
+        InstanceInfo(pid=os.getpid(), uri="PYRO:pyrolabd@localhost:1").json()
+    )
+    monkeypatch.setattr(cli, "_daemon_responds", lambda uri: False)
+    result = runner.invoke(cli.app, ["up"])
+    assert result.exit_code == 1
+    assert f"(pid {os.getpid()}) is running but not responding" in result.output
+    assert spawn.count == 0  # never starts a second daemon
+    assert data_dir.LOCKFILE.exists()
+
+
+def test_up_reports_startup_error(spawn, data_dir):
+    # Regression: `up` reported success while the daemon died at startup (#54).
+    spawn.process = FakeDaemonProcess(
+        data_dir, exit_code=1, error="invalid configuration in user.yaml"
+    )
+    result = runner.invoke(cli.app, ["up"])
+    assert result.exit_code == 1
+    assert "failed to start: invalid configuration in user.yaml" in result.output
+
+
+def test_up_reports_unexplained_exit(spawn, data_dir):
+    spawn.process = FakeDaemonProcess(data_dir, exit_code=3)
+    result = runner.invoke(cli.app, ["up"])
+    assert result.exit_code == 1
+    assert "exited with code 3" in result.output
+
+
+def test_up_ignores_previous_startup_error(spawn, data_dir):
+    data_dir.STARTUP_ERROR_FILE.write_text("left over from last time")
+    spawn.process = FakeDaemonProcess(data_dir, exit_code=3)
+    result = runner.invoke(cli.app, ["up"])
+    assert "left over" not in result.output
+
+
+def test_up_times_out(spawn, data_dir):
+    spawn.process = FakeDaemonProcess(data_dir, ready_after=10**9)
+    result = runner.invoke(cli.app, ["up", "--timeout", "0"])
+    assert result.exit_code == 1
+    assert "did not respond within 0 seconds" in result.output

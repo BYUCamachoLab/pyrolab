@@ -78,3 +78,32 @@ def test_source_compiles_without_warnings(path):
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         compile(path.read_text(encoding="utf-8"), str(path), "exec")
+
+
+@pytest.mark.parametrize(
+    "contents",
+    [
+        "autolaunch: {daemons: [ghost]}\n",  # fails validation
+        "nameservers: {\n",  # not valid YAML
+        "daemons: {d: {}}\n",  # valid, but no nameservers
+    ],
+)
+def test_api_import_survives_any_user_config(data_dir, contents):
+    # Regression: importing pyrolab.api loaded the user config strictly, so an
+    # invalid one (or one with no nameservers) broke every client script and
+    # every CLI command, including the ones that would fix it.
+    import pyrolab.api
+
+    data_dir.USER_CONFIG_FILE.write_text(contents)
+    importlib.reload(pyrolab.api)
+
+
+def test_api_import_applies_first_nameserver(data_dir, pyro_config):
+    import pyrolab.api
+
+    data_dir.USER_CONFIG_FILE.write_text(
+        "nameservers:\n  first: {host: 127.0.0.1, ns_port: 9555}\n"
+        "  second: {ns_port: 9666}\n"
+    )
+    importlib.reload(pyrolab.api)
+    assert pyro_config.NS_PORT == 9555

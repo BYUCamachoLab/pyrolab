@@ -24,6 +24,7 @@ Python ``multiprocessing`` module.
 
 from __future__ import annotations
 
+import functools
 import logging
 import multiprocessing
 import threading
@@ -354,6 +355,17 @@ class DaemonProcessGroup:
         self.shared_uris = shared_uris
 
 
+def _synchronized(method):
+    """Run a ProcessManager method while holding the manager's lock."""
+
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        with self._lock:
+            return method(self, *args, **kwargs)
+
+    return wrapper
+
+
 class ProcessManager:
     """
     A manager class for running a set of PyroLab processes.
@@ -363,6 +375,11 @@ class ProcessManager:
     """
 
     _instance = None
+    # Pyro request threads, the checkup timer, and the background autolaunch
+    # all use the singleton concurrently; methods that read or change the
+    # process tables hold this lock. Reentrant, since e.g. reload() calls
+    # shutdown_daemon().
+    _lock = threading.RLock()
     nameservers: Dict[str, NameServerProcessGroup]
     daemons: Dict[str, DaemonProcessGroup]
     GLOBAL_CONFIG: GlobalConfiguration
@@ -428,6 +445,7 @@ class ProcessManager:
         if hasattr(self, "_timer"):
             self._timer.cancel()
 
+    @_synchronized
     def launch_nameserver(self, nameserver: str) -> bool:
         """
         Launch a nameserver.
@@ -444,6 +462,7 @@ class ProcessManager:
         runner.start()
         return True
 
+    @_synchronized
     def get_nameserver_process_info(self, nameserver: str) -> Dict[str, str]:
         """
         Gets info on a nameserver process.
@@ -482,6 +501,7 @@ class ProcessManager:
                 "uri": "",
             }
 
+    @_synchronized
     def launch_daemon(self, daemon: str) -> bool:
         """
         Launch a daemon and all its associated services.
@@ -505,6 +525,7 @@ class ProcessManager:
         runner.start()
         return True
 
+    @_synchronized
     def get_daemon_process_info(self, daemon: str) -> Dict[str, str]:
         """
         Return the process group for a daemon.
@@ -535,6 +556,7 @@ class ProcessManager:
                 "uri": "",
             }
 
+    @_synchronized
     def get_service_process_info(self, service: str) -> Dict[str, str]:
         """
         Return the process info for a service.
@@ -557,6 +579,7 @@ class ProcessManager:
             "uri": "",
         }
 
+    @_synchronized
     def checkup(self, continuous: bool = True) -> None:
         """
         Checkup the processes.
@@ -587,6 +610,7 @@ class ProcessManager:
         if continuous:
             self.start_checkup_timer()
 
+    @_synchronized
     def shutdown_nameserver(self, nameserver: str) -> bool:
         """
         Stop a running nameserver.
@@ -606,6 +630,7 @@ class ProcessManager:
         time.sleep(2 * polling)
         return True
 
+    @_synchronized
     def shutdown_daemon(self, daemon: str) -> bool:
         """
         Stop a running daemon and its services.
@@ -625,6 +650,7 @@ class ProcessManager:
         time.sleep(2 * polling)
         return True
 
+    @_synchronized
     def reload(self) -> bool:
         """
         Reload all entities.
@@ -651,6 +677,7 @@ class ProcessManager:
 
         return True
 
+    @_synchronized
     def shutdown_all(self) -> None:
         """
         Shutdown all entities.

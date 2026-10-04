@@ -9,8 +9,10 @@ Utils
 Convenience functions for working with the pyrolab package.
 """
 
+import os
 import secrets
 import socket
+import sys
 
 try:
     import importlib.resources as pkg_resources
@@ -62,3 +64,58 @@ def generate_random_name(count: int = 3) -> str:
         wordlist = f.read().splitlines()
 
     return "-".join([secrets.choice(wordlist) for _ in range(count)])
+
+
+def pid_is_running(pid: int) -> bool:
+    """
+    Return True if a process with the given PID currently exists.
+
+    PIDs are reused, so True only means *some* process has this PID; callers
+    that need certainty should also check that it answers as expected.
+
+    Parameters
+    ----------
+    pid : int
+        The process ID to check.
+
+    Returns
+    -------
+    bool
+        Whether the process exists.
+    """
+    if pid <= 0:
+        return False
+    if sys.platform == "win32":
+        # os.kill() on Windows terminates the process instead of probing it.
+        import ctypes
+
+        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+        STILL_ACTIVE = 259
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        # Declare types so 64-bit HANDLEs aren't truncated to a C int.
+        kernel32.OpenProcess.argtypes = [ctypes.c_ulong, ctypes.c_int, ctypes.c_ulong]
+        kernel32.OpenProcess.restype = ctypes.c_void_p
+        kernel32.GetExitCodeProcess.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_ulong),
+        ]
+        kernel32.CloseHandle.argtypes = [ctypes.c_void_p]
+        handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+        if not handle:
+            # Access denied means it exists but belongs to someone else.
+            ERROR_ACCESS_DENIED = 5
+            return ctypes.get_last_error() == ERROR_ACCESS_DENIED
+        try:
+            exit_code = ctypes.c_ulong()
+            if not kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)):
+                return True
+            return exit_code.value == STILL_ACTIVE
+        finally:
+            kernel32.CloseHandle(handle)
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True  # exists, owned by another user
+    return True

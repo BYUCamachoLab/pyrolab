@@ -12,6 +12,7 @@ from pyrolab.configure import (
     PyroLabConfiguration,
     ServiceConfiguration,
     UniqueOrAutoKeyLoader,
+    describe_config_error,
     export_config,
     reset_config,
     uniquify_class,
@@ -114,6 +115,75 @@ def test_initialize_nameservers_assigns_names(sample_config_file):
     cfg.initialize_nameservers()
     assert cfg.nameservers["local"].name == "local"
     assert cfg.nameservers["persistent"].name == "persistent"
+
+
+###############################################################################
+# Cross-references between sections (#54)
+###############################################################################
+
+
+@pytest.mark.parametrize(
+    "yaml_text, problem",
+    [
+        (
+            "services:\n  s: {module: m, classname: C, daemon: nope}\n",
+            "service 's' refers to daemon 'nope', which is not defined",
+        ),
+        (
+            "services:\n  s: {module: m, classname: C}\n",
+            "service 's' refers to daemon 'default' (the default), which is not defined",
+        ),
+        (
+            "daemons: {d: {}}\n"
+            "services:\n  s: {module: m, classname: C, daemon: d, nameservers: [x]}\n",
+            "service 's' refers to nameserver 'x', which is not defined",
+        ),
+        (
+            "daemons:\n  d: {nameservers: [x]}\n",
+            "daemon 'd' refers to nameserver 'x', which is not defined",
+        ),
+        (
+            "autolaunch: {nameservers: [x]}\n",
+            "autolaunch refers to nameserver 'x', which is not defined",
+        ),
+        (
+            "autolaunch: {daemons: [x]}\n",
+            "autolaunch refers to daemon 'x', which is not defined",
+        ),
+    ],
+)
+def test_dangling_references_are_rejected(yaml_text, problem):
+    with pytest.raises(ValidationError) as excinfo:
+        PyroLabConfiguration.from_yaml(yaml_text)
+    assert describe_config_error(excinfo.value) == [problem]
+
+
+def test_every_dangling_reference_is_reported():
+    yaml_text = (
+        "daemons:\n  d: {nameservers: [a]}\n"
+        "autolaunch: {nameservers: [b], daemons: [c]}\n"
+    )
+    with pytest.raises(ValidationError) as excinfo:
+        PyroLabConfiguration.from_yaml(yaml_text)
+    assert len(describe_config_error(excinfo.value)) == 3
+
+
+def test_describe_field_errors():
+    with pytest.raises(ValidationError) as excinfo:
+        PyroLabConfiguration.from_yaml("daemons:\n  d: {port: lots}\n")
+    (line,) = describe_config_error(excinfo.value)
+    assert line.startswith("daemons.d.port: ")
+
+
+def test_describe_other_errors():
+    assert describe_config_error(FileNotFoundError("gone")) == ["gone"]
+
+
+def test_global_load_rejects_dangling_references(global_config, tmp_path):
+    bad = tmp_path / "bad.yaml"
+    bad.write_text("autolaunch: {daemons: [x]}\n")
+    with pytest.raises(ValidationError):
+        global_config.load_config(bad)
 
 
 ###############################################################################

@@ -12,15 +12,18 @@ Submodule defining the background PyroLab daemon.
 import logging
 import os
 import shutil
-from typing import NamedTuple
+import sys
+import threading
+from typing import NamedTuple, Optional
 
 import Pyro5.api as api
 from pydantic import BaseModel
 from tabulate import tabulate
 
-from pyrolab import LOCKFILE, RUNTIME_CONFIG, USER_CONFIG_FILE
-from pyrolab.configure import GlobalConfiguration
+from pyrolab import LOCKFILE, RUNTIME_CONFIG, STARTUP_ERROR_FILE, USER_CONFIG_FILE
+from pyrolab.configure import GlobalConfiguration, describe_config_error
 from pyrolab.manager import ProcessManager
+from pyrolab.utils import pid_is_running
 
 log = logging.getLogger("pyrolab.pyrolabd")
 
@@ -32,6 +35,33 @@ class InstanceInfo(BaseModel):
 
     pid: int
     uri: str
+
+
+def write_lockfile(info: InstanceInfo) -> None:
+    """
+    Atomically write the lockfile.
+
+    The contents go to a temporary file in the same directory, which then
+    replaces the lockfile in one step, so readers see either no lockfile or a
+    complete one, never a partial write.
+    """
+    tmp = LOCKFILE.with_name(f"{LOCKFILE.name}.{os.getpid()}.tmp")
+    tmp.write_text(info.json())
+    os.replace(tmp, LOCKFILE)
+
+
+def read_lockfile() -> Optional[InstanceInfo]:
+    """
+    Return the running daemon's details from the lockfile.
+
+    Returns None if there is no lockfile or it cannot be parsed. The PID may
+    belong to a process that has since exited; check with
+    :py:func:`pyrolab.utils.pid_is_running`.
+    """
+    try:
+        return InstanceInfo.parse_file(LOCKFILE)
+    except (OSError, ValueError):  # missing, unreadable, or not valid JSON
+        return None
 
 
 class NameServerInfo(NamedTuple):
@@ -98,22 +128,36 @@ class PyroLabDaemon:
 
     def __init__(self):
         log.info("Starting PyroLab daemon.")
-        self.manager = ProcessManager.instance()
-
+        # Load (and validate) the configuration before starting the process
+        # manager, so an invalid configuration fails fast and leaves nothing
+        # running.
+        self.gconfig = GlobalConfiguration.instance()
         if USER_CONFIG_FILE.exists():
-            self.gconfig = GlobalConfiguration.instance()
             self.gconfig.load_config(USER_CONFIG_FILE)
             self.gconfig.save_config(RUNTIME_CONFIG)
-        else:
-            self.gconfig = GlobalConfiguration.instance()
+        self.manager = ProcessManager.instance()
 
+    def autolaunch(self) -> None:
+        """
+        Starts every nameserver and daemon listed under ``autolaunch``.
+
+        Each entry is started independently: one that fails is logged and the
+        rest still start. Run in a background thread at startup, so the daemon
+        answers requests while the entities come up.
+        """
         log.info("Autolaunching PyroLab entities.")
         autodetails = self.gconfig.config.autolaunch
         for ns in autodetails.nameservers:
-            self.start_nameserver(ns)
+            try:
+                self.start_nameserver(ns)
+            except Exception:
+                log.exception("Autolaunch of nameserver '%s' failed", ns)
         for daemon in autodetails.daemons:
-            self.start_daemon(daemon)
-        log.info("PyroLab background daemon started.")
+            try:
+                self.start_daemon(daemon)
+            except Exception:
+                log.exception("Autolaunch of daemon '%s' failed", daemon)
+        log.info("Autolaunch complete.")
 
     def reload(self) -> bool:
         """
@@ -272,30 +316,78 @@ class PyroLabDaemon:
         log.info("Daemon shutdown complete.")
 
 
-if __name__ == "__main__":
-    if LOCKFILE.exists():
-        raise RuntimeError(f"Lockfile already exists. Is another instance running?")
-    else:
+def _report_startup_error(message: str) -> None:
+    """Log why the daemon could not start, and leave the reason for `up`."""
+    log.error("PyroLab daemon failed to start: %s", message)
+    try:
+        STARTUP_ERROR_FILE.write_text(message)
+    except OSError:
+        log.exception("Could not write %s", STARTUP_ERROR_FILE)
+
+
+def main(port: int = 0) -> int:
+    """
+    Runs the background daemon until it is shut down.
+
+    The lockfile is published as soon as the daemon can answer requests;
+    autolaunched entities start afterwards, in the background.
+
+    Parameters
+    ----------
+    port : int, optional
+        The port to serve on (default 0: any free port).
+
+    Returns
+    -------
+    int
+        The process exit code.
+    """
+    existing = read_lockfile()
+    if existing is not None and pid_is_running(existing.pid):
+        _report_startup_error(
+            f"another PyroLab daemon is already running (pid {existing.pid})"
+        )
+        return 1
+
+    daemon = None
+    published = False
+    try:
+        daemon = api.Daemon(port=port)
         try:
-            LOCKFILE.touch(exist_ok=False)
-
-            import sys
-
-            if len(sys.argv) > 1:
-                port = int(sys.argv[1])
-            else:
-                port = 0
-
-            daemon = api.Daemon(port=port)
             pyrolabd = PyroLabDaemon()
-            uri = daemon.register(pyrolabd, "pyrolabd")
-            ii = InstanceInfo(pid=os.getpid(), uri=str(uri))
-            with LOCKFILE.open("w") as f:
-                f.write(ii.json())
-            daemon.requestLoop()
-        finally:
-            LOCKFILE.unlink()
-            try:
-                RUNTIME_CONFIG.unlink()
-            except FileNotFoundError:
-                print("Runtime configuration not found (and therefore not removed).")
+        except ValueError as e:  # includes pydantic's ValidationError
+            problems = "\n".join(f"  - {line}" for line in describe_config_error(e))
+            _report_startup_error(
+                f"invalid configuration in {USER_CONFIG_FILE}:\n{problems}"
+            )
+            return 1
+        uri = daemon.register(pyrolabd, "pyrolabd")
+        write_lockfile(InstanceInfo(pid=os.getpid(), uri=str(uri)))
+        published = True
+        log.info("PyroLab daemon listening at %s", uri)
+
+        threading.Thread(
+            target=pyrolabd.autolaunch, name="autolaunch", daemon=True
+        ).start()
+        daemon.requestLoop()
+        return 0
+    except Exception as e:
+        log.exception("PyroLab daemon stopped unexpectedly")
+        if not published:
+            _report_startup_error(f"{type(e).__name__}: {e}")
+        return 1
+    finally:
+        # A normal shutdown already stopped everything; this covers failures.
+        manager = ProcessManager._instance
+        if manager is not None:
+            manager.shutdown_all()
+        if daemon is not None:
+            daemon.close()
+        current = read_lockfile()
+        if current is not None and current.pid == os.getpid():
+            LOCKFILE.unlink(missing_ok=True)
+        RUNTIME_CONFIG.unlink(missing_ok=True)
+
+
+if __name__ == "__main__":
+    sys.exit(main(int(sys.argv[1]) if len(sys.argv) > 1 else 0))

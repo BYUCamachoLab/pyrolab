@@ -48,7 +48,19 @@ __all__ = [
 
 # If a user config file exists, load the first listed nameserver by default,
 # so that locate_ns "just works."
+# This is a convenience only: importing the API must never fail because the
+# local configuration is invalid, has no nameservers, or names a "public"
+# host that can't be resolved -- otherwise neither client scripts nor the
+# CLI commands that would fix the configuration could even start.
 if USER_CONFIG_FILE.exists():
-    cfg = PyroLabConfiguration.from_file(USER_CONFIG_FILE)
-    nscfg = next(iter(cfg.nameservers.values()))
-    nscfg.update_pyro_config()
+    try:
+        cfg = PyroLabConfiguration.from_file(USER_CONFIG_FILE)
+        nscfg = next(iter(cfg.nameservers.values()), None)
+        if nscfg is not None:
+            nscfg.update_pyro_config()
+    except Exception as e:
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "Not applying nameserver defaults from %s: %s", USER_CONFIG_FILE, e
+        )
