@@ -17,22 +17,21 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
-      - name: Set up Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: '3.x'
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install --upgrade setuptools wheel twine build
-          pip install -r requirements.txt
-      - name: Build
-        run: |
-          python -m build
-          pip install -e .
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10
       - name: Get version number
         id: get_version
-        run: echo "VERSION=$(python3 -c 'import pyrolab; print(pyrolab.__version__)')" >> $GITHUB_ENV
+        run: |
+          VERSION=$(uv version --short)
+          if [ "v$VERSION" != "${{ github.ref_name }}" ]; then
+            echo "::error::Tag ${{ github.ref_name }} does not match pyproject.toml version $VERSION"
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+      - name: Build
+        # --no-sources builds exactly what PyPI users will get, ignoring any
+        # development-only [tool.uv.sources] overrides.
+        run: uv build --no-sources
       - name: Load Release text
         id: get_text
         run: |
