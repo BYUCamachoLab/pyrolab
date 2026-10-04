@@ -1,0 +1,50 @@
+name: tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+  # Lets release.yml require a passing run before publishing.
+  workflow_call:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: pre-commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          python-version: "3.13"
+      # Same hooks as local commits (ruff check, ruff format, file checks),
+      # using the pre-commit version pinned in uv.lock.
+      - run: uv run --locked --only-group dev pre-commit run --all-files --show-diff-on-failure
+
+  test:
+    name: pytest (${{ matrix.os }}, ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      # --all-extras installs every optional driver dependency on PyPI, so
+      # those drivers are import-tested rather than skipped.
+      - name: Install
+        run: uv sync --locked --all-extras
+      - name: Run tests
+        # --maxfail=0 overrides the --maxfail=2 in pyproject.toml so CI
+        # reports every failure, not just the first two.
+        run: uv run coverage run -m pytest --maxfail=0 -rs
+      - name: Coverage report
+        run: uv run coverage report

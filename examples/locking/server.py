@@ -12,13 +12,13 @@ This daemon supports registration of one object only, typically to be used
 with Lockable services.
 
 A feature of the LockableDaemon is that when the client connection is closed,
-the lock on the Service is also released. (This is in case a client 
-accidentally forgets to release the lock before closing the connection. Since 
-all new connections are blocked until the lock is released, the client would 
+the lock on the Service is also released. (This is in case a client
+accidentally forgets to release the lock before closing the connection. Since
+all new connections are blocked until the lock is released, the client would
 not be able to reconnect to release the lock if not for this feature.)
 """
 
-from pyrolab.api import locate_ns, LockableDaemon, DaemonConfiguration
+from pyrolab.api import DaemonConfiguration, LockableDaemon, locate_ns
 from pyrolab.drivers.sample import SampleService
 
 cfg = DaemonConfiguration(servertype="multiplex")

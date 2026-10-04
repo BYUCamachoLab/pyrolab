@@ -1,8 +1,9 @@
 import os
 
 os.add_dll_directory("C:\\Program Files\\Thorlabs\\Kinesis")
-from pyrolab.drivers.motion.max31x import MAX31X
 import time
+
+from pyrolab.drivers.motion.max31x import MAX31X
 
 SER_NUM = 71874833
 

@@ -1,5 +1,5 @@
-from tkinter import Tk, Text, BOTH, W, N, E, S
-from tkinter.ttk import Frame, Button, Label, Style
+from tkinter import BOTH, E, N, S, Text, Tk, W
+from tkinter.ttk import Button, Frame, Label, Style
 
 
 class Example(Frame):

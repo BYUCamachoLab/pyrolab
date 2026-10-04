@@ -13,11 +13,13 @@ Modified: 5/4/2021
 Repo: https://github.com/BYUCamachoLab/pyrolab/examples/camera-live
 """
 
-from pyrolab.drivers.cameras.uc480 import UC480
-import numpy as np
-import cv2
-import time
 import pickle
+import time
+
+import cv2
+import numpy as np
+
+from pyrolab.drivers.cameras.uc480 import UC480
 
 BRIGHTNESS = 5  # be able to make the recieved video brighter or darker, this
 # does nothing to the raw data, it is post-processing,

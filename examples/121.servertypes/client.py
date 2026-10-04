@@ -17,10 +17,10 @@ Runs a class as either threaded or multiplexed, based on user input.
    sequentially.
 """
 
-import time
 import threading
-from Pyro5.api import Proxy
+import time
 
+from Pyro5.api import Proxy
 
 serv = Proxy("PYRONAME:example.servertypes")
 

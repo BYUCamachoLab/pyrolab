@@ -25,15 +25,15 @@ Driver for a Thorlabs Scientific Camera.
    thorlabs_kinesis (:ref:`installation instructions <Thorlabs Kinesis Package>`)
 """
 
-import time
 import logging
+import time
 from ctypes import *
 
 import numpy as np
 from thorlabs_kinesis import thor_science_camera as tc
-from pyrolab.drivers.cameras.thorcam import ThorCamBase
 
 from pyrolab.api import expose
+from pyrolab.drivers.cameras.thorcam import ThorCamBase
 
 log = logging.getLogger(__name__)
 

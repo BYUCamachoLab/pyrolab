@@ -23,22 +23,22 @@ PyroLab
 A framework for using remote lab instruments as local resources built on Pyro5.
 """
 
+import atexit
+import fileinput
 import os
 import pathlib
 import platform
-import sys
-import atexit
-import fileinput
 import re
-from typing import Callable, Iterable
-from time import strptime
+import sys
 from pathlib import Path
+from time import strptime
+from typing import Callable, Iterable
 
 # Check if Python version is supported
 pyversion = sys.version_info
-if pyversion < (3, 7, 0):
+if pyversion < (3, 11, 0):
     raise Exception(
-        "PyroLab requires Python 3.7+ (version "
+        "PyroLab requires Python 3.11+ (version "
         + platform.python_version()
         + " detected)."
     )
@@ -48,7 +48,13 @@ if pyversion < (3, 7, 0):
 __title__ = "PyroLab"
 __author__ = "CamachoLab"
 __copyright__ = "Copyright 2020, The PyroLab Project"
-__version__ = "0.4.0"
+# pyproject.toml is the single source of the version (see `uv version`).
+import importlib.metadata as _metadata
+
+try:
+    __version__ = _metadata.version("pyrolab")
+except _metadata.PackageNotFoundError:  # source tree that isn't installed
+    __version__ = "0.0.0+unknown"
 __license__ = "GPLv3+"
 __maintainer__ = "Sequoia Ploeg"
 __maintainer_email__ = "sequoia.ploeg@byu.edu"
@@ -67,14 +73,9 @@ if "PYROLAB_HUSH_DEPRECATION" in os.environ:
 
 
 # Configuration directories
-# Old api deprecated in 3.11, new api added in 3.9
-if pyversion < (3, 9, 0):
-    base_path = pathlib.Path(__file__).resolve().parent
-else:
-    from importlib.resources import files
+from importlib.resources import files
 
-    base_path = files("pyrolab")
-base_path = base_path / "data" / "local"
+base_path = files("pyrolab") / "data" / "local"
 
 # Data directories
 PYROLAB_DATA_DIR = pathlib.Path(base_path)
@@ -129,9 +130,10 @@ sys.excepthook = Pyro5.errors.excepthook
 # Check for updates to PyroLab
 try:
     import json
+
     import requests
-    from requests.adapters import HTTPAdapter
     from packaging.version import parse
+    from requests.adapters import HTTPAdapter
 
     url = "https://pypi.org/pypi/pyrolab/json"
     with requests.Session() as s:

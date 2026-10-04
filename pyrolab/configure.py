@@ -33,12 +33,11 @@ Note the difference between the two ``servertypes``:
 
 from __future__ import annotations
 
-import uuid
 import importlib
 import logging
+import uuid
 from pathlib import Path
 from typing import IO, Any, Dict, List, Optional, Type, Union
-
 
 import Pyro5
 from pydantic import BaseModel, BaseSettings, validator
@@ -52,11 +51,10 @@ try:
 except ImportError:
     from yaml import Loader
 
+from pyrolab import NAMESERVER_STORAGE, USER_CONFIG_FILE
 from pyrolab.server import Daemon
 from pyrolab.service import Service
-from pyrolab import NAMESERVER_STORAGE, USER_CONFIG_FILE
 from pyrolab.utils import generate_random_name, get_ip
-
 
 log = logging.getLogger(__name__)
 

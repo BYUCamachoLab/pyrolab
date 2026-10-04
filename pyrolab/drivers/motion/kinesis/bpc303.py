@@ -24,7 +24,6 @@ from thorlabs_kinesis import benchtop_piezo as bp
 from pyrolab.api import expose, oneway
 from pyrolab.drivers.motion.kinesis import KinesisInstrument
 
-
 log = logging.getLogger(__name__)
 
 

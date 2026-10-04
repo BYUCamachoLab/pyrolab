@@ -9,7 +9,7 @@ UC480 Example
 =============
 
 This example demonstrates the use of the Thorlabs UC480 camera using PyroLab's
-built-in camera client. This uses Pyro5 to negotiate the opening up of a 
+built-in camera client. This uses Pyro5 to negotiate the opening up of a
 socketserver connection with the server. Images are streamed outside of the
 PyroLab connection for higher performance. In this example, image are simply
 dipslayed in a opencv window.
@@ -23,9 +23,8 @@ import time
 
 import cv2
 
-from pyrolab.drivers.cameras.thorcam import ThorCamClient
 from pyrolab.api import NameServerConfiguration
-
+from pyrolab.drivers.cameras.thorcam import ThorCamClient
 
 nscfg = NameServerConfiguration(host="yourdomain.com")
 nscfg.update_pyro_config()
