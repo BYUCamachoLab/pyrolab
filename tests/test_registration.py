@@ -1,6 +1,10 @@
 """
 Nameserver registration (#52, #53) and the runners' own run() loops.
 
+Addresses are 127.0.0.1 rather than "localhost": on CI runners "localhost"
+also resolves to ::1, so a port held on IPv4 can still be bound on IPv6, and a
+"refused" or "silent" endpoint on one family is a different one on the other.
+
 Nameservers are real, served on loopback in threads. Runners' run() methods
 are called in a thread of this process (not spawned), so their behaviour can
 be observed directly.
@@ -28,37 +32,37 @@ from pyrolab.nameserver import start_ns
 
 def free_port() -> int:
     with socket.socket() as s:
-        s.bind(("localhost", 0))
+        s.bind(("127.0.0.1", 0))
         return s.getsockname()[1]
 
 
 @pytest.fixture
 def live_ns(serve):
     """A running nameserver; returns (config, its NameServer object)."""
-    cfg = NameServerConfiguration(host="localhost", ns_port=0)
+    cfg = NameServerConfiguration(host="127.0.0.1", ns_port=0)
     uri, daemon, _ = start_ns(cfg)
     serve(daemon)
     return NameServerConfiguration(
-        host="localhost", ns_port=uri.port
+        host="127.0.0.1", ns_port=uri.port
     ), daemon.nameserver
 
 
 @pytest.fixture
 def dead_ns():
     """Configuration for a nameserver that refuses connections."""
-    return NameServerConfiguration(host="localhost", ns_port=free_port())
+    return NameServerConfiguration(host="127.0.0.1", ns_port=free_port())
 
 
 @pytest.fixture
 def silent_ns():
     """A port that accepts connections but never answers them."""
     with socket.socket() as s:
-        s.bind(("localhost", 0))
+        s.bind(("127.0.0.1", 0))
         s.listen(5)
-        yield NameServerConfiguration(host="localhost", ns_port=s.getsockname()[1])
+        yield NameServerConfiguration(host="127.0.0.1", ns_port=s.getsockname()[1])
 
 
-URI = "PYRO:obj_1@localhost:1234"
+URI = "PYRO:obj_1@127.0.0.1:1234"
 
 
 ###############################################################################
@@ -94,7 +98,7 @@ def test_pending_registration_succeeds_once_nameserver_appears(serve):
     regs.add("later", "lab.thing", URI)
     assert regs.register_pending() is False
 
-    _, daemon, _ = start_ns(NameServerConfiguration(host="localhost", ns_port=port))
+    _, daemon, _ = start_ns(NameServerConfiguration(host="127.0.0.1", ns_port=port))
     serve(daemon)
     assert regs.register_pending() is True
     assert "lab.thing" in daemon.nameserver.list()
@@ -196,13 +200,13 @@ def test_daemon_survives_unreachable_nameserver(
     cfg, ns = live_ns
     data_dir.RUNTIME_CONFIG.write_text(
         f"nameservers:\n"
-        f"  live: {{host: localhost, ns_port: {cfg.ns_port}}}\n"
-        f"  dead: {{host: localhost, ns_port: {dead_ns.ns_port}}}\n"
+        f"  live: {{host: 127.0.0.1, ns_port: {cfg.ns_port}}}\n"
+        f"  dead: {{host: 127.0.0.1, ns_port: {dead_ns.ns_port}}}\n"
     )
     state, uris, msgs = {}, {}, queue.Queue()
     runner = DaemonRunner(
         name="lab",
-        daemonconfig=DaemonConfiguration(host="localhost"),
+        daemonconfig=DaemonConfiguration(host="127.0.0.1"),
         serviceconfigs={
             "sample.echo": ServiceConfiguration(
                 module="pyrolab.drivers.sample",
@@ -234,7 +238,7 @@ def test_daemon_runner_reports_startup_error(data_dir):
     state = {}
     runner = DaemonRunner(
         name="lab",
-        daemonconfig=DaemonConfiguration(host="localhost"),
+        daemonconfig=DaemonConfiguration(host="127.0.0.1"),
         serviceconfigs={
             "broken": ServiceConfiguration(module="no.such.module", classname="X")
         },
@@ -253,7 +257,7 @@ def test_nameserver_runner_reports_ready_and_stops(fast_polling, wait_for):
     port = free_port()
     runner = NameServerRunner(
         name="ns",
-        nsconfig=NameServerConfiguration(host="localhost", ns_port=port),
+        nsconfig=NameServerConfiguration(host="127.0.0.1", ns_port=port),
         msg_queue=msgs,
         msg_polling=0.05,
         shared_state=state,
@@ -261,7 +265,7 @@ def test_nameserver_runner_reports_ready_and_stops(fast_polling, wait_for):
     thread, errors = run_in_thread(runner)
 
     assert wait_for(lambda: state.get("ready"))
-    with Proxy(f"PYRO:Pyro.NameServer@localhost:{port}") as ns:
+    with Proxy(f"PYRO:Pyro.NameServer@127.0.0.1:{port}") as ns:
         ns.ping()
 
     msgs.put(None)
@@ -270,20 +274,28 @@ def test_nameserver_runner_reports_ready_and_stops(fast_polling, wait_for):
     assert errors == []
 
 
-def test_nameserver_runner_reports_startup_error(wait_for):
+def test_nameserver_runner_reports_startup_error(fast_polling):
     with socket.socket() as taken:
-        taken.bind(("localhost", 0))
+        taken.bind(("127.0.0.1", 0))
         taken.listen(1)
-        state = {}
+        state, msgs = {}, queue.Queue()
         runner = NameServerRunner(
             name="ns",
             nsconfig=NameServerConfiguration(
-                host="localhost", ns_port=taken.getsockname()[1]
+                host="127.0.0.1", ns_port=taken.getsockname()[1]
             ),
-            msg_queue=queue.Queue(),
+            msg_queue=msgs,
+            msg_polling=0.05,
             shared_state=state,
         )
-        with pytest.raises(Exception):
-            runner.run()
+        # In a thread with a bounded wait: if the port were somehow free,
+        # run() would serve forever instead of failing.
+        thread, errors = run_in_thread(runner)
+        thread.join(timeout=10)
+        if thread.is_alive():
+            msgs.put(None)
+            thread.join(timeout=10)
+            pytest.fail("nameserver started on a port that was already in use")
+    assert errors, "run() should have raised"
     assert state["error"]  # e.g. "CommunicationError: ... address in use"
     assert not state.get("ready")

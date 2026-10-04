@@ -16,6 +16,7 @@ jobs:
   lint:
     name: pre-commit
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.2.0
@@ -28,6 +29,9 @@ jobs:
   test:
     name: pytest (${{ matrix.os }}, ${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
+    # The suite takes about a minute; a hang should fail fast, not run for
+    # GitHub's default of six hours.
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
