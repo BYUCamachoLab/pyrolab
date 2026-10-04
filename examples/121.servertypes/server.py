@@ -20,7 +20,7 @@ Runs a class as either threaded or multiplexed, based on user input.
 import threading
 import time
 
-from pyrolab.api import config, serve, locate_ns, expose, behavior, oneway
+from pyrolab.api import behavior, config, expose, locate_ns, oneway, serve
 from pyrolab.drivers.sample import SampleService
 
 config.reset()

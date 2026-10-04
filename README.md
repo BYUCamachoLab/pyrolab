@@ -106,6 +106,7 @@ Run a nameserver:
 
 ```python
 from pyrolab.api import start_ns_loop
+
 start_ns_loop()
 ```
 

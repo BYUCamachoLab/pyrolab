@@ -12,15 +12,18 @@ Author: David Hill (https://github.com/hillda3141)
 Modified: 5/4/2021
 Repo: https://github.com/BYUCamachoLab/pyrolab/examples/camera-live
 """
+
 import os
 
 os.add_dll_directory("C:\\Program Files\\Thorlabs\\Scientific Imaging\\ThorCam")
 
-from pyrolab.drivers.cameras.sciTSI import SCICAM
-import numpy as np
-import cv2
-import time
 import pickle
+import time
+
+import cv2
+import numpy as np
+
+from pyrolab.drivers.cameras.sciTSI import SCICAM
 
 BRIGHTNESS = 5  # be able to make the recieved video brighter or darker, this
 # does nothing to the raw data, it is post-processing,

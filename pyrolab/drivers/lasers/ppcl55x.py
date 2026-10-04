@@ -28,13 +28,12 @@ import threading
 import time
 from typing import List
 
-import serial
 import numpy as np
+import serial
 from scipy.constants import speed_of_light as C_SPEED
 
+from pyrolab.api import behavior, expose
 from pyrolab.drivers.lasers import Laser
-from pyrolab.api import expose, behavior
-
 
 log = logging.getLogger(__name__)
 

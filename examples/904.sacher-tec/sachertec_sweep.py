@@ -1,15 +1,14 @@
+import math
 import os
 import time
-import math
-import keyboard
-import pyfirmata
-
 from ctypes import *
 
+import keyboard
+import pyfirmata
 from sacher_tec._utils import (
-    c_word,
-    c_dword,
     bind,
+    c_dword,
+    c_word,
     not_implemented,
 )
 
@@ -96,7 +95,8 @@ def flush_input():
         while msvcrt.kbhit():
             msvcrt.getch()
     except ImportError:
-        import sys, termios
+        import sys
+        import termios
 
         termios.tcflush(sys.stdin, termios.TCIOFLUSH)
 

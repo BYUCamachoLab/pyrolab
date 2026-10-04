@@ -39,9 +39,8 @@ from pyfirmata import (
     util,
 )
 
-from pyrolab.drivers.arduino import Arduino as PyroArduino
 from pyrolab.api import expose
-
+from pyrolab.drivers.arduino import Arduino as PyroArduino
 
 log = logging.getLogger(__name__)
 

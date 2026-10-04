@@ -1,4 +1,5 @@
 import time
+
 from pyrolab.drivers.function_generators.smcv100b import SMCV100B
 
 function_generator_ip = "10.32.112.163"

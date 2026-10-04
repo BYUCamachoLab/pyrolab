@@ -11,7 +11,7 @@
 ...
 """
 
-from pyrolab.api import locate_ns, Proxy
+from pyrolab.api import Proxy, locate_ns
 
 ns = locate_ns(host="localhost")
 uri = ns.lookup("test.SampleService")

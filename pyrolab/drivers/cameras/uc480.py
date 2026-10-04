@@ -42,7 +42,6 @@ except:
 from pyrolab.api import expose
 from pyrolab.drivers.cameras.thorcam import ThorCamBase, ThorCamClient
 
-
 log = logging.getLogger(__name__)
 
 

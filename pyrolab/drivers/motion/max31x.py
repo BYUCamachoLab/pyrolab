@@ -37,7 +37,6 @@ from Pyro5.api import behavior, expose
 
 from pyrolab.drivers.motion.kinesis.bpc303 import BPC303
 
-
 log = logging.getLogger(__name__)
 
 

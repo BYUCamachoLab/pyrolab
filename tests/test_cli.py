@@ -246,8 +246,7 @@ def test_logs_export_merges_and_sorts(data_dir, tmp_path):
         "  boom\n"
     )
     (data_dir.PYROLAB_LOGDIR / "pyrolab_2.log").write_text(
-        "[2026-01-01 10:00:01.000] INFO second\n"
-        "[2026-01-01 10:00:03.000] INFO fourth\n"
+        "[2026-01-01 10:00:01.000] INFO second\n[2026-01-01 10:00:03.000] INFO fourth\n"
     )
     out = tmp_path / "merged.log"
 

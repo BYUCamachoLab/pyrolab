@@ -20,8 +20,8 @@
 
 
 from tabulate import tabulate
-from pyrolab.api import locate_ns
 
+from pyrolab.api import locate_ns
 
 HOST = "localhost"
 PORT = 9090

@@ -23,16 +23,16 @@ PyroLab
 A framework for using remote lab instruments as local resources built on Pyro5.
 """
 
+import atexit
+import fileinput
 import os
 import pathlib
 import platform
-import sys
-import atexit
-import fileinput
 import re
-from typing import Callable, Iterable
-from time import strptime
+import sys
 from pathlib import Path
+from time import strptime
+from typing import Callable, Iterable
 
 # Check if Python version is supported
 pyversion = sys.version_info
@@ -124,9 +124,10 @@ sys.excepthook = Pyro5.errors.excepthook
 # Check for updates to PyroLab
 try:
     import json
+
     import requests
-    from requests.adapters import HTTPAdapter
     from packaging.version import parse
+    from requests.adapters import HTTPAdapter
 
     url = "https://pypi.org/pypi/pyrolab/json"
     with requests.Session() as s:

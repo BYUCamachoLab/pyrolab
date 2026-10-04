@@ -8,12 +8,11 @@
 Kinesis KCube Driver Example
 ============================
 
-This example demonstrates the use of the Thorlabs KCube DC Servo controlling a 
-Z825B translational stage using PyroLab. 
+This example demonstrates the use of the Thorlabs KCube DC Servo controlling a
+Z825B translational stage using PyroLab.
 """
 
 from pyrolab.api import NameServerConfiguration, Proxy, locate_ns
-
 
 nscfg = NameServerConfiguration(host="yourdomain.com")
 nscfg.update_pyro_config()
