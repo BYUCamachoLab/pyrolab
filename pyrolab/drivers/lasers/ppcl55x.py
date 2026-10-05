@@ -37,6 +37,8 @@ from pyrolab.drivers.lasers import Laser
 
 log = logging.getLogger(__name__)
 
+# How long to wait for the laser to reply to a message, in seconds.
+REPLY_TIMEOUT = 0.5
 
 ITLA_NOERROR = 0x00
 ITLA_EXERROR = 0x01
@@ -140,8 +142,8 @@ class PPCL55xBase(Laser):
         log.debug("Entering connect()")
 
         self.latest_register = 0
-        self.queue = []
-        self.max_row_ticket = 0
+        if not hasattr(self, "_lock"):
+            self._lock = threading.Lock()
 
         if hasattr(self, "device") and self.device.is_open:
             log.debug("Already connected")
@@ -391,9 +393,8 @@ class PPCL55xBase(Laser):
         """
         # start communication by sending 8 to REG_Resena register
         response = self._communicate(REG_Resena, 8, 1)
-        for i in range(10):
-            # send 0 to REG_Nop to allow time for laser diode to turn on
-            response = self._communicate(REG_Nop, 0, 0)
+        # send 0 to REG_Nop to allow time for laser diode to turn on
+        response = self._wait_with_nops(response)
         self.is_on = True
         return response
 
@@ -408,10 +409,24 @@ class PPCL55xBase(Laser):
         """
         # stop communication by sending 0 to REG_Resena register
         response = self._communicate(REG_Resena, 0, 1)
-        for i in range(10):
-            # send 0 to REG_Nop to allow time for laser diode to turn on
-            response = self._communicate(REG_Nop, 0, 0)
+        # send 0 to REG_Nop to allow time for laser diode to turn off
+        response = self._wait_with_nops(response)
         self.is_on = False
+        return response
+
+    def _wait_with_nops(self, response: List[int], count: int = 10) -> List[int]:
+        """
+        Send ``count`` no-ops to give the laser time to change state.
+
+        The no-ops are only a delay, so one going unanswered is not an error
+        (the reply to the command they follow already showed the laser is
+        there). Returns the last reply received, or ``response`` if none was.
+        """
+        for _ in range(count):
+            try:
+                response = self._communicate(REG_Nop, 0, 0)
+            except TimeoutError:
+                log.debug("No reply to a no-op while waiting; continuing")
         return response
 
     def _communicate(self, register: int, data: int, write_read: int) -> int:
@@ -434,27 +449,24 @@ class PPCL55xBase(Laser):
         -------
         int
             Integer representing error message, 0 if no error.
-        """
 
-        lock = threading.Lock()
-        lock.acquire()
-        row_ticket = self.max_row_ticket + 1
-        self.max_row_ticket = self.max_row_ticket + 1
-        self.queue.append(row_ticket)
-        lock.release()
-        while self.queue[0] != row_ticket:
-            row_ticket = row_ticket
+        Raises
+        ------
+        TimeoutError
+            If the laser doesn't reply in time.
+        OSError
+            If the reply can't be read or fails its checksum.
+        """
         data_byte_0 = int(data / 256)
         data_byte_1 = int(data - data_byte_0 * 256)
-        self.latest_register = register  # modify bytes for sending
         message = [write_read, register, data_byte_0, data_byte_1]
-        self._send(message)  # send the message
-        received_message = self._receive()  # receive the response from the laser
-        lock.acquire()
-        self.queue.pop(0)
-        lock.release()
-        # error_message = int(received_message[0] & 0x03)
-        return received_message
+        # One exchange at a time: a reply must be read before the next
+        # message is sent, or replies would be matched to the wrong requests.
+        with self._lock:
+            self.latest_register = register  # modify bytes for sending
+            self._send(message)  # send the message
+            # error_message = int(received_message[0] & 0x03)
+            return self._receive()  # receive the response from the laser
 
     """
     Function sends message of four bytes to the laser.
@@ -489,30 +501,33 @@ class PPCL55xBase(Laser):
 
         Raises
         ------
-        PyroLabException.CommunicationException
+        TimeoutError
+            If the laser doesn't reply within ``REPLY_TIMEOUT`` seconds.
+        OSError
+            If the reply can't be read or fails its checksum.
         """
-
-        reference_time = time.time()
+        # Built-in exceptions only: Pyro can't send PyroLab's or pyserial's
+        # exception classes to a client, and a Pyro CommunicationError would
+        # make the client's proxy drop its connection (and any lock it holds).
+        deadline = time.monotonic() + REPLY_TIMEOUT
         while self.device.inWaiting() < 4:  # wait until 4 bytes are received
-            if (
-                time.time() > reference_time + 0.5
-            ):  # if it takes longer than 0.5 seconds break
-                return (0xFF, 0xFF, 0xFF, 0xFF)
+            if time.monotonic() > deadline:
+                raise TimeoutError(
+                    f"No reply from the laser within {REPLY_TIMEOUT} seconds"
+                )
+            time.sleep(0.001)
         try:
             num = self.device.inWaiting()  # get number of bytes for debugging purposes
-            message = []
             bytes_read = self.device.read(num)  # read the four bytes from serial
-            for b in bytes_read:
-                message.append(b)  # construct array of bytes from the message
-            message = message[0:4]
-        except:
-            raise CommunicationError("No response from laser")
+        except serial.SerialException as e:
+            raise OSError(f"Reading the laser's reply failed: {e}") from e
+        # construct array of bytes from the message
+        message = list(bytes_read)[0:4]
         if self._checksum(message) == message[0] >> 4:  # ensure the checksum is correct
             log.debug(f"message received: {message[2]} {message[3]}")
             return message  # return the message received
         else:
-            # if the checksum is wrong, log a CS error
-            raise CommunicationError("Incorrect checksum returned")
+            raise OSError(f"The laser's reply failed its checksum: {message}")
 
     def _checksum(self, message: List[int]) -> int:  # calculate checksum
         """
