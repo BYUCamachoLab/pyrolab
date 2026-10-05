@@ -26,6 +26,7 @@ Code also available in the PyroLab repository under ``/extras/arduino``.
 
 import inspect
 import logging
+import time
 
 import pyfirmata.pyfirmata
 from pyfirmata import (
@@ -181,7 +182,7 @@ class BaseArduinoDriver(PyroArduino):
         self.board.digital[pin].mode = INPUT
         return self.board.digital[pin].read()
 
-    def analog_read(self, pin: int) -> float:
+    def analog_read(self, pin: int, timeout: float = 1.0) -> float:
         """
         Tell the arduino to read a value from an analog pin.
 
@@ -189,20 +190,34 @@ class BaseArduinoDriver(PyroArduino):
         ----------
         pin : int
             Integer that represents the analog in pin number on an arduino
+        timeout : float, optional
+            How long to wait for the pin to report a value, in seconds
+            (default 1).
 
         Returns
         -------
         float
             The value read by the analog pin (0 - 1.0)
+
+        Raises
+        ------
+        TimeoutError
+            If the pin doesn't report a value within ``timeout`` (for
+            example, because the board was reset or disconnected).
         """
         # self.board.iterate()
         self.board.analog[pin].mode = INPUT
         self.board.analog[pin].enable_reporting()
+        deadline = time.monotonic() + timeout
         while True:
             value = self.board.analog[pin].read()
             if value is not None:
-                break
-        return value
+                return value
+            if time.monotonic() > deadline:
+                raise TimeoutError(
+                    f"Analog pin {pin} did not report a value within {timeout} seconds"
+                )
+            time.sleep(0.001)
 
     def close(self) -> None:
         """
