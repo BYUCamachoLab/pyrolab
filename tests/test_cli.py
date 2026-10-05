@@ -53,7 +53,7 @@ def running_daemon(data_dir, monkeypatch):
     FakeDaemonProxy.returns = {}
     monkeypatch.setattr(cli, "Proxy", FakeDaemonProxy)
     data_dir.LOCKFILE.write_text(
-        InstanceInfo(pid=os.getpid(), uri="PYRO:pyrolabd@localhost:1").json()
+        InstanceInfo(pid=os.getpid(), uri="PYRO:pyrolabd@localhost:1").model_dump_json()
     )
     return FakeDaemonProxy
 
@@ -99,7 +99,7 @@ def dead_pid():
 
 def test_stale_lockfile_means_not_running(data_dir, dead_pid):
     data_dir.LOCKFILE.write_text(
-        InstanceInfo(pid=dead_pid, uri="PYRO:pyrolabd@localhost:1").json()
+        InstanceInfo(pid=dead_pid, uri="PYRO:pyrolabd@localhost:1").model_dump_json()
     )
     result = runner.invoke(cli.app, ["ps"])
     assert result.exit_code == 1
@@ -394,7 +394,8 @@ def test_rename(config_with_spare_daemon, kind, section, old):
 
     entities = getattr(PyroLabConfiguration.from_file(user_config), section)
     assert old not in entities
-    assert entities["renamed"] == before
+    # Compare settings: in pydantic 2, equality also compares the private name.
+    assert entities["renamed"].model_dump() == before.model_dump()
 
 
 def _load(path):
@@ -720,7 +721,9 @@ class FakeDaemonProcess:
             return None
         if self.exit_code is None:
             self.data_dir.LOCKFILE.write_text(
-                InstanceInfo(pid=os.getpid(), uri="PYRO:pyrolabd@localhost:1").json()
+                InstanceInfo(
+                    pid=os.getpid(), uri="PYRO:pyrolabd@localhost:1"
+                ).model_dump_json()
             )
             return None
         if self.error:
@@ -759,7 +762,7 @@ def test_up_waits_until_daemon_responds(spawn):
 
 def test_up_replaces_stale_lockfile(spawn, data_dir, dead_pid):
     data_dir.LOCKFILE.write_text(
-        InstanceInfo(pid=dead_pid, uri="PYRO:pyrolabd@localhost:1").json()
+        InstanceInfo(pid=dead_pid, uri="PYRO:pyrolabd@localhost:1").model_dump_json()
     )
     result = runner.invoke(cli.app, ["up"])
     assert result.exit_code == 0, result.output
@@ -768,7 +771,7 @@ def test_up_replaces_stale_lockfile(spawn, data_dir, dead_pid):
 
 def test_up_when_already_running(spawn, data_dir):
     data_dir.LOCKFILE.write_text(
-        InstanceInfo(pid=os.getpid(), uri="PYRO:pyrolabd@localhost:1").json()
+        InstanceInfo(pid=os.getpid(), uri="PYRO:pyrolabd@localhost:1").model_dump_json()
     )
     result = runner.invoke(cli.app, ["up"])
     assert result.exit_code == 1
@@ -778,7 +781,7 @@ def test_up_when_already_running(spawn, data_dir):
 
 def test_up_when_running_but_not_responding(spawn, data_dir, monkeypatch):
     data_dir.LOCKFILE.write_text(
-        InstanceInfo(pid=os.getpid(), uri="PYRO:pyrolabd@localhost:1").json()
+        InstanceInfo(pid=os.getpid(), uri="PYRO:pyrolabd@localhost:1").model_dump_json()
     )
     monkeypatch.setattr(cli, "_daemon_responds", lambda uri: False)
     result = runner.invoke(cli.app, ["up"])
