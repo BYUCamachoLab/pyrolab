@@ -298,3 +298,50 @@ def test_main_refuses_to_start_twice(run_main, data_dir):
     assert result["code"] == 1
     assert "already running" in data_dir.STARTUP_ERROR_FILE.read_text()
     assert read_lockfile() == other  # the running daemon's lockfile is untouched
+
+
+###############################################################################
+# The daemon owns the log (#25, #64)
+###############################################################################
+
+
+def test_main_writes_the_log_and_cleans_up(
+    run_main, data_dir, sample_config_file, wait_for
+):
+    import logging
+
+    from pyrolab import logs
+
+    handlers_before = list(logging.getLogger().handlers)
+    data_dir.USER_CONFIG_FILE.write_text(sample_config_file.read_text())
+    thread, result = run_main()
+    info = wait_for(read_lockfile)
+    with Proxy(info.uri) as proxy:
+        proxy.shutdown()
+    thread.join(timeout=10)
+
+    entries, skipped = logs.read_entries(logs.log_files(data_dir.PYROLAB_LOGFILE))
+    assert skipped == 0
+    assert entries[0]["event"] == logs.DAEMON_START_EVENT
+    assert any("listening at" in e["message"] for e in entries)
+    assert logging.getLogger().handlers == handlers_before  # handler removed
+
+
+def test_refused_daemon_does_not_touch_the_log(run_main, data_dir):
+    write_lockfile(InstanceInfo(pid=os.getpid(), uri="PYRO:pyrolabd@localhost:1"))
+    thread, result = run_main()
+    thread.join(timeout=10)
+    assert result["code"] == 1
+    assert not data_dir.PYROLAB_LOGFILE.exists()  # never a second writer
+
+
+def test_main_copies_legacy_files(run_main, data_dir, wait_for):
+    legacy = data_dir.LEGACY_DATA_DIR
+    legacy.mkdir()
+    (legacy / "user_configuration.yaml").write_text("daemons: {old: {}}\n")
+    thread, result = run_main()
+    info = wait_for(read_lockfile)
+    with Proxy(info.uri) as proxy:
+        proxy.shutdown()
+    thread.join(timeout=10)
+    assert data_dir.USER_CONFIG_FILE.read_text() == "daemons: {old: {}}\n"

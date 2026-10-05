@@ -11,16 +11,16 @@ Usage: pyrolab [OPTIONS] COMMAND [ARGS]...
 Try ``pyrolab --help`` for help.
 """
 
-import fileinput
+import json
+import logging
 import platform
-import re
 import subprocess
 import sys
 import textwrap
 import time
 from pathlib import Path
-from time import sleep, strptime
-from typing import Callable, Iterable, Optional
+from time import sleep
+from typing import Optional
 
 from tabulate import tabulate
 
@@ -34,12 +34,17 @@ from Pyro5.errors import CommunicationError
 
 import pyrolab
 from pyrolab import (
+    LEGACY_DATA_DIR,
+    LEGACY_MIGRATION_MARKER,
     LOCKFILE,
+    NAMESERVER_STORAGE,
     PYROLAB_LOGDIR,
+    PYROLAB_LOGFILE,
     RUNTIME_CONFIG,
     STARTUP_ERROR_FILE,
     UPDATE_CHECK_FILE,
     USER_CONFIG_FILE,
+    logs,
     updates,
 )
 from pyrolab.api import Proxy
@@ -52,6 +57,7 @@ from pyrolab.configure import (
     reset_config,
     update_config,
 )
+from pyrolab.locations import DATA_DIR_ENV_VAR, migrate_legacy_files
 from pyrolab.pyrolabd import PyroLabDaemon, read_lockfile
 from pyrolab.utils import atomic_write_text, pid_is_running
 
@@ -126,9 +132,16 @@ def _version_callback(value: bool = True) -> None:
 
 def _show_data_dir(value: bool = True) -> None:
     if value:
-        from pyrolab import PYROLAB_DATA_DIR
-
-        typer.echo(f"{PYROLAB_DATA_DIR}")
+        rows = [
+            ("Configuration", USER_CONFIG_FILE),
+            ("Log file", PYROLAB_LOGFILE),
+            ("Runtime state", LOCKFILE.parent),
+            ("Nameserver data", NAMESERVER_STORAGE),
+            ("Cache", UPDATE_CHECK_FILE.parent),
+        ]
+        for label, path in rows:
+            typer.echo(f"{label + ':':17s}{path}")
+        typer.echo(f"(Set {DATA_DIR_ENV_VAR} to keep everything in one directory.)")
         raise typer.Exit()
 
 
@@ -146,13 +159,25 @@ def main(
         False,
         "--data",
         "-d",
-        help="Show the data directories and exit.",
+        help="Show where PyroLab keeps its files and exit.",
         callback=_show_data_dir,
         is_eager=True,
     ),
 ):
     # Runs before every subcommand (but not --version or --data, which exit
-    # first). Checks PyPI at most once a day; see pyrolab.updates.
+    # first).
+    copied = migrate_legacy_files(
+        LEGACY_DATA_DIR, USER_CONFIG_FILE, NAMESERVER_STORAGE, LEGACY_MIGRATION_MARKER
+    )
+    if copied:
+        typer.secho(
+            "PyroLab now keeps its files outside the installed package. Copied "
+            "from the old location (the originals are untouched):\n"
+            + "".join(f"  {line}\n" for line in copied),
+            fg=typer.colors.YELLOW,
+            err=True,
+        )
+    # Checks PyPI at most once a day; see pyrolab.updates.
     latest = updates.check_for_update(pyrolab.__version__, UPDATE_CHECK_FILE)
     if latest:
         typer.secho(
@@ -255,8 +280,8 @@ def up(
             reason = (
                 STARTUP_ERROR_FILE.read_text().strip()
                 if STARTUP_ERROR_FILE.exists()
-                else f"it exited with code {process.returncode}; see the logs in "
-                f"{PYROLAB_LOGDIR}"
+                else f"it exited with code {process.returncode}; see 'pyrolab logs "
+                f"show' and {PYROLAB_LOGDIR / DAEMON_OUTPUT_LOG}"
             )
             typer.secho(
                 f"PyroLab daemon failed to start: {reason}", fg=typer.colors.RED
@@ -265,8 +290,7 @@ def up(
         if time.monotonic() > deadline:
             typer.secho(
                 f"PyroLab daemon did not respond within {timeout:g} seconds. It may "
-                "still be starting; check with 'pyrolab ps', or see the logs in "
-                f"{PYROLAB_LOGDIR}.",
+                "still be starting; check with 'pyrolab status'.",
                 fg=typer.colors.RED,
             )
             raise typer.Exit(1)
@@ -290,8 +314,8 @@ def down(
     while LOCKFILE.exists():
         if time.monotonic() > deadline:
             typer.secho(
-                f"PyroLab daemon has not exited after {timeout:g} seconds; see the "
-                f"logs in {PYROLAB_LOGDIR}.",
+                f"PyroLab daemon has not exited after {timeout:g} seconds; see "
+                "'pyrolab logs show'.",
                 fg=typer.colors.RED,
             )
             raise typer.Exit(1)
@@ -332,6 +356,53 @@ def ps():
     """
     daemon = get_daemon()
     typer.echo(daemon.ps())
+
+
+@app.command()
+def status(
+    lines: int = typer.Option(
+        20, "--lines", "-n", help="Show at most this many (the most recent)."
+    ),
+):
+    """
+    Is the daemon running, and what has gone wrong since it started?
+
+    Shows the warnings and errors logged since the daemon last started (or
+    during its last run, if it has stopped).
+    """
+    info = read_lockfile()
+    running = info is not None and pid_is_running(info.pid)
+    if not running:
+        typer.echo("PyroLab daemon is not running.")
+    elif _daemon_responds(info.uri):
+        typer.secho(
+            f"PyroLab daemon is running (pid {info.pid}, {info.uri}).",
+            fg=typer.colors.GREEN,
+        )
+    else:
+        typer.secho(
+            f"PyroLab daemon (pid {info.pid}) is running but not responding.",
+            fg=typer.colors.YELLOW,
+        )
+
+    entries, _ = logs.read_entries(logs.log_files(PYROLAB_LOGFILE))
+    if not entries:
+        typer.echo(f"Nothing has been logged yet ({PYROLAB_LOGFILE}).")
+        return
+    problems = list(logs.at_least(logs.since_last_start(entries), logging.WARNING))
+    when = "since it started" if running else "during its last run"
+    if not problems:
+        typer.echo(f"No warnings or errors {when}.")
+        return
+    shown = problems[-lines:] if lines > 0 else problems
+    typer.echo(
+        f"{len(problems)} warnings and errors {when}"
+        + (f" (the last {len(shown)}):" if len(shown) < len(problems) else ":")
+    )
+    for entry in shown:
+        typer.echo(logs.format_entry(entry, details=False))
+    if any(e.get("exception") or e.get("stack") for e in shown):
+        typer.echo("For tracebacks: pyrolab logs show --level warning")
 
 
 ###############################################################################
@@ -527,71 +598,87 @@ def info():
 ###############################################################################
 
 logs_app = typer.Typer()
-app.add_typer(logs_app, name="logs", help="Compile and export log files.")
+app.add_typer(logs_app, name="logs", help="Read, export, and clean up the log.")
+
+
+def _parse_level(level: str) -> int:
+    number = logs.find_level(level)
+    if number is None:
+        raise typer.BadParameter(f"unknown level '{level}' (e.g. DEBUG, INFO, WARNING)")
+    return number
+
+
+@logs_app.command("show")
+def logs_show(
+    level: str = typer.Option(
+        "INFO", "--level", "-l", help="Show entries at this level and above."
+    ),
+    all_runs: bool = typer.Option(
+        False, "--all", help="Include earlier runs of the daemon, not just the latest."
+    ),
+    lines: int = typer.Option(
+        50, "--lines", "-n", help="Show at most this many (the most recent); 0 for all."
+    ),
+):
+    """
+    Show the log, from the daemon's most recent start.
+    """
+    minimum = _parse_level(level)
+    entries, skipped = logs.read_entries(logs.log_files(PYROLAB_LOGFILE))
+    if not all_runs:
+        entries = logs.since_last_start(entries)
+    selected = list(logs.at_least(entries, minimum))
+    for entry in selected[-lines:] if lines > 0 else selected:
+        typer.echo(logs.format_entry(entry))
+    if not selected:
+        typer.echo("No matching log entries.")
+    if skipped:
+        typer.secho(f"({skipped} unreadable lines skipped)", err=True)
+
+
+@logs_app.command("export")
+def logs_export(
+    filename: str,
+    as_json: bool = typer.Option(
+        False, "--json", help="Write JSON lines (one entry per line) instead of text."
+    ),
+):
+    """
+    Write the whole log, oldest first, to a file.
+    """
+    entries, skipped = logs.read_entries(logs.log_files(PYROLAB_LOGFILE))
+    lines = [json.dumps(e) if as_json else logs.format_entry(e) for e in entries]
+    atomic_write_text(filename, "".join(f"{line}\n" for line in lines))
+    typer.secho(
+        f"Exported {len(entries)} log entries to {filename}", fg=typer.colors.GREEN
+    )
+    if skipped:
+        typer.echo(f"Skipped {skipped} unreadable lines.")
 
 
 @logs_app.command("clean")
 def logs_clean():
     """
-    Deletes all log files.
+    Delete the log files. The daemon must be stopped first.
     """
-    for f in PYROLAB_LOGDIR.glob("*.*"):
-        # Try to delete file if not in use
+    info = read_lockfile()
+    if info is not None and pid_is_running(info.pid):
+        typer.secho(
+            "The PyroLab daemon is running and writing the log; stop it first "
+            "('pyrolab down').",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    removed = 0
+    for path in logs.log_files(PYROLAB_LOGFILE) + [PYROLAB_LOGDIR / DAEMON_OUTPUT_LOG]:
         try:
-            f.unlink()
-        except PermissionError:
+            path.unlink()
+            removed += 1
+        except FileNotFoundError:
             pass
-
-
-def try_itr(func: Callable, itr: Iterable, *exceptions, **kwargs):
-    """
-    Tests a function on an iterable, yields iterable if no exception is raised.
-    """
-    for elem in itr:
-        try:
-            func(elem, **kwargs)
-            yield elem
-        except exceptions:
-            pass
-
-
-@logs_app.command("export")
-def logs_export(filename: str):
-    """
-    Exports the log file to a file.
-    """
-    # The daemon's raw stdout/stderr isn't in the timestamped log format.
-    f_names = [f for f in PYROLAB_LOGDIR.glob("*.*") if f.name != DAEMON_OUTPUT_LOG]
-    lines = list(fileinput.input(f_names))
-    t_fmt = "%Y-%m-%d %H:%M:%S.%f"  # format of time stamps
-    t_pat = re.compile(r"\[(.+?)\]")  # pattern to extract timestamp
-
-    # Group lines into log entries
-    log_entries = []
-    current_entry = []
-    for line in lines:
-        # If we've found a new timestamp and we have a current entry, add it to
-        # the list and start a new entry.
-        if t_pat.match(line) and current_entry:
-            log_entries.append("".join(current_entry))
-            current_entry = [line]
-        # Otherwise, keep extending the current entry.
-        else:
-            current_entry.append(line)
-    # Add the last entry to the list
-    if current_entry:
-        log_entries.append("".join(current_entry))
-
-    # Sort log entries by timestamp
-    log_entries = sorted(
-        log_entries, key=lambda entry: strptime(t_pat.search(entry).group(1), t_fmt)
-    )
-
-    # Write sorted log entries to the output file
-    with Path(filename).open(mode="w") as f:
-        for entry in log_entries:
-            f.write(entry)
-    typer.secho(f"Exported logs to {filename}", fg=typer.colors.GREEN)
+        except OSError as e:
+            typer.secho(f"Could not remove {path}: {e}", fg=typer.colors.RED)
+    typer.echo(f"Removed {removed} log files.")
 
 
 ###############################################################################
@@ -739,5 +826,18 @@ add_app = typer.Typer()
 # app.add_typer(add_app, name="add")
 
 
-if __name__ == "__main__":
+def run() -> None:
+    """
+    The ``pyrolab`` command.
+
+    Applies process-wide settings (remote tracebacks, warnings, logging to
+    stderr if PYROLAB_LOGLEVEL is set) here rather than in ``app``, so that
+    using the app in-process, as the tests do, changes nothing global.
+    """
+    logs.configure_process()
+    logs.configure_cli_logging()
     app()
+
+
+if __name__ == "__main__":
+    run()

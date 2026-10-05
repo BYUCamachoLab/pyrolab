@@ -23,16 +23,10 @@ PyroLab
 A framework for using remote lab instruments as local resources built on Pyro5.
 """
 
-import atexit
-import fileinput
+import logging
 import os
-import pathlib
 import platform
-import re
 import sys
-from pathlib import Path
-from time import strptime
-from typing import Callable, Iterable
 
 # Check if Python version is supported
 pyversion = sys.version_info
@@ -64,105 +58,33 @@ __forum_url__ = "https://github.com/sequoiap/pyrolab/issues"
 __website_url__ = "https://camacholab.byu.edu/"
 
 
-# Filter warnings
-import warnings
+# Where PyroLab keeps its files: per-user directories (see pyrolab.locations).
+# Importing creates nothing; files and directories are created when written.
+from pathlib import Path
 
-warnings.filterwarnings("default", category=DeprecationWarning)
-if "PYROLAB_HUSH_DEPRECATION" in os.environ:
-    warnings.filterwarnings("ignore", category=DeprecationWarning)
+from pyrolab.locations import LEGACY_DATA_DIR
+from pyrolab.locations import locations as _find_locations
 
+_locations = _find_locations()
 
-# Configuration directories
-from importlib.resources import files
-
-base_path = files("pyrolab") / "data" / "local"
-
-# Data directories
-PYROLAB_DATA_DIR = pathlib.Path(base_path)
-PYROLAB_DATA_DIR.mkdir(parents=True, exist_ok=True)
-
-NAMESERVER_STORAGE = PYROLAB_DATA_DIR / "nameserver"
-NAMESERVER_STORAGE.mkdir(parents=True, exist_ok=True)
-
-PYROLAB_LOGDIR = PYROLAB_DATA_DIR / "logs"
-PYROLAB_LOGDIR.mkdir(parents=True, exist_ok=True)
-PYROLAB_MASTERLOG = PYROLAB_LOGDIR / "pyrolab.log"
-
-LOCKFILE = PYROLAB_DATA_DIR / "pyrolabd.lock"
-USER_CONFIG_FILE = PYROLAB_DATA_DIR / "user_configuration.yaml"
-RUNTIME_CONFIG = PYROLAB_DATA_DIR / "runtime_config.yaml"
-UPDATE_CHECK_FILE = PYROLAB_DATA_DIR / "update_check.json"
+PYROLAB_DATA_DIR = _locations.data_dir
+NAMESERVER_STORAGE = _locations.data_dir / "nameserver"
+PYROLAB_LOGDIR = _locations.log_dir
+# The daemon's single log file; PYROLAB_LOGFILE overrides where it goes.
+PYROLAB_LOGFILE = Path(
+    os.environ.get("PYROLAB_LOGFILE") or PYROLAB_LOGDIR / "pyrolab.log"
+)
+USER_CONFIG_FILE = _locations.config_dir / "user_configuration.yaml"
+LOCKFILE = _locations.state_dir / "pyrolabd.lock"
+RUNTIME_CONFIG = _locations.state_dir / "runtime_config.yaml"
 # Why the background daemon exited before it could serve requests, for `up`.
-STARTUP_ERROR_FILE = PYROLAB_DATA_DIR / "pyrolabd_startup_error.txt"
+STARTUP_ERROR_FILE = _locations.state_dir / "pyrolabd_startup_error.txt"
+# Records that files from a pre-0.5 install were copied (see pyrolab.locations).
+LEGACY_MIGRATION_MARKER = _locations.state_dir / "legacy_files_copied.txt"
+UPDATE_CHECK_FILE = _locations.cache_dir / "update_check.json"
 
 
-# Set up logging to file
-import logging
-import logging.handlers
-
-
-def get_loglevel() -> int:
-    loglevel = os.getenv("PYROLAB_LOGLEVEL", "INFO")
-    try:
-        loglevel = getattr(logging, loglevel.upper())
-    except AttributeError:
-        loglevel = logging.INFO
-    return loglevel
-
-
-if len(logging.root.handlers) == 0:
-    logfile = PYROLAB_LOGDIR / f"pyrolab_{os.getpid()}.log"
-    root = logging.getLogger()
-    h = logging.handlers.RotatingFileHandler(logfile, "a", 30000, 10)
-    f = logging.Formatter(
-        "[%(asctime)s.%(msecs)03d] %(levelname)-8s %(process)-5s %(processName)-16s %(name)-20s %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-    h.setFormatter(f)
-    root.addHandler(h)
-    root.setLevel(get_loglevel())
-    root.debug("PyroLab logging configured")
-
-
-# Include remote traceback in local tracebacks
-import Pyro5.errors
-
-sys.excepthook = Pyro5.errors.excepthook
-
-
-def try_itr(func: Callable, itr: Iterable, *exceptions, **kwargs):
-    """
-    Tests a function on an iterable, yields iterable if no exception is raised.
-    """
-    for elem in itr:
-        try:
-            func(elem, **kwargs)
-            yield elem
-        except exceptions:
-            pass
-
-
-# @atexit.register
-# def condense_logs():
-#     """
-#     Cleans up the logfile directory every once in a while.
-
-#     Runs at exit or when "pyrolab down" is called. Condenses all process log
-#     files into a single logfile that is sorted by timestamp.
-#     """
-#     f_names = list(PYROLAB_LOGDIR.glob("*.*"))
-#     lines = list(fileinput.input(f_names))
-#     t_fmt = "%Y-%m-%d %H:%M:%S.%f"  # format of time stamps
-#     t_pat = re.compile(r"\[(.+?)\]")  # pattern to extract timestamp
-#     lines = list(
-#         try_itr(
-#             lambda l: strptime(t_pat.search(l).group(1), t_fmt), lines, AttributeError
-#         )
-#     )
-#     with PYROLAB_MASTERLOG.open(mode="w") as f:
-#         for l in sorted(lines, key=lambda l: strptime(t_pat.search(l).group(1), t_fmt)):
-#             f.write(l)
-#     if PYROLAB_MASTERLOG in f_names:
-#         f_names.remove(PYROLAB_MASTERLOG)
-#     for f in f_names:
-#         f.unlink()
+# As a library, PyroLab leaves logging to the application: its loggers do
+# nothing until the application (or PyroLab's own CLI and daemon, see
+# pyrolab.logs) configures logging.
+logging.getLogger(__name__).addHandler(logging.NullHandler())

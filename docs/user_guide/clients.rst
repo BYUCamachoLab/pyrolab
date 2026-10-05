@@ -16,6 +16,17 @@ up the connection:
     with Proxy(uri) as remote_object:
         remote_object.useful_method()
 
+To see where an error happened on the server, not just that it was raised,
+have Python print remote tracebacks (PyroLab doesn't change this for you when
+imported, since it's your application's setting):
+
+.. code-block:: python
+
+    import sys
+    import Pyro5.errors
+
+    sys.excepthook = Pyro5.errors.excepthook
+
 Assuming drivers and services have been written correctly, they only raise
 builtin Python exceptions. You can also catch different levels of exceptions if
 you know what exceptions an object can raise. Therefore you can use them in
