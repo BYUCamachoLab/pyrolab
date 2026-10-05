@@ -109,15 +109,17 @@ class RTO(Scope):
             The IP address of the instrument.
         hislip : bool, optional
             Whether to use the HiSLIP protocol or not (default ``False``).
-        timeout : int, optional
-            The device response timeout in milliseconds (default 1 ms).
-            Pass ``None`` for infinite timeout.
+        timeout : float, optional
+            The device response timeout in milliseconds (default 1000, one
+            second). Pass ``None`` for infinite timeout.
         """
-        rm = visa.ResourceManager()
+        # pyvisa expects the ResourceManager to outlive the resources it
+        # opens, so it is kept until close().
+        self._rm = visa.ResourceManager()
         if hislip:
-            self.device = rm.open_resource(f"TCPIP::{address}::hislip0")
+            self.device = self._rm.open_resource(f"TCPIP::{address}::hislip0")
         else:
-            self.device = rm.open_resource(f"TCPIP::{address}")
+            self.device = self._rm.open_resource(f"TCPIP::{address}")
         self.device.timeout = timeout
         self.write_termination = ""
         self.device.ext_clear_status()
@@ -129,7 +131,13 @@ class RTO(Scope):
         return True
 
     def close(self):
-        self.device.close()
+        """
+        Close the connection to the scope and release its VISA session.
+        """
+        try:
+            self.device.close()
+        finally:
+            self._rm.close()
 
     @property
     def timeout(self):
