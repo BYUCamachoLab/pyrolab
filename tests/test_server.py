@@ -1,8 +1,11 @@
+import threading
+
 import pytest
-from Pyro5.api import Proxy
+from Pyro5.api import Proxy, expose
 
 from pyrolab import __version__
 from pyrolab.configure import uniquify_class
+from pyrolab.drivers import Instrument
 from pyrolab.drivers.sample import SampleService
 from pyrolab.server import Daemon, Lockable, LockableDaemon
 
@@ -73,9 +76,16 @@ def test_lock_does_not_steal_existing_lock(lockable_daemon):
     assert lockable_daemon.locked_instances["obj"] == (first, "alice")
 
 
+class FakeConnection:
+    """Stands in for a client's SocketConnection."""
+
+    def __init__(self):
+        self.pyroInstances = {}
+
+
 def test_client_disconnect_releases_only_that_clients_locks(lockable_daemon):
     # Regression: clientDisconnect raised TypeError on any held lock (#45).
-    alice, bob = object(), object()
+    alice, bob = FakeConnection(), FakeConnection()
     lockable_daemon._lock("a1", alice, "alice")
     lockable_daemon._lock("a2", alice, "alice")
     lockable_daemon._lock("b1", bob, "bob")
@@ -85,7 +95,7 @@ def test_client_disconnect_releases_only_that_clients_locks(lockable_daemon):
 
 
 def test_client_disconnect_with_no_locks(lockable_daemon):
-    lockable_daemon.clientDisconnect(object())
+    lockable_daemon.clientDisconnect(FakeConnection())
     assert lockable_daemon.locked_instances == {}
 
 
@@ -152,3 +162,58 @@ def test_lock_reports_whether_caller_holds_it(lockable_daemon):
     assert lockable_daemon._lock("obj", alice, "alice") is True
     assert lockable_daemon._lock("obj", bob, "bob") is False
     assert lockable_daemon._lock("obj", alice, "alice") is True  # already hers
+
+
+###############################################################################
+# Releasing instruments
+###############################################################################
+
+
+def recording_instrument(mode):
+    """A hosted instrument class whose instances record being closed."""
+    closed = []
+
+    @expose
+    class Recorder(Instrument):
+        def close(self):
+            closed.append(threading.current_thread().name)
+
+        def identify(self):
+            return id(self)
+
+    cls = uniquify_class(Recorder)
+    cls.set_behavior(mode)
+    return cls, closed
+
+
+@pytest.mark.parametrize("daemon_cls", [Daemon, LockableDaemon])
+def test_disconnect_closes_that_clients_session_instruments(
+    daemon_cls, serve, wait_for
+):
+    # Closed when the client leaves, not whenever garbage collection runs.
+    daemon = serve(daemon_cls(host="localhost", port=0))
+    cls, closed = recording_instrument("session")
+    uri = daemon.register(cls)
+
+    with Proxy(uri) as staying, Proxy(uri) as leaving:
+        staying.identify()
+        leaving.identify()
+        leaving._pyroRelease()
+        assert wait_for(lambda: len(closed) == 1)
+        staying.identify()  # still open, and still the same instance
+    assert wait_for(lambda: len(closed) == 2)
+
+
+def test_disconnect_leaves_single_instruments_open(serve, wait_for):
+    daemon = serve(Daemon(host="localhost", port=0))
+    cls, closed = recording_instrument("single")
+    uri = daemon.register(cls)
+
+    with Proxy(uri) as client:
+        first = client.identify()
+    with Proxy(uri) as client:
+        assert client.identify() == first
+    assert closed == []
+
+    daemon.release_instruments()
+    assert len(closed) == 1

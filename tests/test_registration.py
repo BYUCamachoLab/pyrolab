@@ -10,6 +10,7 @@ are called in a thread of this process (not spawned), so their behaviour can
 be observed directly.
 """
 
+import gc
 import logging
 import queue
 import socket
@@ -26,6 +27,7 @@ from pyrolab.configure import (
     NameServerConfiguration,
     ServiceConfiguration,
 )
+from pyrolab.drivers.sample import SampleAutoconnectInstrument
 from pyrolab.manager import DaemonRunner, NameServerRunner, Registrations
 from pyrolab.nameserver import start_ns
 
@@ -301,3 +303,55 @@ def test_nameserver_runner_reports_startup_error(fast_polling):
     assert errors, "run() should have raised"
     assert state["error"]  # e.g. "CommunicationError: ... address in use"
     assert not state.get("ready")
+
+
+def test_daemon_runner_closes_its_instruments_when_stopping(
+    data_dir, fast_polling, wait_for, monkeypatch
+):
+    # Regression: instruments were only closed by __del__, if at all (#61).
+    # Drivers are often in reference cycles (threads, callbacks), which only
+    # the garbage collector frees, whenever it next runs.
+    closed = []
+    monkeypatch.setattr(
+        SampleAutoconnectInstrument, "close", lambda self: closed.append(self)
+    )
+    original_init = SampleAutoconnectInstrument.__init__
+
+    def init_in_a_cycle(self):
+        original_init(self)
+        self.callback = self.close
+
+    monkeypatch.setattr(SampleAutoconnectInstrument, "__init__", init_in_a_cycle)
+    data_dir.RUNTIME_CONFIG.write_text("{}\n")
+    state, uris, msgs = {}, {}, queue.Queue()
+    runner = DaemonRunner(
+        name="lab",
+        daemonconfig=DaemonConfiguration(host="127.0.0.1"),
+        serviceconfigs={
+            "laser": ServiceConfiguration(
+                module="pyrolab.drivers.sample",
+                classname="SampleAutoconnectInstrument",
+                instancemode="single",
+            )
+        },
+        msg_queue=msgs,
+        shared_uris=uris,
+        msg_polling=0.05,
+        shared_state=state,
+    )
+    thread, errors = run_in_thread(runner)
+
+    assert wait_for(lambda: state.get("ready"))
+    with Proxy(uris["laser"]) as proxy:
+        assert proxy.ping()  # Pyro creates the instance on first use
+    assert closed == []
+
+    gc.disable()  # so only the daemon can close it
+    try:
+        msgs.put(None)
+        thread.join(timeout=10)
+        assert not thread.is_alive()
+        assert errors == []
+        assert len(closed) == 1
+    finally:
+        gc.enable()

@@ -520,7 +520,8 @@ class DaemonRunner(multiprocessing.Process):
         Services are served as soon as they are set up; registering them with
         nameservers happens in the background and is retried until it
         succeeds, so an unreachable nameserver never takes the daemon down.
-        When the kill signal is received, removes its registrations and exits.
+        When the kill signal is received, removes its registrations, closes
+        its instruments, and exits.
         Any error is reported to the manager through ``shared_state``.
         """
         if self.log_conn is not None:
@@ -528,6 +529,7 @@ class DaemonRunner(multiprocessing.Process):
         log.info("Starting daemon '%s'", self.name)
         stop_registering = threading.Event()
         registrar = None
+        daemon = None
         try:
             self.daemonconfig.update_pyro_config()
             daemon, uris = self.setup_daemon()
@@ -559,6 +561,8 @@ class DaemonRunner(multiprocessing.Process):
             raise
         finally:
             stop_registering.set()
+            if daemon is not None:
+                daemon.release_instruments()
             if hasattr(self, "_timer"):
                 self._timer.cancel()
 

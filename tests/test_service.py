@@ -1,3 +1,5 @@
+import gc
+
 import pytest
 
 from pyrolab import __version__
@@ -81,7 +83,7 @@ def test_change_behavior_invalid_mode(service_cls):
 
 
 class FakeInstrument(Instrument):
-    """Overrides only close(), so the base __del__ doesn't raise."""
+    """Overrides only close()."""
 
     def close(self):
         pass
@@ -124,6 +126,52 @@ def test_instrument_base_methods_are_abstract():
         inst.connect()
     with pytest.raises(NotImplementedError):
         Instrument.detect_devices()
+
+
+class ClosingInstrument(Instrument):
+    def __init__(self, error=None):
+        super().__init__()
+        self.closes, self.error = 0, error
+
+    def close(self):
+        self.closes += 1
+        if self.error:
+            raise self.error
+
+
+def test_release_closes_an_instrument_once():
+    inst = ClosingInstrument()
+    inst._release()
+    inst._release()  # e.g. at shutdown, then again on garbage collection
+    assert inst.closes == 1
+
+
+def test_release_leaves_a_class_without_close_alone():
+    Instrument()._release()  # the base close() would raise NotImplementedError
+
+
+def test_release_logs_close_errors(caplog):
+    inst = ClosingInstrument(error=OSError("port vanished"))
+    inst._release()
+    assert inst.closes == 1
+    record = caplog.records[-1]
+    assert record.levelname == "WARNING"
+    assert "Closing ClosingInstrument failed" in record.getMessage()
+    assert record.exc_info[1] is inst.error
+
+
+def test_garbage_collection_never_raises(monkeypatch):
+    # Regression: __del__ called close(), which raises NotImplementedError in
+    # the base class (or fails on an instrument that never connected), and
+    # the error went to the stderr of a windowless process (#61)
+    unraisable = []
+    monkeypatch.setattr("sys.unraisablehook", unraisable.append)
+    inst = Instrument()
+    del inst
+    inst = ClosingInstrument(error=AttributeError("never connected"))
+    del inst
+    gc.collect()
+    assert unraisable == []
 
 
 ###############################################################################
