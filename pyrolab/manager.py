@@ -57,7 +57,7 @@ from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple
 from Pyro5.client import Proxy
 from Pyro5.core import NAMESERVER_NAME
 
-from pyrolab import RUNTIME_CONFIG
+from pyrolab import RUNTIME_CONFIG, logs
 from pyrolab.configure import GlobalConfiguration, PyroLabConfiguration
 from pyrolab.nameserver import start_ns_loop
 from pyrolab.utils import get_ip
@@ -271,6 +271,9 @@ class NameServerRunner(multiprocessing.Process):
         A dict shared with the manager (``multiprocessing.Manager().dict()``).
         The runner sets ``ready`` once it is serving, and ``error`` if it
         fails.
+    log_conn : multiprocessing.connection.Connection, optional
+        The sending end of this runner's own log pipe; the runner's logging
+        goes there (see :py:mod:`pyrolab.logs`).
     """
 
     def __init__(
@@ -281,6 +284,7 @@ class NameServerRunner(multiprocessing.Process):
         msg_queue: Queue = None,
         msg_polling: float = 1.0,
         shared_state: Optional[dict] = None,
+        log_conn=None,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -296,6 +300,7 @@ class NameServerRunner(multiprocessing.Process):
         self.msg_polling = msg_polling
         self.nsconfig = nsconfig
         self.state = shared_state if shared_state is not None else {}
+        self.log_conn = log_conn
         self.KILL_SIGNAL = False
 
     def process_message_queue(self) -> None:
@@ -338,6 +343,8 @@ class NameServerRunner(multiprocessing.Process):
         Any error is reported to the manager through ``shared_state`` before
         the process exits.
         """
+        if self.log_conn is not None:
+            logs.log_to_pipe(self.log_conn)
         log.info("Starting nameserver '%s'", self.name)
         try:
             self.nsconfig.update_pyro_config()
@@ -386,6 +393,9 @@ class DaemonRunner(multiprocessing.Process):
     shared_state : dict, optional
         A dict shared with the manager. The runner sets ``ready`` once it is
         serving, and ``error`` if it fails.
+    log_conn : multiprocessing.connection.Connection, optional
+        The sending end of this runner's own log pipe; the runner's logging
+        goes there (see :py:mod:`pyrolab.logs`).
     """
 
     def __init__(
@@ -398,6 +408,7 @@ class DaemonRunner(multiprocessing.Process):
         shared_uris: dict[str, URI],
         msg_polling: float = 1.0,
         shared_state: Optional[dict] = None,
+        log_conn=None,
         **kwargs,
     ) -> None:
         log.debug("Building DaemonRunner")
@@ -409,6 +420,7 @@ class DaemonRunner(multiprocessing.Process):
         self.daemonconfig = daemonconfig
         self.serviceconfigs = serviceconfigs
         self.state = shared_state if shared_state is not None else {}
+        self.log_conn = log_conn
         self.KILL_SIGNAL = False
 
     def setup_daemon(self) -> Tuple[Daemon, Dict[str, URI]]:
@@ -511,6 +523,8 @@ class DaemonRunner(multiprocessing.Process):
         When the kill signal is received, removes its registrations and exits.
         Any error is reported to the manager through ``shared_state``.
         """
+        if self.log_conn is not None:
+            logs.log_to_pipe(self.log_conn)
         log.info("Starting daemon '%s'", self.name)
         stop_registering = threading.Event()
         registrar = None
@@ -689,13 +703,20 @@ class ProcessManager:
     def _message_queue(self):
         return multiprocessing.Queue()
 
-    def _create_runner(self, kind: str, name: str, msg_queue, shared_state, uris):
+    def _log_pipe(self):
+        """(receiving end, sending end) of a new child's private log pipe."""
+        return multiprocessing.Pipe(duplex=False)
+
+    def _create_runner(
+        self, kind: str, name: str, msg_queue, shared_state, uris, log_conn=None
+    ):
         if kind == NAMESERVER:
             return NameServerRunner(
                 name=name,
                 nsconfig=self.GLOBAL_CONFIG.get_nameserver_config(name),
                 msg_queue=msg_queue,
                 shared_state=shared_state,
+                log_conn=log_conn,
                 daemon=True,
             )
         return DaemonRunner(
@@ -705,6 +726,7 @@ class ProcessManager:
             msg_queue=msg_queue,
             shared_uris=uris,
             shared_state=shared_state,
+            log_conn=log_conn,
             daemon=True,
         )
 
@@ -722,11 +744,19 @@ class ProcessManager:
         msg_queue = self._message_queue()
         shared_state = self._shared_dict()
         uris = self._shared_dict() if kind == DAEMON else None
-        runner = self._create_runner(kind, name, msg_queue, shared_state, uris)
+        log_recv, log_send = self._log_pipe()
+        runner = self._create_runner(
+            kind, name, msg_queue, shared_state, uris, log_conn=log_send
+        )
         cls = NameServerProcessGroup if kind == NAMESERVER else DaemonProcessGroup
         group = cls(runner, msg_queue, datetime.now(), uris, shared_state)
         group.started = self._clock()
         runner.start()
+        if log_send is not None:
+            # The child has its own copy now; closing ours means the collector
+            # sees end-of-file as soon as the child exits or is killed.
+            log_send.close()
+            logs.collect_from_pipe(log_recv, name=f"log-{name}")
         return group
 
     def _death_reason(self, group: ProcessGroup) -> str:

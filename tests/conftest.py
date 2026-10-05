@@ -71,25 +71,30 @@ def no_version_check(monkeypatch):
     monkeypatch.setenv("PYROLAB_NO_VERSION_CHECK", "1")
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def data_dir(tmp_path, monkeypatch):
     """
-    Redirect PyroLab's runtime files (configs, lockfile, logs) into a temp dir.
+    Redirect PyroLab's files (configs, lockfile, logs, ...) into a temp dir.
 
-    Returns a namespace with the redirected paths. None of the files exist
-    until a test creates them.
+    Autouse, so no test can touch the real per-user directories (or copy files
+    from a developer's real pre-0.5 install). Returns a namespace with the
+    redirected paths; only the log and nameserver directories exist up front.
     """
+    root = tmp_path / "pyrolab-data"
     paths = SimpleNamespace(
-        root=tmp_path,
-        USER_CONFIG_FILE=tmp_path / "user_configuration.yaml",
-        RUNTIME_CONFIG=tmp_path / "runtime_config.yaml",
-        LOCKFILE=tmp_path / "pyrolabd.lock",
-        UPDATE_CHECK_FILE=tmp_path / "update_check.json",
-        STARTUP_ERROR_FILE=tmp_path / "pyrolabd_startup_error.txt",
-        PYROLAB_LOGDIR=tmp_path / "logs",
-        NAMESERVER_STORAGE=tmp_path / "nameserver",
+        root=root,
+        USER_CONFIG_FILE=root / "user_configuration.yaml",
+        RUNTIME_CONFIG=root / "runtime_config.yaml",
+        LOCKFILE=root / "pyrolabd.lock",
+        UPDATE_CHECK_FILE=root / "update_check.json",
+        STARTUP_ERROR_FILE=root / "pyrolabd_startup_error.txt",
+        PYROLAB_LOGDIR=root / "logs",
+        PYROLAB_LOGFILE=root / "logs" / "pyrolab.log",
+        NAMESERVER_STORAGE=root / "nameserver",
+        LEGACY_DATA_DIR=root / "legacy",  # absent unless a test creates it
+        LEGACY_MIGRATION_MARKER=root / "legacy_files_copied.txt",
     )
-    paths.PYROLAB_LOGDIR.mkdir()
+    paths.PYROLAB_LOGDIR.mkdir(parents=True)
     paths.NAMESERVER_STORAGE.mkdir()
 
     import importlib

@@ -20,8 +20,19 @@ import Pyro5.api as api
 from pydantic import BaseModel
 from tabulate import tabulate
 
-from pyrolab import LOCKFILE, RUNTIME_CONFIG, STARTUP_ERROR_FILE, USER_CONFIG_FILE
+from pyrolab import (
+    LEGACY_DATA_DIR,
+    LEGACY_MIGRATION_MARKER,
+    LOCKFILE,
+    NAMESERVER_STORAGE,
+    PYROLAB_LOGFILE,
+    RUNTIME_CONFIG,
+    STARTUP_ERROR_FILE,
+    USER_CONFIG_FILE,
+    logs,
+)
 from pyrolab.configure import GlobalConfiguration, describe_config_error
+from pyrolab.locations import migrate_legacy_files
 from pyrolab.manager import ProcessManager
 from pyrolab.utils import atomic_write_text, pid_is_running
 
@@ -358,7 +369,7 @@ def _report_startup_error(message: str) -> None:
     """Log why the daemon could not start, and leave the reason for `up`."""
     log.error("PyroLab daemon failed to start: %s", message)
     try:
-        STARTUP_ERROR_FILE.write_text(message)
+        atomic_write_text(STARTUP_ERROR_FILE, message)
     except OSError:
         log.exception("Could not write %s", STARTUP_ERROR_FILE)
 
@@ -382,11 +393,28 @@ def main(port: int = 0) -> int:
     """
     existing = read_lockfile()
     if existing is not None and pid_is_running(existing.pid):
+        # Checked before opening the log: a second daemon must never become a
+        # second writer of the log file.
         _report_startup_error(
             f"another PyroLab daemon is already running (pid {existing.pid})"
         )
         return 1
 
+    handler = logs.start_file_logging(PYROLAB_LOGFILE)
+    try:
+        for copied in migrate_legacy_files(
+            LEGACY_DATA_DIR,
+            USER_CONFIG_FILE,
+            NAMESERVER_STORAGE,
+            LEGACY_MIGRATION_MARKER,
+        ):
+            log.info("Copied from a pre-0.5 install: %s", copied)
+        return _serve(port)
+    finally:
+        logs.stop_file_logging(handler)
+
+
+def _serve(port: int) -> int:
     daemon = None
     published = False
     try:
@@ -428,4 +456,5 @@ def main(port: int = 0) -> int:
 
 
 if __name__ == "__main__":
+    logs.configure_process()
     sys.exit(main(int(sys.argv[1]) if len(sys.argv) > 1 else 0))

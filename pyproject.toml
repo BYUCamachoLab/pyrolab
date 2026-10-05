@@ -70,6 +70,7 @@ dependencies = [
   "tabulate",
   "requests",
   "packaging>=23.0",
+  "platformdirs>=3.0",
 ]
 
 # Optional hardware dependencies, installed with the "extras" syntax, e.g.
@@ -113,7 +114,7 @@ namespaces = false
 "Research Group" = "https://camacholab.byu.edu/"
 
 [project.scripts]
-pyrolab = "pyrolab.cli:app"
+pyrolab = "pyrolab.cli:run"
 
 [tool.pytest.ini_options]
 minversion = "6.0"

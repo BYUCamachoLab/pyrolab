@@ -12,18 +12,15 @@ Wrapped nameserver functions that references PyroLab configuration settings.
 import logging
 import socket
 import sys
+from pathlib import Path
 from typing import Callable, Optional
 
 from Pyro5.nameserver import BroadcastServer, NameServerDaemon
 from Pyro5.nameserver import start_ns as _pyro_start_ns
 
-from pyrolab import NAMESERVER_STORAGE
 from pyrolab.configure import NameServerConfiguration
 
 log = logging.getLogger(__name__)
-
-
-STORAGE_FILE = NAMESERVER_STORAGE / "storage"
 
 
 # # Inheriting from the Nameserver
@@ -33,6 +30,14 @@ STORAGE_FILE = NAMESERVER_STORAGE / "storage"
 #     to reject duplicate registration names.
 #     """
 #     pass
+
+
+def _prepare_storage(storage: str) -> str:
+    """Create the directory a "sql:..."/"dbm:..." storage file goes in."""
+    kind, _, path = storage.partition(":")
+    if kind in ("sql", "dbm") and path:
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+    return storage
 
 
 def start_ns_loop(
@@ -69,6 +74,7 @@ def start_ns_loop(
     bchost = cfg.ns_bchost
     bcport = cfg.ns_bcport
     storage = cfg.get_storage_location()
+    _prepare_storage(storage)
     cfg.update_pyro_config()
 
     daemon = NameServerDaemon(
@@ -150,5 +156,5 @@ def start_ns(cfg: NameServerConfiguration):
         enableBroadcast=cfg.broadcast,
         bchost=cfg.ns_bchost,
         bcport=cfg.ns_bcport,
-        storage=cfg.get_storage_location(),
+        storage=_prepare_storage(cfg.get_storage_location()),
     )

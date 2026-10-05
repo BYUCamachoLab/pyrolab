@@ -2,6 +2,8 @@ import os
 import subprocess
 import sys
 
+import pytest
+
 import pyrolab
 from pyrolab import utils
 
@@ -35,6 +37,12 @@ def test_get_ip_returns_socket_address(monkeypatch):
         def __init__(self, *args):
             pass
 
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            self.close()
+
         def connect(self, addr):
             calls["connect"] = addr
 
@@ -66,7 +74,8 @@ def test_pid_is_running_rejects_invalid_pids():
 
 
 def test_atomic_write_text(tmp_path):
-    target = tmp_path / "file.txt"
+    tmp_path = tmp_path / "out"
+    target = tmp_path / "file.txt"  # parent created on demand
     utils.atomic_write_text(target, "first")
     utils.atomic_write_text(target, "second")
     assert target.read_text() == "second"
@@ -74,6 +83,8 @@ def test_atomic_write_text(tmp_path):
 
 
 def test_atomic_write_text_failure_leaves_original(tmp_path, monkeypatch):
+    tmp_path = tmp_path / "out"
+    tmp_path.mkdir()
     target = tmp_path / "file.txt"
     target.write_text("original")
 
@@ -87,3 +98,42 @@ def test_atomic_write_text_failure_leaves_original(tmp_path, monkeypatch):
         pass
     assert target.read_text() == "original"
     assert [f.name for f in tmp_path.iterdir()] == ["file.txt"]  # no temp left
+
+
+@pytest.fixture
+def no_route(monkeypatch):
+    """A machine with no route outside (e.g. an isolated lab network)."""
+
+    class NoRouteSocket:
+        def __init__(self, *args):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            pass
+
+        def connect(self, addr):
+            raise OSError(101, "Network is unreachable")
+
+    monkeypatch.setattr(utils.socket, "socket", NoRouteSocket)
+
+
+def test_get_ip_without_route_uses_hostname(no_route, monkeypatch, caplog):
+    # Regression: raised "Network is unreachable" on isolated networks (#80).
+    monkeypatch.setattr(utils.socket, "gethostbyname", lambda name: "192.168.7.20")
+    assert utils.get_ip() == "192.168.7.20"
+    assert "set 'host' to the address" in caplog.text
+
+
+@pytest.mark.parametrize("resolved", ["127.0.1.1", OSError("no such host")])
+def test_get_ip_falls_back_to_loopback(no_route, monkeypatch, caplog, resolved):
+    def resolve(name):
+        if isinstance(resolved, Exception):
+            raise resolved
+        return resolved
+
+    monkeypatch.setattr(utils.socket, "gethostbyname", resolve)
+    assert utils.get_ip() == "127.0.0.1"
+    assert "only clients on this machine can reach" in caplog.text

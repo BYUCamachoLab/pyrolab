@@ -46,9 +46,10 @@ installed, so all drivers whose dependencies are on PyPI get import-tested.
 - **`Pyro5.config` is reset around every test** (autouse `pyro_config` fixture), because
   `update_pyro_config()` writes Pyro5 process globals and importing `pyrolab.api` applies the developer's
   own user config. Still pass `host="localhost"` explicitly when constructing daemons.
-- **Use the `data_dir` fixture for anything touching runtime files** (`USER_CONFIG_FILE`, `RUNTIME_CONFIG`,
-  `LOCKFILE`, `PYROLAB_LOGDIR`, `NAMESERVER_STORAGE`). Tests must never write to the real data dir. See
-  "Runtime state" for why patching `pyrolab.X` alone is not enough.
+- **The `data_dir` fixture is autouse**: every test sees PyroLab's paths (`USER_CONFIG_FILE`, `RUNTIME_CONFIG`,
+  `LOCKFILE`, `PYROLAB_LOGFILE`, `NAMESERVER_STORAGE`, `LEGACY_DATA_DIR`, ...) redirected into its own temp dir, so
+  no test can touch the real per-user directories or copy a developer's real pre-0.5 files. Add new path
+  constants to it. See "Runtime state" for why patching `pyrolab.X` alone is not enough.
 - `global_config` gives a fresh `GlobalConfiguration` singleton; `sample_config_yaml` / `sample_config_file`
   are a complete valid config using only `pyrolab.server` and `pyrolab.drivers.sample`.
 - **Hardware tests** get `@pytest.mark.hardware` and are skipped unless `--run-hardware` is passed. Import
@@ -145,20 +146,33 @@ Most commands are thin wrappers that proxy to the running `PyroLabDaemon`.
 
 ### Runtime state
 
-`pyrolab/__init__.py` creates and exports the data-dir constants at import time: `PYROLAB_DATA_DIR`
-(`pyrolab/data/local/` inside the package), `USER_CONFIG_FILE`, `RUNTIME_CONFIG`, `LOCKFILE`,
-`NAMESERVER_STORAGE`, `PYROLAB_LOGDIR`. It also installs a rotating file handler writing to
-`logs/pyrolab_<pid>.log`. Env vars: `PYROLAB_LOGLEVEL`, `PYROLAB_LOGFILE`, `PYROLAB_HUSH_DEPRECATION`,
-`PYROLAB_NO_VERSION_CHECK`.
+`pyrolab/__init__.py` exports the path constants, computed at import from `pyrolab/locations.py` (per-user
+`platformdirs` directories, or everything under `PYROLAB_DATA_DIR`): `USER_CONFIG_FILE`, `RUNTIME_CONFIG`,
+`LOCKFILE`, `STARTUP_ERROR_FILE`, `NAMESERVER_STORAGE`, `PYROLAB_LOGDIR`, `PYROLAB_LOGFILE`, `UPDATE_CHECK_FILE`.
+**Importing creates nothing** (`test_locations.py` checks this in a fresh interpreter); directories are created
+where files are written (`atomic_write_text` makes parents). Before 0.5 everything lived in the package's
+`pyrolab/data/local`; `migrate_legacy_files()` copies the config and nameserver databases from there once (a
+marker file stops it repeating), run by the CLI callback and the daemon.
+
+Other modules bind these constants by value (`from pyrolab import LOCKFILE, ...` in `api`, `cli`,
+`configure`, `manager`, `pyrolabd`), so redirecting a path means patching it in each of those modules —
+which is what the `data_dir` test fixture does.
+
+**Logging** (`pyrolab/logs.py`): as a library, `pyrolab` only adds a `NullHandler` — it never configures
+logging, `sys.excepthook`, or warning filters on import. The daemon (`pyrolabd.main`) is the **only writer** of
+one rotating JSON-lines log (`PYROLAB_LOGFILE`, 5 MB x 5). Each child runner logs through its **own pipe**
+(`log_to_pipe` in the child, `collect_from_pipe` in the parent): never a shared `multiprocessing.Queue` or
+loguru `enqueue=True`, because a child killed mid-write would hold the shared lock and block all logging (a
+real deadlock, tested in `test_logs.py`). The CLI's `run()` entry point (not `app`, which tests invoke)
+applies process-wide settings; CLI commands only log to stderr when `PYROLAB_LOGLEVEL` is set. `pyrolab
+status` / `logs show|export|clean` read the log back; entries after the last `daemon-start` event belong to
+the current run. Env vars: `PYROLAB_DATA_DIR`, `PYROLAB_LOGFILE`, `PYROLAB_LOGLEVEL`,
+`PYROLAB_HUSH_DEPRECATION`, `PYROLAB_NO_VERSION_CHECK`.
 
 **Importing `pyrolab` must never touch the network.** The PyPI update check lives in `pyrolab/updates.py`
 and runs only from the CLI's main callback, at most once a day (result cached in `UPDATE_CHECK_FILE`).
 An autouse test fixture sets `PYROLAB_NO_VERSION_CHECK` so CLI tests stay offline, and
 `test_updates.py` fails if importing the package performs any hostname lookup.
-
-Other modules bind these constants by value (`from pyrolab import LOCKFILE, ...` in `api`, `cli`,
-`configure`, `manager`, `pyrolabd`), so redirecting a path means patching it in each of those modules —
-which is what the `data_dir` test fixture does.
 
 `pyrolab/api.py` is the intended public surface — it re-exports the Pyro5 names plus PyroLab's, and on import
 applies the first configured nameserver's settings to `Pyro5.config` so `locate_ns()` just works. That step is
@@ -175,8 +189,11 @@ excluded from import sorting (a ruff per-file ignore); import order there is loa
   `connect()` arguments must be keyword arguments with defaults — `autoconnect()` dictionary-unpacks
   `_autoconnect_params` into it.
 - numpydoc docstrings and type hints throughout; the API docs are autogenerated from them.
-- Log via the `logging` module (`log = logging.getLogger(__name__)`). Servers run windowless in child
-  processes and fail silently, so logs are often the only diagnostic.
+- Log via the standard `logging` module (`log = logging.getLogger(__name__)`), never by configuring handlers
+  in library code. Servers run windowless in child processes and fail silently, so logs (`pyrolab status`,
+  `pyrolab logs show`) are often the only diagnostic.
+- `host: public` means "the address clients should reach this machine at" (`utils.get_ip`, which falls back
+  rather than failing without a route outside). Clients connect to the PyroLab server, never to instruments.
 - Optional hardware dependencies belong in a pyproject extra (`tsl550`, `ppcl55x`, `rto`, `arduino`,
   `cameras`), not in the base `dependencies`. PyPI rejects direct git URLs, so git-sourced extras stay
   commented out. `[tool.uv.sources]` can point development installs at git, but PyPI users never see it, so

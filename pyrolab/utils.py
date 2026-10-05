@@ -9,6 +9,7 @@ Utils
 Convenience functions for working with the pyrolab package.
 """
 
+import logging
 import os
 import secrets
 import socket
@@ -21,21 +22,56 @@ except ImportError:
 
 import pyrolab
 
+log = logging.getLogger(__name__)
+
 
 def get_ip() -> str:
     """
-    Get the IP address of the local machine.
+    This machine's best-guess address for other machines to reach it.
+
+    Used for ``host: public``: daemons and nameservers listen on this address,
+    and it goes into the URIs they publish, so it must be one the *clients* can
+    reach. The guess is the address of the interface that would route to the
+    internet (no traffic is sent). On a machine with several networks that may
+    not be the clients' network; set ``host`` to the right address instead.
+
+    Falls back, with a warning, to the address this machine's hostname resolves
+    to, then to 127.0.0.1, rather than failing on a network with no route
+    outside.
 
     Returns
     -------
     str
-        The IP address of the local machine.
+        An IPv4 address.
     """
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.connect(("8.8.8.8", 80))
-    ip = s.getsockname()[0]
-    s.close()
-    return ip
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))  # UDP: picks a route, sends nothing
+            return s.getsockname()[0]
+    except OSError as e:
+        reason = e
+
+    try:
+        ip = socket.gethostbyname(socket.gethostname())
+    except OSError:
+        ip = None
+    if ip and not ip.startswith("127."):
+        log.warning(
+            "No route to the internet to find this machine's address (%s); using "
+            "%s, which its hostname resolves to. If clients can't connect, set "
+            "'host' to the address they should use instead of 'public'.",
+            reason,
+            ip,
+        )
+        return ip
+
+    log.warning(
+        "Could not find this machine's network address (%s); using 127.0.0.1, "
+        "which only clients on this machine can reach. Set 'host' to the "
+        "address clients should use instead of 'public'.",
+        reason,
+    )
+    return "127.0.0.1"
 
 
 def generate_random_name(count: int = 3) -> str:
@@ -140,6 +176,7 @@ def atomic_write_text(path, text: str) -> None:
     from pathlib import Path
 
     path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
     try:
         with open(tmp, "w") as f:

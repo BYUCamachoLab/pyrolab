@@ -122,12 +122,13 @@ def pm(global_config, sample_config_file, removed):
     pm._clock = pm.clock
     pm._shared_dict = dict
     pm._message_queue = queue.Queue
+    pm._log_pipe = lambda: (None, None)  # fake runners don't log over pipes
     pm.start_checkup_timer = lambda *args, **kwargs: None
     pm.stop_checkup_timer = lambda: None
     pm.behavior = {}
     pm.spawned = {}
 
-    def create_runner(kind, name, msg_queue, shared_state, uris):
+    def create_runner(kind, name, msg_queue, shared_state, uris, log_conn=None):
         process = FakeProcess(msg_queue, shared_state, **pm.behavior.get(name, {}))
         process.name = name
         if kind == mgr.DAEMON:
@@ -196,7 +197,7 @@ def test_launch_when_already_running_does_not_spawn_twice(pm):
 
 
 def test_launch_spawn_error_is_reported(pm, monkeypatch):
-    def broken(*args):
+    def broken(*args, **kwargs):
         raise OSError("too many open files")
 
     pm._create_runner = broken
@@ -366,7 +367,7 @@ def test_restart_that_cannot_spawn_counts_as_a_crash(pm):
     current(pm, "plain").crash()
     pm.checkup(continuous=False)
 
-    def broken(*args):
+    def broken(*args, **kwargs):
         raise OSError("no more processes")
 
     pm._create_runner = broken
@@ -480,3 +481,48 @@ def test_service_info_before_uri_is_published(pm):
 
 def test_service_info_for_unknown_service(pm):
     assert pm.get_service_process_info("svc") == {"daemon": "", "uri": ""}
+
+
+###############################################################################
+# Child logging reaches the daemon (#25)
+###############################################################################
+
+
+def test_child_logs_reach_the_daemon_through_their_own_pipe(pm, caplog, wait_for):
+    import logging
+    import multiprocessing
+
+    from pyrolab import logs
+
+    pm._log_pipe = lambda: multiprocessing.Pipe(duplex=False)
+    sent = {}
+
+    def create_runner(kind, name, msg_queue, shared_state, uris, log_conn=None):
+        process = FakeProcess(msg_queue, shared_state)
+        process.name = name
+        process.daemonconfig = pm.GLOBAL_CONFIG.get_daemon_config(name)
+        process.serviceconfigs = {}
+        original_start = process.start
+
+        def start():
+            original_start()
+            # What a runner does first in its own process; sent before
+            # _spawn closes the manager's copy of the sending end.
+            handler = logs.PipeHandler(log_conn)
+            record = logging.LogRecord(
+                "pyrolab.child", logging.WARNING, __file__, 1, "from %s", (name,), None
+            )
+            record.processName = name
+            handler.handle(record)
+            sent[name] = log_conn
+
+        process.start = start
+        return process
+
+    pm._create_runner = create_runner
+    with caplog.at_level(logging.WARNING, logger="pyrolab.child"):
+        pm.launch_daemon("plain", wait=True)
+        sent["plain"].close()  # the "child" exits
+        assert wait_for(lambda: "from plain" in caplog.text)
+    record = next(r for r in caplog.records if r.getMessage() == "from plain")
+    assert record.processName == "plain"

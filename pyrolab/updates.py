@@ -25,6 +25,8 @@ from typing import Optional
 import requests
 from packaging.version import InvalidVersion, Version
 
+from pyrolab.utils import atomic_write_text
+
 log = logging.getLogger(__name__)
 
 PYPI_URL = "https://pypi.org/pypi/pyrolab/json"
@@ -93,7 +95,7 @@ def check_for_update(
     # Record the attempt even when it failed, so an offline machine doesn't
     # retry (and wait for the timeout) on every command.
     try:
-        cache_file.write_text(json.dumps({"checked": now, "latest": latest}))
+        atomic_write_text(cache_file, json.dumps({"checked": now, "latest": latest}))
     except OSError as e:
         log.debug("Could not write version check cache %s: %s", cache_file, e)
 

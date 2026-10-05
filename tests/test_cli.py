@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 import sys
@@ -503,46 +504,196 @@ def test_rename_without_config(data_dir):
 ###############################################################################
 
 
-def test_logs_export_merges_and_sorts(data_dir, tmp_path):
-    def write_log(name, *lines):
-        (data_dir.PYROLAB_LOGDIR / name).write_text("".join(f"{x}\n" for x in lines))
+def write_log(data_dir, *entries, start_marker=True):
+    """Write JSON-lines log entries as the daemon would."""
+    lines = []
+    if start_marker:
+        lines.append(
+            {
+                "time": "2026-10-05T09:00:00.000",
+                "level": "INFO",
+                "process": "MainProcess",
+                "pid": 1,
+                "logger": "pyrolab.pyrolabd",
+                "message": "PyroLab daemon starting (pid 1)",
+                "event": "daemon-start",
+            }
+        )
+    for i, (level, message) in enumerate(entries):
+        lines.append(
+            {
+                "time": f"2026-10-05T10:00:{i:02d}.000",
+                "level": level,
+                "process": "lab",
+                "pid": 2,
+                "logger": "pyrolab.manager",
+                "message": message,
+            }
+        )
+    with data_dir.PYROLAB_LOGFILE.open("a") as f:
+        for line in lines:
+            f.write(json.dumps(line) + "\n")
 
-    write_log(
-        "pyrolab_1.log",
-        "[2026-01-01 10:00:00.000] INFO first",
-        "[2026-01-01 10:00:02.000] ERROR third",
-        "Traceback (most recent call last):",
-        "  boom",
-    )
-    write_log(
-        "pyrolab_2.log",
-        "[2026-01-01 10:00:01.000] INFO second",
-        "[2026-01-01 10:00:03.000] INFO fourth",
-    )
-    # Raw daemon output (tracebacks, no timestamps) is not merged.
-    (data_dir.PYROLAB_LOGDIR / cli.DAEMON_OUTPUT_LOG).write_text(
-        "Traceback (most recent call last):\nRuntimeError: boom\n"
-    )
-    out = tmp_path / "merged.log"
+
+def test_logs_show_since_last_start(data_dir):
+    write_log(data_dir, ("ERROR", "from an earlier run"))
+    write_log(data_dir, ("INFO", "fine"), ("WARNING", "hmm"))
+    result = runner.invoke(cli.app, ["logs", "show"])
+    assert result.exit_code == 0, result.output
+    assert "hmm" in result.output and "fine" in result.output
+    assert "earlier run" not in result.output
+
+    result = runner.invoke(cli.app, ["logs", "show", "--all", "--level", "error"])
+    assert "earlier run" in result.output
+    assert "hmm" not in result.output
+
+
+def test_logs_show_limits_lines(data_dir):
+    write_log(data_dir, *[("INFO", f"message {i}") for i in range(10)])
+    result = runner.invoke(cli.app, ["logs", "show", "-n", "3"])
+    assert "message 9" in result.output
+    assert "message 6" not in result.output
+
+
+def test_logs_show_rejects_unknown_level(data_dir):
+    result = runner.invoke(cli.app, ["logs", "show", "--level", "loud"])
+    assert result.exit_code == 2
+    assert "unknown level 'loud'" in result.output
+
+
+def test_logs_export_text_and_json(data_dir, tmp_path):
+    # Regression: export crashed on entries without a parseable timestamp,
+    # which a rotated plain-text log routinely had (#71, #36).
+    write_log(data_dir, ("INFO", "first"), ("ERROR", "second"))
+    with data_dir.PYROLAB_LOGFILE.open("a") as f:
+        f.write("Traceback (most recent call last):\n[not json]\n")
+    out = tmp_path / "export.txt"
 
     result = runner.invoke(cli.app, ["logs", "export", str(out)])
     assert result.exit_code == 0, result.output
-    assert out.read_text().splitlines() == [
-        "[2026-01-01 10:00:00.000] INFO first",
-        "[2026-01-01 10:00:01.000] INFO second",
-        "[2026-01-01 10:00:02.000] ERROR third",
-        "Traceback (most recent call last):",
-        "  boom",
-        "[2026-01-01 10:00:03.000] INFO fourth",
-    ]
+    assert "Exported 3 log entries" in result.output
+    assert "Skipped 2 unreadable lines" in result.output
+    text = out.read_text().splitlines()
+    assert text[1].endswith("lab (2) pyrolab.manager: first")
+    assert "ERROR" in text[2] and text[2].endswith("second")
+
+    result = runner.invoke(cli.app, ["logs", "export", str(out), "--json"])
+    assert [json.loads(line)["message"] for line in out.read_text().splitlines()][
+        1:
+    ] == ["first", "second"]
+
+
+def test_logs_export_includes_rotated_files_oldest_first(data_dir, tmp_path):
+    log = data_dir.PYROLAB_LOGFILE
+    for suffix, message in ((".2", "oldest"), (".1", "older")):
+        log.with_name(log.name + suffix).write_text(
+            json.dumps({"time": "t", "message": message}) + "\n"
+        )
+    write_log(data_dir, ("INFO", "newest"), start_marker=False)
+    out = tmp_path / "export.json"
+    runner.invoke(cli.app, ["logs", "export", str(out), "--json"])
+    messages = [json.loads(line)["message"] for line in out.read_text().splitlines()]
+    assert messages == ["oldest", "older", "newest"]
 
 
 def test_logs_clean(data_dir):
-    for i in range(3):
-        (data_dir.PYROLAB_LOGDIR / f"pyrolab_{i}.log").write_text("x\n")
+    write_log(data_dir, ("INFO", "x"))
+    log = data_dir.PYROLAB_LOGFILE
+    log.with_name(log.name + ".1").write_text("old\n")
+    (data_dir.PYROLAB_LOGDIR / cli.DAEMON_OUTPUT_LOG).write_text("raw\n")
     result = runner.invoke(cli.app, ["logs", "clean"])
     assert result.exit_code == 0
+    assert "Removed 3 log files" in result.output
     assert list(data_dir.PYROLAB_LOGDIR.iterdir()) == []
+
+
+def test_logs_clean_refuses_while_daemon_runs(running_daemon, data_dir):
+    write_log(data_dir, ("INFO", "x"))
+    result = runner.invoke(cli.app, ["logs", "clean"])
+    assert result.exit_code == 1
+    assert "pyrolab down" in result.output
+    assert data_dir.PYROLAB_LOGFILE.exists()
+
+
+###############################################################################
+# pyrolab status (#36)
+###############################################################################
+
+
+def test_status_when_not_running(data_dir):
+    result = runner.invoke(cli.app, ["status"])
+    assert result.exit_code == 0
+    assert "PyroLab daemon is not running." in result.output
+    assert "Nothing has been logged yet" in result.output
+
+
+def test_status_shows_problems_since_start(running_daemon, data_dir, monkeypatch):
+    monkeypatch.setattr(cli, "_daemon_responds", lambda uri: True)
+    write_log(data_dir, ("ERROR", "from an earlier run"))
+    write_log(data_dir, ("INFO", "fine"), ("WARNING", "hmm"), ("ERROR", "bad"))
+    result = runner.invoke(cli.app, ["status"])
+    assert result.exit_code == 0, result.output
+    assert f"PyroLab daemon is running (pid {os.getpid()}" in result.output
+    assert "2 warnings and errors since it started:" in result.output
+    assert "hmm" in result.output and "bad" in result.output
+    assert "fine" not in result.output and "earlier run" not in result.output
+
+
+def test_status_summarizes_tracebacks(data_dir):
+    with data_dir.PYROLAB_LOGFILE.open("a") as f:
+        f.write(
+            json.dumps(
+                {
+                    "time": "2026-10-05T10:00:00.000",
+                    "level": "ERROR",
+                    "message": "Daemon 'lab' failed",
+                    "exception": "Traceback (most recent call last):\nRuntimeError: x",
+                }
+            )
+            + "\n"
+        )
+    result = runner.invoke(cli.app, ["status"])
+    assert "Daemon 'lab' failed [traceback]" in result.output
+    assert "Traceback (most recent call last)" not in result.output
+    assert "pyrolab logs show --level warning" in result.output
+
+
+def test_status_after_daemon_stopped(data_dir):
+    write_log(data_dir, ("WARNING", "on the way down"))
+    result = runner.invoke(cli.app, ["status"])
+    assert "during its last run" in result.output
+
+
+def test_status_without_problems(data_dir):
+    write_log(data_dir, ("INFO", "fine"))
+    result = runner.invoke(cli.app, ["status"])
+    assert "No warnings or errors during its last run." in result.output
+
+
+###############################################################################
+# Locations and migration (#66)
+###############################################################################
+
+
+def test_data_option_lists_locations(data_dir):
+    result = runner.invoke(cli.app, ["--data"])
+    assert result.exit_code == 0
+    assert str(data_dir.USER_CONFIG_FILE) in result.output
+    assert str(data_dir.PYROLAB_LOGFILE) in result.output
+    assert "PYROLAB_DATA_DIR" in result.output
+
+
+def test_first_command_copies_legacy_config(data_dir):
+    legacy = data_dir.LEGACY_DATA_DIR
+    legacy.mkdir()
+    (legacy / "user_configuration.yaml").write_text("daemons: {old: {}}\n")
+
+    result = runner.invoke(cli.app, ["info"])
+    assert "outside the installed package" in result.stderr
+    assert data_dir.USER_CONFIG_FILE.read_text() == "daemons: {old: {}}\n"
+
+    result = runner.invoke(cli.app, ["info"])
+    assert "outside the installed package" not in result.stderr  # only once
 
 
 ###############################################################################
