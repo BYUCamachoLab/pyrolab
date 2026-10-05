@@ -52,15 +52,37 @@ class Instrument(Service):
 
     def __del__(self) -> None:
         """
-        Destructor. Automatically calls ``close()``.
+        Releases the instrument if nothing else has (see :py:meth:`_release`).
 
-        Automatically releases any potentially claimed resources.
-
-        # TODO: This function is unsafe! It is not guaranteed to be called!
-        # Enforce calling close() explicitly.
+        Only a last resort: Python doesn't guarantee to call this, so it is no
+        substitute for ``close()``.
         """
-        log.info("Destructing %s", self.__class__.__name__)
-        self.close()
+        try:
+            self._release(error_level=logging.DEBUG)
+        except Exception:
+            pass  # e.g. logging is already shut down at interpreter exit
+
+    def _release(self, error_level: int = logging.WARNING) -> None:
+        """
+        Calls ``close()`` once, when PyroLab is finished with the instrument.
+
+        PyroLab releases an instrument when the daemon hosting it stops, when
+        the client that had it in session mode disconnects, and, failing
+        those, when it is garbage collected. Errors are logged (at
+        ``error_level``) rather than raised, since there is no caller to
+        raise them to; a class without its own ``close()`` is left alone.
+        """
+        if self.__dict__.get("_released", False):
+            return
+        self._released = True
+        if type(self).close is Instrument.close:
+            return
+        try:
+            self.close()
+        except Exception:
+            log.log(
+                error_level, "Closing %s failed", type(self).__name__, exc_info=True
+            )
 
     @staticmethod
     def detect_devices() -> List[Dict[str, Any]]:
@@ -151,8 +173,10 @@ class Instrument(Service):
         """
         Releases resources, hardware or otherwise.
 
-        Deletion of object should also automatically call ``close()``, which
-        should take no parameters.
+        Takes no parameters. A PyroLab daemon calls it for every instrument it
+        hosts when it stops, and for a session-mode instrument when its client
+        disconnects; it may also be called on an instrument that never
+        connected, so it should cope with that.
 
         Raises
         ------

@@ -240,6 +240,36 @@ class Daemon(Pyro5.server.Daemon):
 
         return __version__
 
+    def clientDisconnect(self, conn: SocketConnection) -> None:
+        """
+        Closes the session-mode instruments of a client that disconnected.
+
+        Pyro discards a client's session instances when its connection
+        closes; this closes them first, so their hardware is released.
+
+        Parameters
+        ----------
+        conn : SocketConnection
+            The SocketConnection object that was disconnected.
+        """
+        _release_instruments(conn.pyroInstances.values())
+
+    def release_instruments(self) -> None:
+        """
+        Closes the single-mode instruments this daemon created, when it stops.
+        """
+        _release_instruments(self._pyroInstances.values())
+
+
+def _release_instruments(objects) -> None:
+    """Calls ``_release()`` on each of ``objects`` that is an Instrument."""
+    # Imported here: pyrolab.drivers imports this module.
+    from pyrolab.drivers import Instrument
+
+    for obj in list(objects):
+        if isinstance(obj, Instrument):
+            obj._release()
+
 
 class LockableDaemon(Daemon):
     """
@@ -468,3 +498,4 @@ class LockableDaemon(Daemon):
                 log.info(
                     f"Client connection closed, releasing lock owned by '{username}'."
                 )
+        super().clientDisconnect(conn)
