@@ -64,9 +64,10 @@ def check_error(status):
 log.info("Building ThorLabs device list (requires ThorLabs Kinesis DLL)")
 try:
     kcdc.TLI_BuildDeviceList()
-except:
+except Exception:
     log.warning(
-        "Building ThorLabs device list failed; unable to connect to any instruments"
+        "Building ThorLabs device list failed; unable to connect to any instruments",
+        exc_info=True,
     )
 
 
