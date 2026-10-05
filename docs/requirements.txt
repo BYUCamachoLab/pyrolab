@@ -1,6 +1,0 @@
-# Read the Docs installs these, then PyroLab itself (pip install .), which
-# brings PyroLab's own dependencies. Don't repeat those here: a pin that
-# disagrees with pyproject.toml makes the docs build unresolvable.
-# Keep in step with the "docs" dependency group in pyproject.toml.
-jupyter-book==1.0.3
-numpydoc==1.5.0
