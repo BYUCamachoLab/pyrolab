@@ -118,7 +118,7 @@ def start_ns_loop(
     try:
         # Placed in a try block because this fails with pythonw.exe
         sys.stdout.flush()
-    except:
+    except Exception:  # under pythonw, stdout is None
         log.warning(
             "Couldn't flush stdout! (Not a problem if running under pythonw.exe)"
         )

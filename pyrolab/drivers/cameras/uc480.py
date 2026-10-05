@@ -36,8 +36,8 @@ import numpy as np
 
 try:
     from thorlabs_kinesis import thor_camera as tc
-except:
-    pass
+except (ImportError, OSError) as e:  # not installed, or its DLL can't be loaded
+    logging.getLogger(__name__).debug("ThorCam SDK unavailable: %s", e)
 
 from pyrolab.api import expose
 from pyrolab.drivers.cameras.thorcam import ThorCamBase, ThorCamClient

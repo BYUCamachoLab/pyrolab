@@ -1405,16 +1405,20 @@ class TSL550(Laser):
 
         # Iterate through wavelength points
         for nWave in range(int(num_points)):
-            while True:
-                try:
-                    # A data is in 4-byte binary, and transmitted in Big endians
-                    in_byte = self.device.read(4)
-                    # Data format is integer number in 0.1 pm units
-                    current_wavelength = float(struct.unpack(">I", in_byte)[0]) / 1e4
-                    break
-                except:
-                    raise RuntimeError("Error reading wavelength data from laser")
-
+            try:
+                # A data is in 4-byte binary, and transmitted in Big endians
+                in_byte = self.device.read(4)
+            except serial.SerialException as e:
+                raise OSError(
+                    f"Reading wavelength data from the laser failed: {e}"
+                ) from e
+            if len(in_byte) < 4:  # the read timed out
+                raise TimeoutError(
+                    f"The laser stopped sending wavelength data after "
+                    f"{nWave} of {int(num_points)} points"
+                )
+            # Data format is integer number in 0.1 pm units
+            current_wavelength = float(struct.unpack(">I", in_byte)[0]) / 1e4
             wavelength_points.append(current_wavelength)
 
         # stop laser from outputting
