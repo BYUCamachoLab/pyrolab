@@ -287,13 +287,18 @@ def test_collector_ends_when_child_dies_without_closing_pipe():
 
 
 def test_collector_reads_everything_before_stopping(caplog):
+    # The collector runs while the records are sent (a pipe's buffer can be
+    # small -- on Windows, sending 50 records with no reader blocks), then the
+    # child "dies": everything still in the pipe must be read first.
     recv, send = mp.Pipe(duplex=False)
-    for i in range(50):
-        send.send(logs.PipeHandler.prepare(make_record("record %d", (i,))))
+    state = {"alive": True}
     with caplog.at_level(logging.INFO, logger="pyrolab.test"):
         collector = logs.collect_from_pipe(
-            recv, alive=lambda: False, poll_interval=0.05
+            recv, alive=lambda: state["alive"], poll_interval=0.05
         )
+        for i in range(50):
+            send.send(logs.PipeHandler.prepare(make_record("record %d", (i,))))
+        state["alive"] = False
         collector.join(5)
     assert not collector.is_alive()
     assert [r.getMessage() for r in caplog.records][-1] == "record 49"
