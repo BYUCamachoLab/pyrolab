@@ -73,7 +73,7 @@ Three cooperating roles, each configurable independently and often on different 
 
 ### Configuration is the program
 
-`pyrolab/configure.py` is the center of gravity. A single YAML file (pydantic v1 models) declares
+`pyrolab/configure.py` is the center of gravity. A single YAML file (pydantic 2 models) declares
 `nameservers`, `daemons`, `services`, and `autolaunch` (see the `sample_config_yaml` fixture in
 `tests/conftest.py` and `examples/library-catalog/config.yaml`; `tests/data/*.yaml` are stale and reference
 a `pyrolab.daemon` module that no longer exists). A `ServiceConfiguration` names a `module` + `classname` that is
@@ -88,12 +88,15 @@ refers to one called `default`). `describe_config_error()` turns a load error in
 Anything that writes a config must re-validate before saving; `rename_entity()` renames an entity together with
 every reference to it.
 
-The models derive from `_ConfigModel` (plain pydantic `BaseModel`, `extra = "forbid"`), **not** `BaseSettings`:
+The models derive from `_ConfigModel` (plain pydantic `BaseModel`, `extra="forbid"`), **not** `BaseSettings`:
 settings models fill unset fields from same-named environment variables (`PORT`, `HOST`, ...), which silently
 changed configurations. Unknown keys are errors. `update_pyro_config()` warns about any field it can't apply
 unless the model lists it in `NOT_PYRO_OPTIONS`. Daemon placement (`host`, `port`, `unixsocket`, `nathost`,
 `natport`) goes to the daemon's constructor, since Pyro5 has no global `PORT`/`UNIXSOCKET` options.
-Nameservers get their names (used for storage paths) whenever a `PyroLabConfiguration` is constructed.
+Nameservers get their names (used for storage paths) in `PyroLabConfiguration.model_post_init`, so on every
+construction or validation path. `_ConfigModel` sets `coerce_numbers_to_str` so pydantic-1-era files with
+e.g. an unquoted `version: 1.0` still load. In pydantic 2, model equality includes private attributes, so two
+nameserver configs with different names are unequal; compare `model_dump()` for settings only.
 
 Every config/lockfile write goes through `utils.atomic_write_text()` (temp file + fsync + `os.replace`).
 
@@ -198,8 +201,9 @@ excluded from import sorting (a ruff per-file ignore); import order there is loa
   `cameras`), not in the base `dependencies`. PyPI rejects direct git URLs, so git-sourced extras stay
   commented out. `[tool.uv.sources]` can point development installs at git, but PyPI users never see it, so
   don't rely on it to fix a broken release — the Arduino driver patches PyPI's pyfirmata 1.1.0 instead.
-- Pinned to **pydantic 1.x** (`BaseSettings`, `validator`, `PrivateAttr` from `pydantic.fields`). Do not
-  migrate to pydantic 2 piecemeal.
+- **pydantic 2** (`>=2.8`): `model_config = ConfigDict(...)`, `field_validator`/`model_validator`,
+  `model_dump`/`model_validate`/`model_validate_json`. No v1 API (`.dict()`, `parse_file`, `@validator`, ...);
+  the suite passes with pydantic's deprecation warnings turned into errors.
 
 ## Releasing
 

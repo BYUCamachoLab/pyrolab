@@ -8,6 +8,6 @@ scipy==1.15.2
 # sphinx-copybutton==0.5.2
 # sphinx-togglebutton==0.3.2
 linkify-it-py==2.0.3
-pydantic==1.10.21
+pydantic>=2.8,<3
 pyyaml==6.0.2
 Pyro5==5.15

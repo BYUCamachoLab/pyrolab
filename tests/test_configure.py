@@ -455,7 +455,7 @@ def test_export_config(tmp_path, sample_config_file):
 
 def test_rename_entity_leaves_input_unchanged(sample_config_file):
     config = PyroLabConfiguration.from_file(sample_config_file)
-    before = config.copy(deep=True)
+    before = config.model_copy(deep=True)
     renamed, changes = rename_entity(config, "nameserver", "local", "lab")
     assert config == before
     assert "lab" in renamed.nameservers and "local" not in renamed.nameservers
@@ -511,7 +511,7 @@ def test_misspelled_keys_are_rejected(yaml_text, field):
     with pytest.raises(ValidationError) as excinfo:
         PyroLabConfiguration.from_yaml(yaml_text)
     (line,) = describe_config_error(excinfo.value)
-    assert field in line and "extra fields not permitted" in line
+    assert field in line and "Extra inputs are not permitted" in line
 
 
 @pytest.mark.parametrize(
@@ -576,3 +576,29 @@ def test_export_and_save_failure_keeps_existing_file(
 def test_update_config_missing_file_message(data_dir, tmp_path):
     with pytest.raises(FileNotFoundError, match="does not exist"):
         update_config(tmp_path / "missing.yaml")
+
+
+###############################################################################
+# pydantic 2 compatibility with configurations written for pydantic 1
+###############################################################################
+
+
+def test_numbers_are_accepted_where_text_is_expected():
+    # pydantic 1 coerced these; pydantic 2 rejects them unless told not to,
+    # and existing configs have e.g. an unquoted `version: 1.0`.
+    cfg = PyroLabConfiguration.from_yaml(
+        "version: 1.0\n"
+        "daemons: {d: {}}\n"
+        "services:\n"
+        "  s: {module: m, classname: C, description: 42, daemon: d}\n"
+    )
+    assert cfg.version == "1.0"
+    assert cfg.services["s"].description == "42"
+
+
+def test_nameservers_know_their_names_however_created(sample_config_file):
+    loaded = PyroLabConfiguration.from_file(sample_config_file)
+    validated = PyroLabConfiguration.model_validate(loaded.model_dump())
+    copied = loaded.model_copy(deep=True)
+    for cfg in (loaded, validated, copied):
+        assert cfg.nameservers["persistent"].name == "persistent"

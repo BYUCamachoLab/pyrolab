@@ -56,7 +56,7 @@ def write_lockfile(info: InstanceInfo) -> None:
     replaces the lockfile in one step, so readers see either no lockfile or a
     complete one, never a partial write.
     """
-    atomic_write_text(LOCKFILE, info.json())
+    atomic_write_text(LOCKFILE, info.model_dump_json())
 
 
 def read_lockfile() -> Optional[InstanceInfo]:
@@ -68,7 +68,7 @@ def read_lockfile() -> Optional[InstanceInfo]:
     :py:func:`pyrolab.utils.pid_is_running`.
     """
     try:
-        return InstanceInfo.parse_file(LOCKFILE)
+        return InstanceInfo.model_validate_json(LOCKFILE.read_text())
     except (OSError, ValueError):  # missing, unreadable, or not valid JSON
         return None
 

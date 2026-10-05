@@ -40,8 +40,14 @@ from pathlib import Path
 from typing import IO, Any, ClassVar, Dict, List, Optional, Tuple, Type, Union
 
 import Pyro5
-from pydantic import BaseModel, root_validator, validator
-from pydantic.fields import PrivateAttr
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    PrivateAttr,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 from yaml import dump, load
 from yaml.constructor import ConstructorError
 from yaml.nodes import MappingNode
@@ -202,7 +208,7 @@ class PyroConfigMixin:
             debugging or informational purposes.
         """
         if values is None:
-            values = self.dict()
+            values = self.model_dump()
 
         for key in ["host", "ns_host", "ns_bchost"]:
             if key in values:
@@ -238,9 +244,13 @@ class _ConfigModel(BaseModel):
     in the environment would silently change the configuration.
     """
 
-    class Config:
-        extra = "forbid"  # a misspelled key is an error, not silently ignored
-        validate_all = True
+    model_config = ConfigDict(
+        extra="forbid",  # a misspelled key is an error, not silently ignored
+        validate_default=True,
+        # pydantic 1 accepted e.g. an unquoted `version: 1.0` for a string
+        # field; keep accepting numbers where text is expected.
+        coerce_numbers_to_str=True,
+    )
 
 
 class YAMLMixin:
@@ -266,7 +276,7 @@ class YAMLMixin:
             includes them (default False).
         """
         return dump(
-            self.dict(exclude_defaults=exclude_defaults),
+            self.model_dump(exclude_defaults=exclude_defaults),
             sort_keys=sort_keys,
             default_flow_style=default_flow_style,
         )
@@ -289,7 +299,7 @@ class YAMLMixin:
             The YAML to load.
         """
         loaded = load(yaml, Loader=UniqueOrAutoKeyLoader)
-        cfg = cls.parse_obj(loaded)
+        cfg = cls.model_validate(loaded)
         return cfg
 
     @classmethod
@@ -398,7 +408,8 @@ class NameServerConfiguration(_ConfigModel, PyroConfigMixin, YAMLMixin):
     # Passed to the nameserver directly rather than through Pyro5.config.
     NOT_PYRO_OPTIONS: ClassVar[frozenset] = frozenset({"broadcast", "storage"})
 
-    @validator("storage")
+    @field_validator("storage")
+    @classmethod
     def valid_memory_format(cls, v: str):
         if v == "memory":
             return v
@@ -453,7 +464,7 @@ class NameServerConfiguration(_ConfigModel, PyroConfigMixin, YAMLMixin):
             A dictionary of Pyro5 key-value pairs that were updated, for
             debugging or informational purposes.
         """
-        values = self.dict()
+        values = self.model_dump()
         values["ns_host"] = values["host"]
         return super().update_pyro_config(values=values)
 
@@ -694,10 +705,10 @@ class PyroLabConfiguration(_ConfigModel, YAMLMixin):
     services: Dict[str, ServiceConfiguration] = {}
     autolaunch: AutolaunchSettings = AutolaunchSettings()
 
-    @root_validator(skip_on_failure=True)
-    def references_are_defined(cls, values):
-        nameservers = values["nameservers"]
-        daemons = values["daemons"]
+    @model_validator(mode="after")
+    def references_are_defined(self) -> "PyroLabConfiguration":
+        nameservers = self.nameservers
+        daemons = self.daemons
         problems = []
 
         def check(kind, names, defined, where):
@@ -707,25 +718,26 @@ class PyroLabConfiguration(_ConfigModel, YAMLMixin):
                         f"{where} refers to {kind} '{name}', which is not defined"
                     )
 
-        for sname, svc in values["services"].items():
+        for sname, svc in self.services.items():
             where = f"service '{sname}'"
             if svc.daemon not in daemons:
-                hint = "" if "daemon" in svc.__fields_set__ else " (the default)"
+                hint = "" if "daemon" in svc.model_fields_set else " (the default)"
                 problems.append(
                     f"{where} refers to daemon '{svc.daemon}'{hint}, which is not defined"
                 )
             check("nameserver", svc.nameservers, nameservers, where)
         for dname, dcfg in daemons.items():
             check("nameserver", dcfg.nameservers, nameservers, f"daemon '{dname}'")
-        check("nameserver", values["autolaunch"].nameservers, nameservers, "autolaunch")
-        check("daemon", values["autolaunch"].daemons, daemons, "autolaunch")
+        check("nameserver", self.autolaunch.nameservers, nameservers, "autolaunch")
+        check("daemon", self.autolaunch.daemons, daemons, "autolaunch")
 
         if problems:
             raise ValueError("; ".join(problems))
-        return values
+        return self
 
-    def __init__(self, **data: Any) -> None:
-        super().__init__(**data)
+    def model_post_init(self, context: Any) -> None:
+        # Runs however the configuration was created (constructed, validated
+        # from YAML, ...), so nameservers always know their names.
         self.initialize_nameservers()
 
     def initialize_nameservers(self):
@@ -755,14 +767,16 @@ def describe_config_error(exc: Exception) -> List[str]:
         Human-readable problem descriptions, e.g.
         ``"daemons.lab.port: value is not a valid integer"``.
     """
-    from pydantic import ValidationError
-
     if not isinstance(exc, ValidationError):
         return [str(exc)]
     lines = []
     for err in exc.errors():
-        loc = ".".join(str(part) for part in err["loc"] if part != "__root__")
-        for msg in err["msg"].split("; "):
+        loc = ".".join(str(part) for part in err["loc"])
+        # A ValueError raised by one of our validators: use its own message
+        # rather than pydantic's "Value error, ..." wrapping of it.
+        original = (err.get("ctx") or {}).get("error")
+        message = str(original) if isinstance(original, ValueError) else err["msg"]
+        for msg in message.split("; "):
             lines.append(f"{loc}: {msg}" if loc else msg)
     return lines
 
@@ -1037,7 +1051,7 @@ def rename_entity(
     KeyError
         If there is no ``kind`` named ``old``.
     """
-    data = config.dict()
+    data = config.model_dump()
     section = data[SECTIONS[kind]]
     if old not in section:
         raise KeyError(old)
@@ -1071,4 +1085,4 @@ def rename_entity(
         auto = data["autolaunch"]
         auto["daemons"] = swap(auto["daemons"], "autolaunch")
 
-    return PyroLabConfiguration.parse_obj(data), changes
+    return PyroLabConfiguration.model_validate(data), changes

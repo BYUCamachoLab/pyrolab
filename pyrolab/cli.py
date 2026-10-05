@@ -562,7 +562,7 @@ def info():
 
     ns_data = []
     for name in config.nameservers:
-        ns_data.append({"name": name, **config.nameservers[name].dict()})
+        ns_data.append({"name": name, **config.nameservers[name].model_dump()})
     for item in ns_data:
         item["ns_autoclean"] = (
             f"{item['ns_autoclean']} sec" if item["ns_autoclean"] else "Off"
@@ -573,7 +573,7 @@ def info():
 
     daemon_data = []
     for name in config.daemons:
-        daemon_data.append({"name": name, **config.daemons[name].dict()})
+        daemon_data.append({"name": name, **config.daemons[name].model_dump()})
     for item in daemon_data:
         item["nameservers"] = "".join([f"- {name}\n" for name in item["nameservers"]])
     if daemon_data:
@@ -582,7 +582,7 @@ def info():
 
     service_data = []
     for name in config.services:
-        service_data.append({"name": name, **config.services[name].dict()})
+        service_data.append({"name": name, **config.services[name].model_dump()})
     for item in service_data:
         item["parameters"] = "".join(
             [f"{k}: {v}\n" for k, v in item["parameters"].items()]

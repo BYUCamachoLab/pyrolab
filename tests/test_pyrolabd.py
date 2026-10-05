@@ -202,7 +202,7 @@ def test_ps_returns_plain_string(pld):
 
 def test_instance_info_round_trip():
     ii = InstanceInfo(pid=1234, uri="PYRO:pyrolabd@localhost:5555")
-    assert InstanceInfo.parse_raw(ii.json()) == ii
+    assert InstanceInfo.model_validate_json(ii.model_dump_json()) == ii
 
 
 ###############################################################################
