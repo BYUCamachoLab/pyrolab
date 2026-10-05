@@ -422,8 +422,17 @@ class DaemonRunner(multiprocessing.Process):
             The instantiated Daemon object and the URI for the hosted object,
             to be registered with the nameserver.
         """
-        daemon = self.daemonconfig._get_daemon()
-        daemon = daemon()
+        cfg = self.daemonconfig
+        # Placement goes to the constructor: port and unixsocket have no
+        # Pyro5.config equivalent, so setting them globally did nothing.
+        daemon = cfg._get_daemon()(
+            host=get_ip() if cfg.host == "public" else cfg.host,
+            port=cfg.port,
+            unixsocket=cfg.unixsocket,
+            nathost=cfg.nathost,
+            # Pyro wants both NAT settings or neither; 0 means "same as port".
+            natport=cfg.natport if cfg.nathost else None,
+        )
 
         uris = {}
         for sname, sconfig in self.serviceconfigs.items():
@@ -1074,14 +1083,17 @@ class ProcessManager:
         """
         Restart every managed entity with the current configuration.
 
-        Entities no longer in the configuration are stopped and not restarted.
-        Crashed or failed ones are given a fresh start.
+        Everything running is stopped. Then everything that was running and is
+        still configured is started again, along with every ``autolaunch``
+        entry (so the result matches a fresh ``pyrolab up``, plus anything
+        started by hand). Entities no longer in the configuration stay
+        stopped. Crashed or failed ones are given a fresh start.
 
         Returns
         -------
         bool
-            True only if everything stopped cleanly and every relaunched
-            entity reported ready.
+            True only if everything stopped cleanly and every started entity
+            reported ready.
         """
         log.info("Reloading all running entities.")
         self.stop_checkup_timer()
@@ -1095,10 +1107,14 @@ class ProcessManager:
         ok = all(stopped.values())
 
         # Nameservers first, so daemons can register with them.
-        for kind, names in ((NAMESERVER, nameservers), (DAEMON, daemons)):
+        autolaunch = self.GLOBAL_CONFIG.config.autolaunch
+        for kind, names in (
+            (NAMESERVER, nameservers + autolaunch.nameservers),
+            (DAEMON, daemons + autolaunch.daemons),
+        ):
             launched = [
                 (name, self._launch(kind, name, wait=False, timeout=READY_TIMEOUT))
-                for name in names
+                for name in dict.fromkeys(names)  # each once, in order
                 if name in self._configured(kind)
             ]
             for name, result in launched:

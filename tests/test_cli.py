@@ -396,29 +396,101 @@ def test_rename(config_with_spare_daemon, kind, section, old):
     assert entities["renamed"] == before
 
 
-@pytest.mark.parametrize(
-    "kind, old, referrer",
-    [
-        ("nameserver", "local", "daemons.lockable"),
-        ("daemon", "plain", "service 'sample.echo'"),
-    ],
-)
-def test_rename_refuses_to_orphan_references(user_config, kind, old, referrer):
-    # Renaming moves only the entry itself; with references left pointing at
-    # the old name the config would be invalid, so nothing is written.
+def _load(path):
+    return PyroLabConfiguration.from_file(path)
+
+
+def test_rename_nameserver_updates_references(user_config):
+    # Regression: renaming left every reference pointing at the old name (#67).
+    result = runner.invoke(cli.app, ["rename", "nameserver", "local", "lab"])
+    assert result.exit_code == 0, result.output
+    assert "Renamed nameserver 'local' to 'lab'." in result.output
+    assert "service 'sample.echo', daemon 'lockable', autolaunch" in result.output
+    # It's in autolaunch, which reload starts, so reload alone is enough.
+    assert "Run 'pyrolab reload' to apply the new name." in result.output
+
+    config = _load(user_config)
+    assert list(config.nameservers) == ["lab", "persistent"]  # order kept
+    assert config.services["sample.echo"].nameservers == ["lab"]
+    assert config.daemons["lockable"].nameservers == ["lab"]
+    assert config.autolaunch.nameservers == ["lab"]
+
+
+def test_rename_daemon_updates_references(user_config):
+    result = runner.invoke(cli.app, ["rename", "daemon", "lockable", "bench"])
+    assert result.exit_code == 0, result.output
+    config = _load(user_config)
+    assert config.services["sample.instrument"].daemon == "bench"
+    assert config.autolaunch.daemons == ["bench"]
+    assert config.services["sample.echo"].daemon == "plain"  # untouched
+
+
+def test_rename_default_daemon_updates_implicit_references(data_dir):
+    # A service with no `daemon:` refers to the one called "default".
+    data_dir.USER_CONFIG_FILE.write_text(
+        "daemons: {default: {}}\n"
+        "services:\n  s: {module: pyrolab.drivers.sample, classname: SampleService}\n"
+    )
+    result = runner.invoke(cli.app, ["rename", "daemon", "default", "main"])
+    assert result.exit_code == 0, result.output
+    assert _load(data_dir.USER_CONFIG_FILE).services["s"].daemon == "main"
+
+
+def test_rename_onto_existing_name_needs_force(user_config):
     before = user_config.read_text()
-    result = runner.invoke(cli.app, ["rename", kind, old, "renamed"])
+    result = runner.invoke(cli.app, ["rename", "nameserver", "local", "persistent"])
     assert result.exit_code == 1
-    assert "still refer to it" in result.output
-    assert f"'{old}'" in result.output
-    assert user_config.read_text() == before
+    assert "already exists" in result.output
+    assert user_config.read_text() == before  # nothing destroyed
 
 
-def test_rename_unknown_nameserver(user_config):
+def test_rename_with_force_replaces_and_merges_references(user_config):
+    config = _load(user_config)
+    config.services["sample.echo"].nameservers = ["local", "persistent"]
+    user_config.write_text(config.yaml())
+
+    result = runner.invoke(
+        cli.app, ["rename", "nameserver", "local", "persistent", "--force"]
+    )
+    assert result.exit_code == 0, result.output
+    config = _load(user_config)
+    assert list(config.nameservers) == ["persistent"]
+    assert config.nameservers["persistent"].ns_port == 9090  # the renamed one
+    assert config.services["sample.echo"].nameservers == ["persistent"]
+
+
+@pytest.mark.parametrize(
+    "kind, label",
+    [("nameserver", "Nameserver"), ("daemon", "Daemon"), ("service", "Service")],
+)
+def test_rename_unknown(user_config, kind, label):
+    # Regression: daemon and service renames said "Nameserver not found" (#67).
     before = user_config.read_text()
-    result = runner.invoke(cli.app, ["rename", "nameserver", "nope", "new"])
-    assert "Nameserver not found" in result.output
+    result = runner.invoke(cli.app, ["rename", kind, "nope", "new"])
+    assert result.exit_code == 1
+    assert f"{label} 'nope' not found." in result.output
     assert user_config.read_text() == before
+
+
+def test_rename_to_same_name(user_config):
+    before = user_config.read_text()
+    result = runner.invoke(cli.app, ["rename", "service", "sample.echo", "sample.echo"])
+    assert result.exit_code == 0
+    assert user_config.read_text() == before
+
+
+def test_rename_outside_autolaunch_explains_restart(user_config):
+    # "persistent" isn't autolaunched, so reload won't start it under its new
+    # name; say what will.
+    result = runner.invoke(cli.app, ["rename", "nameserver", "persistent", "archive"])
+    assert "'pyrolab start nameserver archive'" in result.output
+
+
+def test_rename_persistent_nameserver_mentions_storage(user_config):
+    result = runner.invoke(cli.app, ["rename", "nameserver", "persistent", "archive"])
+    assert result.exit_code == 0, result.output
+    assert "ns_persistent.sql" in result.output
+    assert "ns_archive.sql" in result.output
 
 
 def test_rename_without_config(data_dir):

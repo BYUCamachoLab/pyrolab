@@ -1,3 +1,5 @@
+import logging
+
 import Pyro5
 import pytest
 from pydantic import ValidationError
@@ -14,6 +16,7 @@ from pyrolab.configure import (
     UniqueOrAutoKeyLoader,
     describe_config_error,
     export_config,
+    rename_entity,
     reset_config,
     uniquify_class,
     update_config,
@@ -110,9 +113,10 @@ def test_service_requires_module_and_classname():
         PyroLabConfiguration.from_yaml("services:\n  svc:\n    module: x\n")
 
 
-def test_initialize_nameservers_assigns_names(sample_config_file):
+def test_loading_assigns_nameserver_names(sample_config_file):
+    # Previously only GlobalConfiguration.load_config() named them, so a
+    # config loaded any other way computed storage paths like "ns_.sql".
     cfg = PyroLabConfiguration.from_file(sample_config_file)
-    cfg.initialize_nameservers()
     assert cfg.nameservers["local"].name == "local"
     assert cfg.nameservers["persistent"].name == "persistent"
 
@@ -442,3 +446,133 @@ def test_export_config(tmp_path, sample_config_file):
     out = tmp_path / "exported.yaml"
     export_config(cfg, out)
     assert PyroLabConfiguration.from_file(out) == cfg
+
+
+###############################################################################
+# rename_entity (#67)
+###############################################################################
+
+
+def test_rename_entity_leaves_input_unchanged(sample_config_file):
+    config = PyroLabConfiguration.from_file(sample_config_file)
+    before = config.copy(deep=True)
+    renamed, changes = rename_entity(config, "nameserver", "local", "lab")
+    assert config == before
+    assert "lab" in renamed.nameservers and "local" not in renamed.nameservers
+    assert changes == ["service 'sample.echo'", "daemon 'lockable'", "autolaunch"]
+    assert renamed.nameservers["lab"].name == "lab"
+
+
+def test_rename_entity_unknown(sample_config_file):
+    config = PyroLabConfiguration.from_file(sample_config_file)
+    with pytest.raises(KeyError):
+        rename_entity(config, "daemon", "nope", "new")
+
+
+def test_rename_service_has_no_references(sample_config_file):
+    config = PyroLabConfiguration.from_file(sample_config_file)
+    renamed, changes = rename_entity(config, "service", "sample.echo", "echo")
+    assert changes == []
+    assert list(renamed.services) == ["echo", "sample.instrument"]
+
+
+###############################################################################
+# Settings are never silently changed or dropped (#72)
+###############################################################################
+
+
+def test_environment_variables_do_not_leak_into_config(monkeypatch):
+    # These were BaseSettings models, which fill any field the file leaves out
+    # from an environment variable of the same name.
+    monkeypatch.setenv("PORT", "8080")
+    monkeypatch.setenv("SERVERTYPE", "multiplex")
+    monkeypatch.setenv("HOST", "elsewhere.example")
+    monkeypatch.setenv("STORAGE", "sql")
+
+    daemon = DaemonConfiguration()
+    assert (daemon.port, daemon.servertype, daemon.host) == (0, "thread", "localhost")
+    assert NameServerConfiguration().storage == "memory"
+
+    cfg = PyroLabConfiguration.from_yaml("daemons:\n  d: {}\n")
+    assert cfg.daemons["d"].port == 0
+
+
+@pytest.mark.parametrize(
+    "yaml_text, field",
+    [
+        ("daemons:\n  d: {servertyp: multiplex}\n", "servertyp"),
+        ("nameservers:\n  n: {nsport: 9000}\n", "nsport"),
+        ("services:\n  s: {module: m, classname: C, paramaters: {}}\n", "paramaters"),
+        ("autolaunch: {deamons: []}\n", "deamons"),
+        ("nameserver: {}\n", "nameserver"),
+    ],
+)
+def test_misspelled_keys_are_rejected(yaml_text, field):
+    with pytest.raises(ValidationError) as excinfo:
+        PyroLabConfiguration.from_yaml(yaml_text)
+    (line,) = describe_config_error(excinfo.value)
+    assert field in line and "extra fields not permitted" in line
+
+
+@pytest.mark.parametrize(
+    "cfg",
+    [NameServerConfiguration(storage="sql", broadcast=True), DaemonConfiguration()],
+)
+def test_update_pyro_config_logs_and_does_not_warn_for_known_fields(cfg, caplog):
+    with caplog.at_level(logging.DEBUG, logger="pyrolab.configure"):
+        applied = cfg.update_pyro_config()
+    assert "HOST" in applied
+    assert "applied Pyro5 settings" in caplog.text
+    assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
+
+
+def test_update_pyro_config_warns_about_settings_it_cannot_apply(caplog):
+    DaemonConfiguration().update_pyro_config(
+        values={"host": "127.0.0.1", "mystery_option": 1}
+    )
+    assert "settings ignored (not Pyro5 options): mystery_option" in caplog.text
+
+
+###############################################################################
+# Configuration files are written atomically (#69)
+###############################################################################
+
+
+@pytest.fixture
+def failing_replace(monkeypatch):
+    """Make the final step of an atomic write fail, as a crash would."""
+    import pyrolab.utils
+
+    def boom(src, dst):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(pyrolab.utils.os, "replace", boom)
+
+
+def test_update_config_failure_keeps_previous_config(
+    data_dir, sample_config_file, tmp_path, failing_replace
+):
+    data_dir.USER_CONFIG_FILE.write_text("daemons: {d: {}}\n")
+    with pytest.raises(OSError):
+        update_config(sample_config_file)
+    assert data_dir.USER_CONFIG_FILE.read_text() == "daemons: {d: {}}\n"
+    assert list(data_dir.root.glob("*.tmp")) == []
+
+
+def test_export_and_save_failure_keeps_existing_file(
+    global_config, sample_config_file, tmp_path, failing_replace
+):
+    out = tmp_path / "out.yaml"
+    out.write_text("original\n")
+    cfg = PyroLabConfiguration.from_file(sample_config_file)
+    with pytest.raises(OSError):
+        export_config(cfg, out)
+    global_config.set_config(cfg)
+    with pytest.raises(OSError):
+        global_config.save_config(out)
+    assert out.read_text() == "original\n"
+
+
+def test_update_config_missing_file_message(data_dir, tmp_path):
+    with pytest.raises(FileNotFoundError, match="does not exist"):
+        update_config(tmp_path / "missing.yaml")

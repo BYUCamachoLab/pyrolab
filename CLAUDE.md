@@ -84,7 +84,17 @@ otherwise clobber each other.
 `PyroLabConfiguration` validates **cross-references** on load: every service's `daemon`/`nameservers`, every
 daemon's `nameservers`, and every `autolaunch` entry must name something defined (a service with no `daemon:`
 refers to one called `default`). `describe_config_error()` turns a load error into readable lines for the CLI.
-Anything that writes a config (e.g. `pyrolab rename`) must re-validate before saving.
+Anything that writes a config must re-validate before saving; `rename_entity()` renames an entity together with
+every reference to it.
+
+The models derive from `_ConfigModel` (plain pydantic `BaseModel`, `extra = "forbid"`), **not** `BaseSettings`:
+settings models fill unset fields from same-named environment variables (`PORT`, `HOST`, ...), which silently
+changed configurations. Unknown keys are errors. `update_pyro_config()` warns about any field it can't apply
+unless the model lists it in `NOT_PYRO_OPTIONS`. Daemon placement (`host`, `port`, `unixsocket`, `nathost`,
+`natport`) goes to the daemon's constructor, since Pyro5 has no global `PORT`/`UNIXSOCKET` options.
+Nameservers get their names (used for storage paths) whenever a `PyroLabConfiguration` is constructed.
+
+Every config/lockfile write goes through `utils.atomic_write_text()` (temp file + fsync + `os.replace`).
 
 `GlobalConfiguration` is a singleton and **must only be touched from the main process**. Child processes read
 the frozen `RUNTIME_CONFIG` file instead, which is why config changes require `pyrolab reload` rather than
@@ -109,6 +119,8 @@ a hung instrument kills only its own process. Runners are controlled by sentinel
 - **Restart**: `checkup()` runs every second; a crash is restarted after `RESTART_BACKOFF` (5, 15, 60, 300s),
   and after `MAX_CONSECUTIVE_FAILURES` (5) the entity is `failed` until started by hand or `reload`. Running
   `STABLE_UPTIME` (10 min) before dying resets the count. `ps` shows status plus `LAST ERROR`.
+- **Reload**: stops everything, then starts what was running (if still configured) plus every `autolaunch`
+  entry — nameservers first, each awaited — and returns True only if all of it came back.
 - **Ready**: runners publish `ready`/`error` in a shared dict. `launch_*(wait=True)` (used by `pyrolab start`
   and `reload`) returns `{"status", "error"}`; autolaunch and automatic restarts don't wait.
 - **Registration** (`Registrations` class, child side) is non-fatal and retried every `REGISTRATION_RETRY` (30s)

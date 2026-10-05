@@ -23,7 +23,7 @@ from tabulate import tabulate
 from pyrolab import LOCKFILE, RUNTIME_CONFIG, STARTUP_ERROR_FILE, USER_CONFIG_FILE
 from pyrolab.configure import GlobalConfiguration, describe_config_error
 from pyrolab.manager import ProcessManager
-from pyrolab.utils import pid_is_running
+from pyrolab.utils import atomic_write_text, pid_is_running
 
 log = logging.getLogger("pyrolab.pyrolabd")
 
@@ -45,9 +45,7 @@ def write_lockfile(info: InstanceInfo) -> None:
     replaces the lockfile in one step, so readers see either no lockfile or a
     complete one, never a partial write.
     """
-    tmp = LOCKFILE.with_name(f"{LOCKFILE.name}.{os.getpid()}.tmp")
-    tmp.write_text(info.json())
-    os.replace(tmp, LOCKFILE)
+    atomic_write_text(LOCKFILE, info.json())
 
 
 def read_lockfile() -> Optional[InstanceInfo]:

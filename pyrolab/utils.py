@@ -119,3 +119,34 @@ def pid_is_running(pid: int) -> bool:
     except PermissionError:
         return True  # exists, owned by another user
     return True
+
+
+def atomic_write_text(path, text: str) -> None:
+    """
+    Write ``text`` to ``path`` so readers see the old contents or the new, never
+    a partial file.
+
+    The text goes to a temporary file in the same directory, which is flushed
+    to disk and then replaces ``path`` in one step (``os.replace`` is atomic on
+    POSIX and Windows). If anything fails, ``path`` is left untouched.
+
+    Parameters
+    ----------
+    path : str or Path
+        The file to write.
+    text : str
+        The new contents.
+    """
+    from pathlib import Path
+
+    path = Path(path)
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    try:
+        with open(tmp, "w") as f:
+            f.write(text)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
