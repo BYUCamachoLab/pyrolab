@@ -33,7 +33,7 @@ import threading
 import warnings
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, Iterator, List, Optional, Tuple
+from typing import Callable, Iterable, Iterator, List, Optional, Tuple
 
 LOG_MAX_BYTES = 5 * 1024 * 1024
 LOG_BACKUPS = 5
@@ -233,12 +233,31 @@ def log_to_pipe(conn) -> None:
     logging.captureWarnings(True)
 
 
-def collect_from_pipe(conn, name: str = "log-collector") -> threading.Thread:
+def collect_from_pipe(
+    conn,
+    name: str = "log-collector",
+    alive: Optional[Callable[[], bool]] = None,
+    poll_interval: float = 0.5,
+) -> threading.Thread:
     """
     In the parent: log every record a child sends over ``conn``.
 
-    Runs in a daemon thread that ends when the child closes the pipe or dies
-    (a message cut short by a killed child also ends it).
+    Runs in a daemon thread that ends when the pipe closes (the child exited,
+    or was killed, possibly mid-message), or, if ``alive`` is given, once the
+    child is dead and everything it sent has been read. The second matters on
+    Windows: a child that is killed while still starting never takes over its
+    end of the pipe from the parent, so the pipe never reports closed.
+
+    Parameters
+    ----------
+    conn : multiprocessing.connection.Connection
+        The receiving end of the child's log pipe.
+    name : str, optional
+        The thread's name.
+    alive : callable, optional
+        Returns whether the child is still running, e.g. ``process.is_alive``.
+    poll_interval : float, optional
+        How often to check ``alive`` while the pipe is idle, in seconds.
 
     Returns
     -------
@@ -249,6 +268,11 @@ def collect_from_pipe(conn, name: str = "log-collector") -> threading.Thread:
     def collect() -> None:
         while True:
             try:
+                if alive is not None and not conn.poll(poll_interval):
+                    if alive():
+                        continue
+                    if not conn.poll(0):  # dead, and nothing left to read
+                        break
                 data = conn.recv()
             except (EOFError, OSError):
                 break

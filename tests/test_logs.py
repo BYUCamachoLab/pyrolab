@@ -204,7 +204,9 @@ def _start_child(target, *args, name):
     proc = mp.Process(target=target, args=(send, *args), name=name, daemon=True)
     proc.start()
     send.close()
-    collector = logs.collect_from_pipe(recv, name=f"log-{name}")
+    collector = logs.collect_from_pipe(
+        recv, name=f"log-{name}", alive=proc.is_alive, poll_interval=0.1
+    )
     return proc, collector
 
 
@@ -262,6 +264,40 @@ def test_killed_child_cannot_block_logging(file_logging, start_method, monkeypat
     entries, _ = logs.read_entries(logs.log_files(logfile))
     assert len([e for e in entries if e["process"] == "survivor"]) == 21
     assert entries[-1]["message"] == "parent still logging"
+
+
+def _never_starts_logging(conn):
+    time.sleep(60)  # e.g. killed before it gets going
+
+
+def test_collector_ends_when_child_dies_without_closing_pipe():
+    # On Windows a child killed while still starting never takes its end of
+    # the pipe over from the parent, so the pipe never reports closed; the
+    # collector must notice the child died instead of waiting forever.
+    recv, send = mp.Pipe(duplex=False)
+    state = {"alive": True}
+    collector = logs.collect_from_pipe(
+        recv, alive=lambda: state["alive"], poll_interval=0.05
+    )
+    send.send(logs.PipeHandler.prepare(make_record("last words", ())))
+    state["alive"] = False  # dies, but `send` (the stranded end) stays open
+    collector.join(5)
+    assert not collector.is_alive()
+    send.close()
+
+
+def test_collector_reads_everything_before_stopping(caplog):
+    recv, send = mp.Pipe(duplex=False)
+    for i in range(50):
+        send.send(logs.PipeHandler.prepare(make_record("record %d", (i,))))
+    with caplog.at_level(logging.INFO, logger="pyrolab.test"):
+        collector = logs.collect_from_pipe(
+            recv, alive=lambda: False, poll_interval=0.05
+        )
+        collector.join(5)
+    assert not collector.is_alive()
+    assert [r.getMessage() for r in caplog.records][-1] == "record 49"
+    send.close()
 
 
 ###############################################################################

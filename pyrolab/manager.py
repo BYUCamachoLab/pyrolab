@@ -756,7 +756,7 @@ class ProcessManager:
             # The child has its own copy now; closing ours means the collector
             # sees end-of-file as soon as the child exits or is killed.
             log_send.close()
-            logs.collect_from_pipe(log_recv, name=f"log-{name}")
+            logs.collect_from_pipe(log_recv, name=f"log-{name}", alive=runner.is_alive)
         return group
 
     def _death_reason(self, group: ProcessGroup) -> str:
