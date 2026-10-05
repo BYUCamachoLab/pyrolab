@@ -55,16 +55,11 @@ sphinx:
     autodoc_typehints: 'signature'
     autodoc_mock_imports: [
         "appnope",
-        "deprecation",
-        "typer",
-        "colorama",
-        "tabulate",
         "serial",
         "thorlabs_kinesis",
         "pyfirmata",
         "sacher_tec",
         "pyvisa",
-        "pyfirmata",
         "cv2",
         "WF_SDK",
     ]
