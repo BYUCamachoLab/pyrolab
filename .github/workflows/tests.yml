@@ -9,7 +9,10 @@ on:
   workflow_call:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # Not ${{ github.workflow }}: when release.yml calls this workflow, that is
+  # the caller's name, so the group would equal release.yml's own group and
+  # GitHub cancels the call as a deadlock before any job starts.
+  group: tests-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
