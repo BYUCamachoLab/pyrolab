@@ -214,12 +214,17 @@ The version lives only in `pyproject.toml`; `pyrolab.__version__` reads it from 
 (`importlib.metadata`), so never hard-code it elsewhere.
 
 Commit `docs/changelog/<major>.<minor>.<patch>-changelog.md` first and ensure a clean tree — the release
-workflow reads that exact file as the GitHub release body and fails without it. Then `make release-patch`
-(or `-minor`/`-major`), which checks both of those, runs `uv version --bump`, commits `pyproject.toml` and
-`uv.lock`, tags `vX.Y.Z`, and pushes. The `v*` tag triggers `.github/workflows/release.yml`: the full test
+workflow reads that file as the GitHub release body and fails without it. Every release goes through a release
+candidate (`scripts/release.sh`, via make): `make patch|minor|major` starts one (`0.4.0 → 0.5.0rc1`), `make rc`
+publishes the next (`rc1 → rc2`), and `make release` releases it (`uv version --bump stable`, `0.5.0rc2 →
+0.5.0`; it refuses on a non-candidate). On a candidate, `make patch|minor|major` may only move up a level
+(`0.5.1rc1 → 0.6.0rc1`) — the same or a lower level is refused, since uv would silently abandon the candidate.
+Each step checks the tree and the base version's changelog, commits `pyproject.toml` and `uv.lock`, tags
+`vX.Y.Z`, and pushes. The `v*` tag triggers `.github/workflows/release.yml`: the full test
 workflow, then a build job (tag must match the `pyproject.toml` version, changelog must exist,
 `uv build --no-sources`, `twine check --strict`), then publishing via PyPI **Trusted Publishing** (OIDC from
 the `pypi` environment — there is no PyPI token secret), then `gh release create --notes-file` with the
 changelog. Renaming `release.yml` or the `pypi` environment breaks publishing until the trusted publisher on
 pypi.org is updated to match. PRs that touch `release.yml`, and manual `workflow_dispatch` runs, are dry runs:
-build and checks only, nothing published.
+build and checks only, nothing published. A candidate uses its final release's changelog and becomes a GitHub
+pre-release; pip installs it only with `--pre` or an exact pin.

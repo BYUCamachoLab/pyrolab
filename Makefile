@@ -5,7 +5,9 @@ help:
 	@echo 'make serve:          Serve the documentation site on localhost for browsing'
 	@echo 'make test:           Run tests with pytest'
 	@echo 'make format:         Sort imports and format code with ruff'
-	@echo 'make release-patch:  Bump, tag, and push a release (also -minor, -major)'
+	@echo 'make patch:          Start a release candidate (also minor, major): 0.4.0 -> 0.4.1rc1'
+	@echo 'make rc:             Publish the next candidate: 0.4.1rc1 -> 0.4.1rc2'
+	@echo 'make release:        Release the current candidate: 0.4.1rc2 -> 0.4.1'
 
 install:
 	uv sync --all-extras
@@ -43,26 +45,12 @@ build:
 	uv build
 
 ###############################################################################
-# Releasing: bumps the version in pyproject.toml (and uv.lock), commits, tags
-# vX.Y.Z, and pushes. The tag triggers .github/workflows/release.yml.
+# Releasing: every release starts as a release candidate on PyPI. Each target
+# bumps the version, commits, tags vX.Y.Z, and pushes; the tag triggers
+# .github/workflows/release.yml. See scripts/release.sh for the rules.
 
-release-patch: BUMP = patch
-release-minor: BUMP = minor
-release-major: BUMP = major
-
-release-patch release-minor release-major:
-	@test -z "$$(git status --porcelain)" || \
-		{ echo "Working tree is not clean; commit or stash changes first."; exit 1; }
-	@OLD=$$(uv version --short) && \
-	NEW=$$(uv version --bump $(BUMP) --dry-run --short) && \
-	test -f docs/changelog/$$NEW-changelog.md || \
-		{ echo "Missing docs/changelog/$$NEW-changelog.md (the release body)."; exit 1; } && \
-	uv version --bump $(BUMP) && \
-	git add pyproject.toml uv.lock && \
-	git commit -m "Bump version: $$OLD → $$NEW" && \
-	git tag v$$NEW && \
-	git push && \
-	git push origin v$$NEW
+patch minor major rc release:
+	@bash scripts/release.sh $@
 
 .PHONY: help install precommit doc serve format mypy test jupytext notebooks build \
-	release-patch release-minor release-major
+	patch minor major rc release

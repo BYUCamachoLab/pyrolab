@@ -186,21 +186,31 @@ arrays, matplotlib plot objects, custom objects, etc.).
 The version lives only in ``pyproject.toml``; ``pyrolab.__version__`` reads it
 from the installed package's metadata.
 
-First commit a changelog file under ``docs/changelog`` titled
-``<major>.<minor>.<patch>-changelog.md`` for the new version; it becomes the
-GitHub release notes. Then, with a clean working tree, run one of:
+Every release starts as a release candidate on PyPI, so what gets tested is
+exactly what gets released. First commit a changelog file under
+``docs/changelog`` titled ``<major>.<minor>.<patch>-changelog.md`` for the new
+version; it becomes the release notes for the candidates and the release. Then,
+with a clean working tree:
 
 ```
-make release-patch
-make release-minor
-make release-major
+make minor      # start a candidate: 0.4.0 -> 0.5.0rc1 (or make patch, make major)
+make rc         # if you need another: 0.5.0rc1 -> 0.5.0rc2
+make release    # release the candidate: 0.5.0rc2 -> 0.5.0
 ```
 
-This checks that the tree is clean and the changelog exists, bumps the version
-with ``uv version --bump``, commits ``pyproject.toml`` and ``uv.lock``, tags
-``vX.Y.Z``, and pushes the commit and tag. The tag triggers the release
-workflow, which runs the test suite, builds and checks the package, publishes
-it to PyPI, and creates the GitHub release with the changelog as its notes.
+Each one bumps the version with ``uv version``, commits ``pyproject.toml`` and
+``uv.lock``, tags ``vX.Y.Z``, and pushes the commit and tag. The tag triggers
+the release workflow, which runs the test suite, builds and checks the package,
+publishes it to PyPI, and creates the GitHub release with the changelog as its
+notes (marked as a pre-release for a candidate). pip installs a candidate only
+when asked, with ``pip install --pre pyrolab`` or ``pip install
+pyrolab==0.5.0rc1``, so everyone else keeps getting the latest release.
+
+``make release`` only works on a candidate. While a candidate is out, ``make
+patch``, ``make minor``, or ``make major`` can only move it up a level (for
+example, if 0.5.1rc1 turns out to need a minor release, ``make minor`` gives
+0.6.0rc1; rename the changelog to match). The rules are in
+``scripts/release.sh``.
 
 Publishing uses PyPI's
 [Trusted Publishing](https://docs.pypi.org/trusted-publishers/): PyPI accepts
