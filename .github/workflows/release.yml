@@ -33,6 +33,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      notes: ${{ steps.version.outputs.notes }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.2.0
@@ -47,12 +49,20 @@ jobs:
             echo "::error::Tag $REF_NAME does not match pyproject.toml version $VERSION"
             exit 1
           fi
-          NOTES="docs/changelog/$VERSION-changelog.md"
+          # A release candidate (0.5.0rc1) uses the changelog of the release
+          # it leads up to (0.5.0), and is marked as a pre-release on GitHub.
+          # pip only installs it when asked (--pre, or ==0.5.0rc1).
+          BASE=$(echo "$VERSION" | sed -E 's/(a|b|rc)[0-9]+$//')
+          NOTES="docs/changelog/$BASE-changelog.md"
           if [ ! -s "$NOTES" ]; then
             echo "::error::$NOTES is missing or empty; it becomes the GitHub release notes"
             exit 1
           fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          {
+            echo "version=$VERSION"
+            echo "notes=$NOTES"
+            echo "prerelease=$([ "$BASE" != "$VERSION" ] && echo true || echo false)"
+          } >> "$GITHUB_OUTPUT"
       - name: Build
         # --no-sources builds exactly what PyPI users will get, ignoring any
         # development-only [tool.uv.sources] overrides.
@@ -102,8 +112,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.build.outputs.version }}
+          NOTES: ${{ needs.build.outputs.notes }}
+          PRERELEASE: ${{ needs.build.outputs.prerelease }}
         run: |
+          FLAGS=()
+          if [ "$PRERELEASE" = true ]; then FLAGS+=(--prerelease); fi
           gh release create "$GITHUB_REF_NAME" dist/* \
             --verify-tag \
             --title "PyroLab $VERSION" \
-            --notes-file "docs/changelog/$VERSION-changelog.md"
+            --notes-file "$NOTES" \
+            "${FLAGS[@]}"

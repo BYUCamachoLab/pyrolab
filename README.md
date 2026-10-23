@@ -202,6 +202,19 @@ with ``uv version --bump``, commits ``pyproject.toml`` and ``uv.lock``, tags
 workflow, which runs the test suite, builds and checks the package, publishes
 it to PyPI, and creates the GitHub release with the changelog as its notes.
 
+To test a release before making it, publish a release candidate first:
+
+```
+make rc                # 0.4.0 -> 0.5.0rc1 (BUMP=patch or BUMP=major for others)
+make rc                # 0.5.0rc1 -> 0.5.0rc2
+make release-minor     # 0.5.0rc2 -> 0.5.0 (any release-* finalizes a candidate)
+```
+
+Candidates use the final release's changelog (``0.5.0-changelog.md``) and are
+marked as pre-releases on GitHub. pip installs one only when asked, with
+``pip install --pre pyrolab`` or ``pip install pyrolab==0.5.0rc1``, so
+everyone else keeps getting the latest final release.
+
 Publishing uses PyPI's
 [Trusted Publishing](https://docs.pypi.org/trusted-publishers/): PyPI accepts
 uploads only from this repository's ``release.yml`` workflow running in the

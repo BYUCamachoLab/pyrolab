@@ -223,3 +223,8 @@ the `pypi` environment — there is no PyPI token secret), then `gh release crea
 changelog. Renaming `release.yml` or the `pypi` environment breaks publishing until the trusted publisher on
 pypi.org is updated to match. PRs that touch `release.yml`, and manual `workflow_dispatch` runs, are dry runs:
 build and checks only, nothing published.
+
+`make rc` publishes a release candidate the same way (`0.4.0 → 0.5.0rc1`, `BUMP=patch|major` for other
+levels; then `rc1 → rc2`). A candidate uses its final release's changelog and becomes a GitHub pre-release;
+pip installs it only with `--pre` or an exact pin. On a candidate, `make release-*` runs `uv version --bump
+stable` (`0.5.0rc2 → 0.5.0`), because a plain `--bump minor` would skip to `0.6.0`.
