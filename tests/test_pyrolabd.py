@@ -345,3 +345,38 @@ def test_main_copies_legacy_files(run_main, data_dir, wait_for):
         proxy.shutdown()
     thread.join(timeout=10)
     assert data_dir.USER_CONFIG_FILE.read_text() == "daemons: {old: {}}\n"
+
+
+def test_ps_shows_a_nameserver_on_another_machine_as_remote(
+    data_dir, global_config, fake_manager, monkeypatch
+):
+    # Regression: a nameserver configured only so services can register with
+    # it (it runs elsewhere) was listed as "Stopped".
+    data_dir.USER_CONFIG_FILE.write_text(
+        "version: '1.0'\n"
+        "nameservers:\n"
+        "  here: {host: localhost, ns_port: 9090}\n"
+        "  elsewhere: {host: lab-nameserver.example.edu, ns_port: 9090}\n"
+    )
+    monkeypatch.setattr(
+        fake_manager,
+        "get_nameserver_process_info",
+        lambda name: {"created": "", "status": "Stopped", "uri": "", "error": ""},
+    )
+    rows = {line.split()[0]: line for line in PyroLabDaemon().ps().splitlines() if line}
+    assert "Remote" in rows["elsewhere"]
+    assert "Stopped" in rows["here"]
+
+
+def test_sigterm_exits_cleanly(monkeypatch):
+    # Regression: under systemd, SIGTERM killed the daemon at once, skipping
+    # the cleanup in _serve's finally (stopping children, the lockfile).
+    ignored = []
+    monkeypatch.setattr(
+        pyrolabd.signal, "signal", lambda sig, handler: ignored.append((sig, handler))
+    )
+    with pytest.raises(SystemExit) as exit_:
+        pyrolabd._exit_on_sigterm(15, None)
+    assert exit_.value.code == 0
+    # Further SIGTERMs are ignored so they can't interrupt the cleanup.
+    assert ignored == [(pyrolabd.signal.SIGTERM, pyrolabd.signal.SIG_IGN)]

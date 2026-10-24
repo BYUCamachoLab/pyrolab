@@ -12,10 +12,13 @@ be observed directly.
 
 import gc
 import logging
+import multiprocessing
 import queue
 import socket
+import sys
 import threading
 import time
+from types import SimpleNamespace
 
 import Pyro5
 import pytest
@@ -355,3 +358,37 @@ def test_daemon_runner_closes_its_instruments_when_stopping(
         assert len(closed) == 1
     finally:
         gc.enable()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="terminate() is not SIGTERM")
+def test_runner_in_a_real_process_stops_cleanly_on_sigterm(wait_for):
+    # Regression: SIGTERM (what systemctl stop and Process.terminate() send)
+    # killed a runner at once, skipping its cleanup; it now stops the same
+    # way the stop message does.
+    with multiprocessing.Manager() as shared:
+        state = shared.dict()
+        runner = NameServerRunner(
+            name="ns",
+            nsconfig=NameServerConfiguration(host="127.0.0.1", ns_port=free_port()),
+            msg_queue=multiprocessing.Queue(),
+            msg_polling=0.05,
+            shared_state=state,
+        )
+        runner.start()
+        try:
+            assert wait_for(lambda: state.get("ready"), timeout=20)
+            runner.terminate()
+            runner.join(timeout=10)
+            assert runner.exitcode == 0  # -15 if the signal had killed it
+        finally:
+            if runner.is_alive():
+                runner.kill()
+                runner.join()
+
+
+def test_runners_treat_sigterm_like_the_stop_message():
+    for cls in (NameServerRunner, DaemonRunner):
+        runner = SimpleNamespace(KIND=cls.KIND, name="x", KILL_SIGNAL=False)
+        cls._stop_on_sigterm(runner, 15, None)
+        assert runner.KILL_SIGNAL is True
+        assert cls.stay_alive(runner) is False

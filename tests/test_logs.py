@@ -9,6 +9,10 @@ import json
 import logging
 import multiprocessing as mp
 import pickle
+import signal
+import subprocess
+import sys
+import threading
 import time
 
 import pytest
@@ -331,3 +335,54 @@ def test_cli_logging_only_when_requested(monkeypatch):
 def test_log_level_from_environment(monkeypatch, value, level):
     monkeypatch.setenv(logs.LOGLEVEL_ENV_VAR, value)
     assert logs.log_level() == level
+
+
+###############################################################################
+# Output buffering and SIGTERM
+###############################################################################
+
+
+@pytest.mark.parametrize("line_buffered", [False, True])
+def test_output_survives_a_hard_exit_only_when_line_buffered(tmp_path, line_buffered):
+    # Regression: driver print()s went to pyrolabd_output.log block-buffered,
+    # so they showed up late and were lost when the process was killed.
+    # os._exit skips flushing, like a kill does.
+    script = (
+        "import os\n"
+        "from pyrolab import logs\n"
+        + ("logs.line_buffer_output()\n" if line_buffered else "")
+        + "print('Arduino Failed: no such port')\n"
+        "os._exit(1)\n"
+    )
+    out = tmp_path / "pyrolabd_output.log"
+    with open(out, "w") as f:
+        subprocess.run([sys.executable, "-c", script], stdout=f, check=False)
+    printed = "Arduino Failed" in out.read_text()
+    assert printed == line_buffered
+
+
+def test_line_buffer_output_tolerates_missing_streams(monkeypatch):
+    monkeypatch.setattr(sys, "stdout", None)  # as under pythonw
+    monkeypatch.setattr(sys, "stderr", object())
+    logs.line_buffer_output()
+
+
+def test_on_sigterm_installs_the_handler_in_the_main_thread(monkeypatch):
+    installed = {}
+    monkeypatch.setattr(signal, "signal", lambda sig, h: installed.update({sig: h}))
+
+    def handler(signum, frame):
+        pass
+
+    logs.on_sigterm(handler)
+    assert installed == {signal.SIGTERM: handler}
+
+
+def test_on_sigterm_does_nothing_outside_the_main_thread(monkeypatch):
+    # The tests run runners' run() in threads, where signal() would raise.
+    installed = {}
+    monkeypatch.setattr(signal, "signal", lambda sig, h: installed.update({sig: h}))
+    worker = threading.Thread(target=logs.on_sigterm, args=(print,))
+    worker.start()
+    worker.join()
+    assert installed == {}

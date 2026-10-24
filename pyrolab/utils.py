@@ -9,11 +9,13 @@ Utils
 Convenience functions for working with the pyrolab package.
 """
 
+import ipaddress
 import logging
 import os
 import secrets
 import socket
 import sys
+from typing import Optional
 
 try:
     import importlib.resources as pkg_resources
@@ -72,6 +74,39 @@ def get_ip() -> str:
         reason,
     )
     return "127.0.0.1"
+
+
+def names_this_machine(host: Optional[str]) -> bool:
+    """
+    Whether a configured ``host`` refers to this machine.
+
+    Decided without DNS, so it never waits on the network: wildcard and
+    loopback addresses, ``public``, this machine's hostname (or its first
+    label, so ``lab.example.edu`` matches a machine called ``lab``), and, for a
+    literal IP address, this machine's address. Anything else is taken to be
+    another machine.
+
+    Parameters
+    ----------
+    host : str, optional
+        A host as written in the configuration.
+
+    Returns
+    -------
+    bool
+        False if ``host`` names another machine.
+    """
+    if not host:
+        return True
+    host = host.strip().lower().strip("[]")
+    if host in ("localhost", "public", "0.0.0.0", "::", "::1"):
+        return True
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        hostname = socket.gethostname().lower()
+        return host == hostname or host.split(".")[0] == hostname.split(".")[0]
+    return address.is_loopback or address.is_unspecified or host == get_ip()
 
 
 def generate_random_name(count: int = 3) -> str:

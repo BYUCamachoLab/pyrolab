@@ -137,3 +137,27 @@ def test_get_ip_falls_back_to_loopback(no_route, monkeypatch, caplog, resolved):
     monkeypatch.setattr(utils.socket, "gethostbyname", resolve)
     assert utils.get_ip() == "127.0.0.1"
     assert "only clients on this machine can reach" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "host, here",
+    [
+        (None, True),
+        ("", True),
+        ("localhost", True),
+        ("public", True),
+        ("0.0.0.0", True),
+        ("::", True),
+        ("[::1]", True),
+        ("127.0.0.5", True),
+        ("lab", True),
+        ("LAB.example.edu", True),  # this machine's name, fully qualified
+        ("10.0.0.7", True),  # this machine's address
+        ("camacholab.ee.byu.edu", False),
+        ("10.0.0.8", False),
+    ],
+)
+def test_names_this_machine(monkeypatch, host, here):
+    monkeypatch.setattr(utils.socket, "gethostname", lambda: "lab")
+    monkeypatch.setattr(utils, "get_ip", lambda: "10.0.0.7")
+    assert utils.names_this_machine(host) is here

@@ -276,6 +276,8 @@ class NameServerRunner(multiprocessing.Process):
         goes there (see :py:mod:`pyrolab.logs`).
     """
 
+    KIND = "nameserver"
+
     def __init__(
         self,
         *args,
@@ -336,6 +338,11 @@ class NameServerRunner(multiprocessing.Process):
         """
         return not self.KILL_SIGNAL
 
+    def _stop_on_sigterm(self, signum, frame) -> None:
+        """Treat SIGTERM like the stop message: shut down cleanly."""
+        log.info("SIGTERM received; stopping %s '%s'", self.KIND, self.name)
+        self.KILL_SIGNAL = True
+
     def run(self) -> None:
         """
         Creates and runs the child process.
@@ -345,6 +352,8 @@ class NameServerRunner(multiprocessing.Process):
         """
         if self.log_conn is not None:
             logs.log_to_pipe(self.log_conn)
+        logs.line_buffer_output()
+        logs.on_sigterm(self._stop_on_sigterm)
         log.info("Starting nameserver '%s'", self.name)
         try:
             self.nsconfig.update_pyro_config()
@@ -397,6 +406,8 @@ class DaemonRunner(multiprocessing.Process):
         The sending end of this runner's own log pipe; the runner's logging
         goes there (see :py:mod:`pyrolab.logs`).
     """
+
+    KIND = "daemon"
 
     def __init__(
         self,
@@ -497,6 +508,11 @@ class DaemonRunner(multiprocessing.Process):
         """
         return not self.KILL_SIGNAL
 
+    def _stop_on_sigterm(self, signum, frame) -> None:
+        """Treat SIGTERM like the stop message: shut down cleanly."""
+        log.info("SIGTERM received; stopping %s '%s'", self.KIND, self.name)
+        self.KILL_SIGNAL = True
+
     def plan_registrations(self, uris: Dict[str, URI]) -> Registrations:
         """Queue every nameserver registration this daemon should make."""
         config = PyroLabConfiguration.from_file(RUNTIME_CONFIG)
@@ -526,6 +542,8 @@ class DaemonRunner(multiprocessing.Process):
         """
         if self.log_conn is not None:
             logs.log_to_pipe(self.log_conn)
+        logs.line_buffer_output()
+        logs.on_sigterm(self._stop_on_sigterm)
         log.info("Starting daemon '%s'", self.name)
         stop_registering = threading.Event()
         registrar = None

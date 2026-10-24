@@ -12,6 +12,7 @@ Submodule defining the background PyroLab daemon.
 import logging
 import os
 import shutil
+import signal
 import sys
 import threading
 from typing import NamedTuple, Optional
@@ -34,7 +35,7 @@ from pyrolab import (
 from pyrolab.configure import GlobalConfiguration, describe_config_error
 from pyrolab.locations import migrate_legacy_files
 from pyrolab.manager import ProcessManager
-from pyrolab.utils import atomic_write_text, pid_is_running
+from pyrolab.utils import atomic_write_text, names_this_machine, pid_is_running
 
 log = logging.getLogger("pyrolab.pyrolabd")
 
@@ -220,8 +221,12 @@ class PyroLabDaemon:
         log.debug("Daemon process listing requested.")
 
         listing = []
-        for ns in self.gconfig.get_config().nameservers.keys():
+        for ns, nsconfig in self.gconfig.get_config().nameservers.items():
             info = self.manager.get_nameserver_process_info(ns)
+            if info["status"] == "Stopped" and not names_this_machine(nsconfig.host):
+                # Configured so services can register with it, but it runs on
+                # another machine; "Stopped" would suggest something's wrong.
+                info["status"] = "Remote"
             listing.append(NameServerInfo(name=ns, **_short_error(info)))
         nsstring = tabulate(
             listing, headers=["NAMESERVER", "CREATED", "STATUS", "URI", "LAST ERROR"]
@@ -401,6 +406,8 @@ def main(port: int = 0) -> int:
         return 1
 
     handler = logs.start_file_logging(PYROLAB_LOGFILE)
+    logs.line_buffer_output()
+    logs.on_sigterm(_exit_on_sigterm)
     try:
         for copied in migrate_legacy_files(
             LEGACY_DATA_DIR,
@@ -412,6 +419,19 @@ def main(port: int = 0) -> int:
         return _serve(port)
     finally:
         logs.stop_file_logging(handler)
+
+
+def _exit_on_sigterm(signum, frame) -> None:
+    """
+    Shut down cleanly on SIGTERM (``systemctl stop``) instead of dying at once.
+
+    Raising SystemExit unwinds out of the request loop, so ``_serve``'s
+    ``finally`` stops every nameserver and daemon, removes the lockfile and
+    the runtime config, and the process exits with status 0.
+    """
+    log.info("SIGTERM received; shutting down")
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)  # don't interrupt the cleanup
+    raise SystemExit(0)
 
 
 def _serve(port: int) -> int:
