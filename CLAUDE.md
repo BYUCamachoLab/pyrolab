@@ -136,7 +136,11 @@ anything touching its process tables holds a reentrant class-level lock — but 
 for ready, nameserver calls) happen **outside** it so `ps` stays responsive. Tests replace runners through the
 `_create_runner`/`_shared_dict`/`_message_queue`/`_clock` seams (see `tests/test_lifecycle.py`).
 
-The background daemon's stdout/stderr go to `logs/pyrolabd_output.log`, not the terminal that ran `up`.
+The background daemon's stdout/stderr go to `pyrolabd_output.log` (in the log directory), not the terminal that ran
+`up`; the daemon and every runner call `logs.line_buffer_output()` so drivers' `print()`s land promptly and survive a
+kill. **SIGTERM** (`systemctl stop`, and `Process.terminate()` on POSIX) is handled, not fatal: `pyrolabd` raises
+`SystemExit(0)` so `_serve`'s `finally` cleans up, and runners set `KILL_SIGNAL` and stop like on the sentinel
+(`logs.on_sigterm`, main thread only — tests call `run()` in threads).
 
 Everything spawn-related lives in `manager.py` specifically because child processes re-import the target
 module — keeping process creation out of that import path prevents recursive spawning.

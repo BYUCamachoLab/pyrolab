@@ -838,3 +838,24 @@ def test_spawned_daemon_output_goes_to_log_file(data_dir, monkeypatch):
     assert seen["stderr"] is cli.subprocess.STDOUT
     assert seen["stdout"].name == str(data_dir.PYROLAB_LOGDIR / cli.DAEMON_OUTPUT_LOG)
     assert seen["start_new_session"] is True
+
+
+def test_nslist_is_sorted(monkeypatch):
+    # Regression: listed in whatever order the nameserver returned (reversed,
+    # in the lab).
+    class FakeNS:
+        def list(self, return_metadata=False):
+            return {
+                "zeta.service": ("PYRO:z@host:1", {"b-tag", "a-tag"}),
+                "alpha.service": ("PYRO:a@host:1", set()),
+                "Pyro.NameServer": ("PYRO:Pyro.NameServer@host:9090", set()),
+            }
+
+    import pyrolab.api
+
+    monkeypatch.setattr(pyrolab.api, "locate_ns", lambda host, port: FakeNS())
+    result = runner.invoke(cli.app, ["nslist", "--host", "lab", "--port", "9090"])
+    assert result.exit_code == 0, result.output
+    names = [line.split()[0] for line in result.output.splitlines()[2:] if line.strip()]
+    assert names == ["Pyro.NameServer", "alpha.service", "zeta.service"]
+    assert "a-tag: b-tag" in result.output

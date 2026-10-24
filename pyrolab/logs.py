@@ -29,6 +29,8 @@ import json
 import logging
 import logging.handlers
 import os
+import signal
+import sys
 import threading
 import warnings
 from datetime import datetime
@@ -117,8 +119,6 @@ def configure_process() -> None:
     (unless ``PYROLAB_HUSH_DEPRECATION`` is set). Never called on import: a
     library must not change these for the application that imports it.
     """
-    import sys
-
     import Pyro5.errors
 
     sys.excepthook = Pyro5.errors.excepthook
@@ -217,6 +217,38 @@ class PipeHandler(logging.Handler):
             if not isinstance(value, (str, int, float, bool, type(None))):
                 data[key] = repr(value)
         return data
+
+
+def line_buffer_output() -> None:
+    """
+    Write this process's stdout and stderr out line by line.
+
+    The daemon and its child processes have their output redirected to
+    ``pyrolabd_output.log``, and Python block-buffers output to a file: a
+    driver's ``print()`` would only appear once 8 KB had built up, and would be
+    lost if the process were killed. Drivers often report problems that way.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)  # None under pythonw
+        if reconfigure is not None:
+            try:
+                reconfigure(line_buffering=True)
+            except (ValueError, OSError):  # e.g. a stream that's already closed
+                pass
+
+
+def on_sigterm(handler: Callable[[int, object], None]) -> None:
+    """
+    Call ``handler`` when this process is asked to stop with SIGTERM.
+
+    Without a handler, Python exits on SIGTERM at once, skipping all cleanup.
+    That's what ``systemctl stop`` sends (to every process of the service), and
+    what ``multiprocessing.Process.terminate()`` sends on POSIX. Signal
+    handlers can only be installed from the main thread; elsewhere (as when a
+    runner's ``run()`` is called in a thread by the tests) this does nothing.
+    """
+    if threading.current_thread() is threading.main_thread():
+        signal.signal(signal.SIGTERM, handler)
 
 
 def log_to_pipe(conn) -> None:
